@@ -17,8 +17,10 @@
       <div><strong>إدارة منصة البيع</strong><small>التين والزيتون</small></div>
     </div>
     <div class="top-actions">
+      <span class="cloud-status" id="cloudStatus"><i></i><span>جاري الاتصال…</span></span>
       <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
       <button class="secondary" id="addCategory">＋ إضافة قسم جديد</button>
+      <button class="sign-out hidden" id="adminSignOut">تسجيل خروج</button>
     </div>
   </header>
 
@@ -37,15 +39,15 @@
 
     <section class="notice">
       <div>ⓘ</div>
-      <p><strong>الحفظ هنا آمن ومحلي.</strong> هذه صفحة GitHub Pages ثابتة، لذلك لا تضع رمز GitHub داخلها. بعد التعديل اضغط «تصدير تحديث الموقع» وارفع الملفات الناتجة بنفسك.</p>
+      <p><strong>اللوحة متصلة بـ Firebase.</strong> أي إضافة أو تعديل أو تغيير ترتيب يُحفظ في السحابة ويظهر في منصة الطلبات مباشرة. ويمكنك تنزيل نسخة احتياطية متى شئت.</p>
     </section>
 
     <section class="toolbar">
-      <button id="saveDraft">حفظ المسودة</button>
-      <button id="exportData" class="export">تنزيل تحديث الموقع ZIP</button>
+      <button id="saveDraft">حفظ الآن</button>
+      <button id="exportData" class="export">تنزيل نسخة احتياطية ZIP</button>
       <label class="file-button">استيراد JSON<input id="importData" type="file" accept=".json,application/json" multiple></label>
-      <button id="resetData" class="danger-link">إلغاء المسودة والعودة لبيانات الموقع</button>
-      <span id="saveState">تم تحميل بيانات الموقع</span>
+      <button id="resetData" class="danger-link">إعادة تحميل بيانات Firebase</button>
+      <span id="saveState">جاري تحميل بيانات Firebase…</span>
     </section>
 
     <section id="categoryList" class="category-list" aria-live="polite"></section>
@@ -83,7 +85,22 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
+  <section class="admin-auth-gate" id="adminAuthGate">
+    <div class="admin-auth-card">
+      <div class="brand-mark">ز</div>
+      <span class="eyebrow">دخول محمي</span>
+      <h1>إدارة منصة البيع</h1>
+      <p>سجّل الدخول بحساب Google الإداري للوصول إلى المنتجات والصور.</p>
+      <button class="primary" id="adminGoogleLogin">الدخول بحساب Google</button>
+      <small id="adminAuthMessage"></small>
+    </div>
+  </section>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

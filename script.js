@@ -3,15 +3,22 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const DRAFT_KEY = "figsOlivesStoreAdminDraftV2";
 const DB_NAME = "figsOlivesStoreAssets";
 const DB_STORE = "assets";
+const ADMIN_EMAILS = new Set(["sultan.figsolives@gmail.com", "figsandolives.kw@gmail.com"]);
+const firebaseServices = window.ORDERING_FIREBASE;
 
 let categories = [];
 let products = [];
 let siteCategories = [];
 let siteProducts = [];
 let editingImages = [];
+let pendingImageDeletes = new Set();
 let openCategories = new Set();
 let dragState = null;
 let toastTimer;
+let syncTimer;
+let currentAdmin = null;
+let catalogRef = null;
+let ignoreRemoteUntil = 0;
 const assetUrls = new Map();
 
 function toast(message) {
@@ -34,6 +41,15 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[character]));
+}
+
+function setCloudStatus(message, type = "") {
+  const status = $("#cloudStatus");
+  if (!status) return;
+  status.classList.toggle("connected", type === "connected");
+  status.classList.toggle("error", type === "error");
+  const label = $("span", status);
+  if (label) label.textContent = message;
 }
 
 function normalizeData() {
@@ -139,28 +155,46 @@ async function resolveAsset(path) {
   return url;
 }
 
-async function loadData() {
+async function loadFallbackData() {
   [siteProducts, siteCategories] = await Promise.all([
     fetchFirst(["../products.json", "../منصة الطلبات/products.json", "products.json"]),
     fetchFirst(["../categories.json", "../منصة الطلبات/categories.json", "categories.json"])
   ]);
-  const draft = localStorage.getItem(DRAFT_KEY);
-  if (draft) {
-    try {
-      const saved = JSON.parse(draft);
-      products = saved.products;
-      categories = saved.categories;
-      $("#saveState").textContent = "تم تحميل آخر مسودة محفوظة";
-    } catch {
-      products = clone(siteProducts);
-      categories = clone(siteCategories);
-    }
-  } else {
-    products = clone(siteProducts);
-    categories = clone(siteCategories);
-  }
+}
+
+function applyRemoteCatalog(catalog) {
+  products = Array.isArray(catalog?.products) ? catalog.products : [];
+  categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
+  siteProducts = clone(products);
+  siteCategories = clone(categories);
   normalizeData();
   render();
+}
+
+async function loadData() {
+  if (!firebaseServices || !currentAdmin) throw new Error("تعذر الاتصال بـ Firebase");
+  catalogRef = firebaseServices.database.ref("orderingPlatform/catalog");
+  const snapshot = await catalogRef.once("value");
+  if (snapshot.exists()) {
+    applyRemoteCatalog(snapshot.val());
+    $("#saveState").textContent = "تم تحميل آخر نسخة من Firebase";
+  } else {
+    await loadFallbackData();
+    products = clone(siteProducts);
+    categories = clone(siteCategories);
+    normalizeData();
+    render();
+    $("#saveState").textContent = "قاعدة البيانات فارغة — اضغط حفظ الآن لرفع البيانات";
+  }
+  catalogRef.on("value", remoteSnapshot => {
+    if (!remoteSnapshot.exists() || Date.now() < ignoreRemoteUntil) return;
+    applyRemoteCatalog(remoteSnapshot.val());
+    $("#saveState").textContent = "البيانات متزامنة مع Firebase";
+    setCloudStatus("متصل ومحفوظ", "connected");
+  }, error => {
+    setCloudStatus("تعذر التزامن", "error");
+    console.error(error);
+  });
 }
 
 function categoryProducts(categoryId) {
@@ -230,30 +264,55 @@ async function hydrateRenderedImages() {
   }
 }
 
-function markDirty(message = "توجد تعديلات غير مصدرة") {
+function markDirty(message = "جارٍ حفظ التعديلات في Firebase…") {
   $("#saveState").textContent = message;
+  setCloudStatus("جارٍ الحفظ…");
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => saveToFirebase().catch(() => undefined), 650);
+}
+
+async function saveToFirebase() {
+  if (!catalogRef || !currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
+  normalizeData();
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, savedAt: new Date().toISOString() }));
+  clearTimeout(syncTimer);
+  ignoreRemoteUntil = Date.now() + 1200;
+  $("#saveState").textContent = "جارٍ الحفظ في Firebase…";
+  try {
+    await catalogRef.update({
+      categories: categories.map((category, index) => ({ ...category, order: index + 1 })),
+      products: downloadableProducts(),
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      updatedBy: currentAdmin.email || currentAdmin.uid
+    });
+    siteCategories = clone(categories);
+    siteProducts = clone(products);
+    $("#saveState").textContent = "تم الحفظ في Firebase";
+    setCloudStatus("متصل ومحفوظ", "connected");
+  } catch (error) {
+    $("#saveState").textContent = "فشل الحفظ — لم تُفقد تعديلاتك المحلية";
+    setCloudStatus("فشل الحفظ", "error");
+    toast(error.message || "تعذر الحفظ");
+    throw error;
+  }
 }
 
 function saveDraft() {
-  normalizeData();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, savedAt: new Date().toISOString() }));
-  $("#saveState").textContent = "تم حفظ المسودة في هذا المتصفح";
-  toast("تم حفظ المسودة");
+  saveToFirebase().then(() => toast("تم الحفظ في Firebase")).catch(() => undefined);
 }
 
-function resetDraft() {
-  if (!confirm("هل تريد حذف المسودة والعودة إلى آخر بيانات موجودة في الموقع؟")) return;
+async function resetDraft() {
+  if (!confirm("هل تريد إلغاء التعديلات المحلية وإعادة تحميل آخر نسخة من Firebase؟")) return;
   localStorage.removeItem(DRAFT_KEY);
   clearAssets().catch(() => undefined);
   assetUrls.forEach((url) => URL.revokeObjectURL(url));
   assetUrls.clear();
-  categories = clone(siteCategories);
-  products = clone(siteProducts);
+  const snapshot = await catalogRef.once("value");
+  if (!snapshot.exists()) return toast("لا توجد بيانات محفوظة في Firebase");
+  applyRemoteCatalog(snapshot.val());
   openCategories.clear();
-  normalizeData();
-  render();
-  $("#saveState").textContent = "تمت العودة إلى بيانات الموقع";
-  toast("تم إلغاء المسودة");
+  $("#saveState").textContent = "تم تحميل آخر نسخة من Firebase";
+  toast("تمت إعادة التحميل");
 }
 
 function openCategoryDialog(category = null) {
@@ -292,6 +351,12 @@ function deleteCategory(categoryId) {
     ? `القسم يحتوي على ${count} منتج. حذف القسم سيحذف منتجاته أيضاً. هل أنت متأكد؟`
     : "هل تريد حذف هذا القسم؟";
   if (!confirm(warning)) return;
+  for (const product of categoryProducts(categoryId)) {
+    for (const imageUrl of product.images || []) {
+      if (!imageUrl.includes("firebasestorage.googleapis.com")) continue;
+      firebaseServices.storage.refFromURL(imageUrl).delete().catch(error => console.warn("Image cleanup failed", error));
+    }
+  }
   categories = categories.filter((item) => item.id !== categoryId);
   products = products.filter((product) => product.category !== categoryId);
   openCategories.delete(categoryId);
@@ -320,6 +385,7 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productDescriptionAr").value = product?.description || "";
   $("#productDescriptionEn").value = product?.descriptionEn || "";
   editingImages = [...(product?.images || [product?.image].filter(Boolean))];
+  pendingImageDeletes = new Set();
   $("#imageUrl").value = "";
   await renderImageEditor();
   $("#productDialog").showModal();
@@ -362,24 +428,27 @@ async function optimizeImage(file, productId) {
   if (!blob) throw new Error("تعذر تجهيز الصورة");
   const safeId = String(productId || "new").replace(/[^a-zA-Z0-9_-]/g, "-");
   const filename = `${safeId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.webp`;
-  const path = `product-images/${filename}`;
-  await putAsset(path, blob);
-  assetUrls.set(path, URL.createObjectURL(blob));
-  return path;
+  const storagePath = `orderingPlatform/catalog/products/${safeId}/${filename}`;
+  const reference = firebaseServices.storage.ref(storagePath);
+  const upload = await reference.put(blob, {
+    contentType: "image/webp",
+    cacheControl: "public,max-age=31536000,immutable"
+  });
+  return upload.ref.getDownloadURL();
 }
 
 async function addImageFiles(files) {
   if (!files.length) return;
   const productId = $("#productId").value || "new-product";
-  $("#saveState").textContent = "جارٍ ضغط الصور…";
+  $("#saveState").textContent = "جارٍ ضغط الصور ورفعها إلى Firebase…";
   try {
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
       editingImages.push(await optimizeImage(file, productId));
     }
     await renderImageEditor();
-    markDirty("تم ضغط الصور وحفظها في المسودة");
-    toast("تمت إضافة الصور بصيغة WebP");
+    markDirty("تم رفع الصور — جارٍ حفظ المنتج");
+    toast("تم رفع الصور إلى Firebase بصيغة WebP");
   } catch (error) {
     toast(error.message);
   }
@@ -427,6 +496,11 @@ function saveProduct(event) {
     openCategories.add(categoryId);
   }
   categories.forEach((category) => normalizeProductOrder(category.id));
+  for (const imageUrl of pendingImageDeletes) {
+    if (!imageUrl.includes("firebasestorage.googleapis.com")) continue;
+    firebaseServices.storage.refFromURL(imageUrl).delete().catch(error => console.warn("Image cleanup failed", error));
+  }
+  pendingImageDeletes.clear();
   $("#productDialog").close();
   markDirty();
   render();
@@ -436,6 +510,10 @@ function saveProduct(event) {
 function deleteProduct(productId) {
   const product = products.find((item) => item.id === productId);
   if (!product || !confirm(`هل تريد حذف المنتج «${product.name}»؟`)) return;
+  for (const imageUrl of product.images || []) {
+    if (!imageUrl.includes("firebasestorage.googleapis.com")) continue;
+    firebaseServices.storage.refFromURL(imageUrl).delete().catch(error => console.warn("Image cleanup failed", error));
+  }
   products = products.filter((item) => item.id !== productId);
   normalizeProductOrder(product.category);
   markDirty();
@@ -486,7 +564,7 @@ async function importJson(files) {
     normalizeData();
     openCategories.clear();
     render();
-    markDirty("تم الاستيراد — راجع البيانات ثم صدّرها");
+    markDirty("تم الاستيراد — جارٍ الحفظ في Firebase");
     toast("تم استيراد الملفات");
   } catch (error) {
     toast(`فشل الاستيراد: ${error.message}`);
@@ -521,10 +599,9 @@ function downloadBlob(blob, filename) {
 
 async function exportData() {
   normalizeData();
-  saveDraft();
   const exportProducts = downloadableProducts();
   const exportCategories = categories.map((category, index) => ({ ...category, order: index + 1 }));
-  $("#saveState").textContent = "جارٍ تجهيز ملف التحديث…";
+  $("#saveState").textContent = "جارٍ تجهيز النسخة الاحتياطية…";
   try {
     if (!window.JSZip) throw new Error("تعذر تحميل أداة ZIP");
     const zip = new JSZip();
@@ -537,19 +614,79 @@ async function exportData() {
       if (blob) zip.file(path, blob);
     }
     zip.file("تعليمات.txt", [
-      "انسخ products.json و categories.json إلى مجلد منصة الطلبات واستبدل الملفين القديمين.",
-      "إذا وجد مجلد product-images فانسخه أيضاً بجانب index.html.",
-      "لا تغيّر أسماء الملفات أو مسارات الصور."
+      "هذه نسخة احتياطية من بيانات منصة البيع المحفوظة في Firebase.",
+      "يمكن استيراد الملفين لاحقاً من لوحة الإدارة عند الحاجة.",
+      "روابط الصور تشير إلى Firebase Storage ولا تحتاج إلى نسخ مجلد صور."
     ].join("\n"));
-    downloadBlob(await zip.generateAsync({ type: "blob", compression: "DEFLATE" }), "تحديث-منصة-البيع.zip");
-    $("#saveState").textContent = "تم تنزيل ملف التحديث";
-    toast("تم تجهيز تحديث الموقع");
+    downloadBlob(await zip.generateAsync({ type: "blob", compression: "DEFLATE" }), "نسخة-احتياطية-منصة-البيع.zip");
+    $("#saveState").textContent = "تم تنزيل النسخة الاحتياطية";
+    toast("تم تجهيز النسخة الاحتياطية");
   } catch (error) {
     downloadBlob(new Blob([JSON.stringify(exportProducts, null, 2)], { type: "application/json" }), "products.json");
     downloadBlob(new Blob([JSON.stringify(exportCategories, null, 2)], { type: "application/json" }), "categories.json");
     $("#saveState").textContent = "تم تنزيل ملفات JSON بدون ZIP";
     toast(error.message);
   }
+}
+
+async function signInAdmin() {
+  if (!firebaseServices) {
+    $("#adminAuthMessage").textContent = "تعذر تحميل Firebase";
+    return;
+  }
+  const button = $("#adminGoogleLogin");
+  button.disabled = true;
+  button.textContent = "جاري فتح تسجيل الدخول…";
+  $("#adminAuthMessage").textContent = "";
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    await firebaseServices.auth.signInWithPopup(provider);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = "الدخول بحساب Google";
+    $("#adminAuthMessage").textContent = error.message || "تعذر تسجيل الدخول";
+  }
+}
+
+async function initializeAdmin() {
+  if (!firebaseServices) {
+    $("#adminAuthMessage").textContent = "تعذر تحميل مكتبة Firebase";
+    setCloudStatus("غير متصل", "error");
+    return;
+  }
+  $("#adminGoogleLogin").addEventListener("click", signInAdmin);
+  $("#adminSignOut").addEventListener("click", () => firebaseServices.auth.signOut());
+  firebaseServices.auth.onAuthStateChanged(async user => {
+    if (!user) {
+      currentAdmin = null;
+      catalogRef?.off();
+      catalogRef = null;
+      $("#adminAuthGate").classList.remove("hidden");
+      $("#adminSignOut").classList.add("hidden");
+      $("#adminGoogleLogin").disabled = false;
+      $("#adminGoogleLogin").textContent = "الدخول بحساب Google";
+      setCloudStatus("يلزم تسجيل الدخول");
+      return;
+    }
+    const email = String(user.email || "").toLowerCase();
+    if (!ADMIN_EMAILS.has(email)) {
+      $("#adminAuthMessage").textContent = `الحساب ${email || "المحدد"} غير مصرح له بإدارة المنصة`;
+      await firebaseServices.auth.signOut();
+      return;
+    }
+    currentAdmin = user;
+    $("#adminAuthGate").classList.add("hidden");
+    $("#adminSignOut").classList.remove("hidden");
+    setCloudStatus("جارٍ تحميل البيانات…");
+    try {
+      await loadData();
+      setCloudStatus("متصل ومحفوظ", "connected");
+    } catch (error) {
+      setCloudStatus("تعذر تحميل البيانات", "error");
+      $("#categoryList").innerHTML = `<div class="notice"><div>!</div><p>${escapeHtml(error.message)}</p></div>`;
+    }
+  });
 }
 
 $("#addCategory").addEventListener("click", () => openCategoryDialog());
@@ -576,7 +713,8 @@ $("#imageList").addEventListener("click", (event) => {
   const removeButton = event.target.closest("[data-remove-image]");
   const primaryButton = event.target.closest("[data-primary-image]");
   if (removeButton) {
-    editingImages.splice(Number(removeButton.dataset.removeImage), 1);
+    const [removed] = editingImages.splice(Number(removeButton.dataset.removeImage), 1);
+    if (removed) pendingImageDeletes.add(removed);
     renderImageEditor();
   }
   if (primaryButton) {
@@ -657,6 +795,4 @@ $("#categoryList").addEventListener("dragend", () => {
   $$(".dragging").forEach((element) => element.classList.remove("dragging"));
 });
 
-loadData().catch((error) => {
-  $("#categoryList").innerHTML = `<div class="notice"><div>!</div><p>${escapeHtml(error.message)}. شغّل الصفحة من خادم محلي أو ارفعها بجانب ملفات المتجر.</p></div>`;
-});
+initializeAdmin();
