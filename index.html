@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260729-2">
+  <link rel="stylesheet" href="style.css?v=20260729-3">
 </head>
 <body>
   <header class="topbar">
@@ -56,7 +56,7 @@
         <div>
           <span class="eyebrow">مظهر واجهة المتجر</span>
           <h2>صورة جملة «أكل صحي بطعم يستحق التكرار» وألوانها</h2>
-          <p>المقاس المطلوب للصورة: <strong>1600 × 720 بكسل</strong>. تُقصّ الصورة تلقائيًا لهذا القياس وتُحفظ بصيغة WebP.</p>
+          <p>النسبة المناسبة للكادر: <strong>1600 × 720 بكسل</strong>. ارفع صورة واضحة ثم حدد من الأسفل الجزء الذي تريد ظهوره داخل الكادر.</p>
         </div>
         <button type="button" class="primary" id="saveAppearance">حفظ مظهر الواجهة</button>
       </div>
@@ -66,6 +66,17 @@
           <div class="hero-image-actions">
             <label class="file-button primary">اختيار صورة<input id="heroImageInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
             <button type="button" class="delete" id="removeHeroImage">حذف الصورة</button>
+          </div>
+          <div class="hero-focal-controls">
+            <label>
+              <span>الموضع الأفقي للصورة <output id="heroPositionXValue">50%</output></span>
+              <input id="heroPositionX" type="range" min="0" max="100" step="1" value="50">
+            </label>
+            <label>
+              <span>الموضع العمودي للصورة <output id="heroPositionYValue">50%</output></span>
+              <input id="heroPositionY" type="range" min="0" max="100" step="1" value="50">
+            </label>
+            <small>حرّك المؤشرين حتى يظهر الجزء المطلوب في المعاينة، ثم اضغط «حفظ مظهر الواجهة».</small>
           </div>
         </div>
         <div class="appearance-colors">
@@ -188,6 +199,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260729-2"></script>
+  <script src="script.js?v=20260729-3"></script>
 </body>
 </html>
