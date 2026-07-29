@@ -7,6 +7,8 @@ const ADMIN_EMAILS = new Set(["sultan.figsolives@gmail.com", "figsandolives.kw@g
 const firebaseServices = window.ORDERING_FIREBASE;
 const DEFAULT_APPEARANCE = Object.freeze({
   heroImage: "",
+  heroPositionX: 50,
+  heroPositionY: 50,
   heroTextColor: "#18352a",
   badgeBackgroundColor: "#ffffff",
   badgeTextColor: "#18352a"
@@ -60,6 +62,11 @@ function validHexColor(value, fallback) {
   return /^#[0-9a-f]{6}$/i.test(String(value || "")) ? String(value).toLowerCase() : fallback;
 }
 
+function validPercent(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(100, Math.max(0, number)) : fallback;
+}
+
 function normalizeAppearance(value = {}) {
   let heroImage = "";
   try {
@@ -70,6 +77,8 @@ function normalizeAppearance(value = {}) {
   }
   return {
     heroImage,
+    heroPositionX: validPercent(value.heroPositionX, DEFAULT_APPEARANCE.heroPositionX),
+    heroPositionY: validPercent(value.heroPositionY, DEFAULT_APPEARANCE.heroPositionY),
     heroTextColor: validHexColor(value.heroTextColor, DEFAULT_APPEARANCE.heroTextColor),
     badgeBackgroundColor: validHexColor(value.badgeBackgroundColor, DEFAULT_APPEARANCE.badgeBackgroundColor),
     badgeTextColor: validHexColor(value.badgeTextColor, DEFAULT_APPEARANCE.badgeTextColor)
@@ -334,6 +343,10 @@ function render() {
 function renderAppearanceSettings() {
   const preview = $("#heroImagePreview");
   if (!preview) return;
+  $("#heroPositionX").value = String(appearance.heroPositionX);
+  $("#heroPositionY").value = String(appearance.heroPositionY);
+  $("#heroPositionXValue").textContent = `${Math.round(appearance.heroPositionX)}%`;
+  $("#heroPositionYValue").textContent = `${Math.round(appearance.heroPositionY)}%`;
   $("#heroTextColor").value = appearance.heroTextColor;
   $("#badgeBackgroundColor").value = appearance.badgeBackgroundColor;
   $("#badgeTextColor").value = appearance.badgeTextColor;
@@ -344,6 +357,7 @@ function renderAppearanceSettings() {
   preview.style.backgroundImage = appearance.heroImage
     ? `linear-gradient(rgba(8, 28, 20, .38), rgba(8, 28, 20, .38)), url(${JSON.stringify(appearance.heroImage)})`
     : "";
+  preview.style.backgroundPosition = `${appearance.heroPositionX}% ${appearance.heroPositionY}%`;
   preview.innerHTML = appearance.heroImage
     ? `<strong style="color:${escapeHtml(appearance.heroTextColor)}">أكل صحي بطعم<br>يستحق التكرار</strong>`
     : `<span>لم تتم إضافة صورة للواجهة</span>`;
@@ -354,17 +368,13 @@ function renderAppearanceSettings() {
 async function optimizeAndUploadHero(file) {
   if (!file?.type?.startsWith("image/")) throw new Error("اختر ملف صورة صالحاً");
   const bitmap = await createImageBitmap(file);
-  const width = 1600;
-  const height = 720;
-  const scale = Math.max(width / bitmap.width, height / bitmap.height);
-  const sourceWidth = width / scale;
-  const sourceHeight = height / scale;
-  const sourceX = Math.max(0, (bitmap.width - sourceWidth) / 2);
-  const sourceY = Math.max(0, (bitmap.height - sourceHeight) / 2);
+  const scale = Math.min(1, 2000 / bitmap.width, 1400 / bitmap.height);
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext("2d").drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, bitmap.width, bitmap.height, 0, 0, width, height);
   bitmap.close();
   const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .86));
   if (!blob) throw new Error("تعذر تجهيز صورة الواجهة");
@@ -392,7 +402,7 @@ async function uploadHeroImage(file) {
     renderAppearanceSettings();
     await saveToFirebase();
     if (previousImage && previousImage !== appearance.heroImage) deleteStoredAppearanceImage(previousImage);
-    toast("تم حفظ صورة الواجهة بالمقاس 1600 × 720");
+    toast("تم حفظ الصورة — حدد الجزء الظاهر من أدوات الموضع");
   } catch (error) {
     appearance.heroImage = previousImage;
     renderAppearanceSettings();
@@ -1080,6 +1090,13 @@ $("#saveAppearance").addEventListener("click", () => {
 });
 $("#heroImageInput").addEventListener("change", event => uploadHeroImage(event.target.files?.[0]));
 $("#removeHeroImage").addEventListener("click", removeHeroImage);
+["heroPositionX", "heroPositionY"].forEach(id => {
+  $(`#${id}`).addEventListener("input", event => {
+    appearance[id] = validPercent(event.target.value, DEFAULT_APPEARANCE[id]);
+    renderAppearanceSettings();
+  });
+  $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل موضع صورة الواجهة — جارٍ الحفظ"));
+});
 ["heroTextColor", "badgeBackgroundColor", "badgeTextColor"].forEach(id => {
   $(`#${id}`).addEventListener("input", event => {
     appearance[id] = validHexColor(event.target.value, DEFAULT_APPEARANCE[id]);
