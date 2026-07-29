@@ -8,16 +8,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260729-2">
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark">ز</span>
-      <div><strong>إدارة منصة البيع</strong><small>التين والزيتون</small></div>
+      <div><strong>إدارة منصة البيع</strong><small>مخبز التين والزيتون</small></div>
     </div>
     <div class="top-actions">
       <span class="cloud-status" id="cloudStatus"><i></i><span>جاري الاتصال…</span></span>
+      <button class="nav-button" id="customersPage">العملاء</button>
       <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
       <button class="secondary" id="addCategory">＋ إضافة قسم جديد</button>
       <button class="sign-out hidden" id="adminSignOut">تسجيل خروج</button>
@@ -25,7 +26,7 @@
   </header>
 
   <main>
-    <section class="intro">
+    <section class="intro" data-admin-view="catalog">
       <div>
         <span class="eyebrow">لوحة المحتوى</span>
         <h1>رتّب الأقسام والمنتجات وعدّل بياناتها</h1>
@@ -37,12 +38,12 @@
       </div>
     </section>
 
-    <section class="notice">
+    <section class="notice" data-admin-view="catalog">
       <div>ⓘ</div>
       <p><strong>اللوحة متصلة بـ Firebase.</strong> أي إضافة أو تعديل أو تغيير ترتيب يُحفظ في السحابة ويظهر في منصة الطلبات مباشرة. ويمكنك تنزيل نسخة احتياطية متى شئت.</p>
     </section>
 
-    <section class="toolbar">
+    <section class="toolbar" data-admin-view="catalog">
       <button id="saveDraft">حفظ الآن</button>
       <button id="exportData" class="export">تنزيل نسخة احتياطية ZIP</button>
       <label class="file-button">استيراد JSON<input id="importData" type="file" accept=".json,application/json" multiple></label>
@@ -50,7 +51,63 @@
       <span id="saveState">جاري تحميل بيانات Firebase…</span>
     </section>
 
-    <section id="categoryList" class="category-list" aria-live="polite"></section>
+    <section class="appearance-panel" data-admin-view="catalog">
+      <div class="appearance-heading">
+        <div>
+          <span class="eyebrow">مظهر واجهة المتجر</span>
+          <h2>صورة جملة «أكل صحي بطعم يستحق التكرار» وألوانها</h2>
+          <p>المقاس المطلوب للصورة: <strong>1600 × 720 بكسل</strong>. تُقصّ الصورة تلقائيًا لهذا القياس وتُحفظ بصيغة WebP.</p>
+        </div>
+        <button type="button" class="primary" id="saveAppearance">حفظ مظهر الواجهة</button>
+      </div>
+      <div class="appearance-grid">
+        <div class="hero-image-editor">
+          <div class="hero-image-preview empty" id="heroImagePreview"><span>لم تتم إضافة صورة للواجهة</span></div>
+          <div class="hero-image-actions">
+            <label class="file-button primary">اختيار صورة<input id="heroImageInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
+            <button type="button" class="delete" id="removeHeroImage">حذف الصورة</button>
+          </div>
+        </div>
+        <div class="appearance-colors">
+          <label>
+            <span>لون جملة «أكل صحي بطعم يستحق التكرار»</span>
+            <span class="color-control"><input id="heroTextColor" type="color" value="#18352a"><output id="heroTextColorValue">#18352A</output></span>
+          </label>
+          <label>
+            <span>لون خلفيات العبارات الثلاث</span>
+            <span class="color-control"><input id="badgeBackgroundColor" type="color" value="#ffffff"><output id="badgeBackgroundColorValue">#FFFFFF</output></span>
+          </label>
+          <label>
+            <span>لون نصوص العبارات الثلاث</span>
+            <span class="color-control"><input id="badgeTextColor" type="color" value="#18352a"><output id="badgeTextColorValue">#18352A</output></span>
+          </label>
+          <div class="badges-preview" id="badgesPreview"><span>مكونات طبيعية</span><span>تحضير يومي</span><span>دفع آمن</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="categoryList" class="category-list" data-admin-view="catalog" aria-live="polite"></section>
+
+    <section id="customersView" class="customers-view hidden" aria-live="polite">
+      <div class="customers-head">
+        <div>
+          <span class="eyebrow">إدارة الحسابات</span>
+          <h1>العملاء</h1>
+          <p>جميع العملاء المسجلين في منصة البيع مع عناوينهم وطلباتهم الحالية والسابقة.</p>
+        </div>
+        <div class="stats">
+          <div><strong id="customerCount">0</strong><span>عميل</span></div>
+          <div><strong id="customerOrderCount">0</strong><span>طلب</span></div>
+        </div>
+      </div>
+      <div class="customers-toolbar">
+        <label>بحث عن عميل
+          <input id="customerSearch" type="search" placeholder="الاسم أو رقم الهاتف" inputmode="search">
+        </label>
+        <button class="secondary" id="backToCatalog">العودة للمنتجات والأقسام</button>
+      </div>
+      <div id="customerList" class="customer-list"></div>
+    </section>
   </main>
 
   <dialog id="categoryDialog">
@@ -68,7 +125,7 @@
       <header><div><span class="eyebrow">المنتج</span><h2 id="productDialogTitle">إضافة منتج جديد</h2></div><button type="button" class="icon-btn" data-close-dialog="productDialog" aria-label="إغلاق">×</button></header>
       <input id="productId" type="hidden">
       <div class="form-grid">
-        <label>القسم<select id="productCategory" required></select></label>
+        <label>القسم<select id="productCategory"></select></label>
         <label>سعر البيع د.ك<input id="productPrice" type="number" min="0" step="0.001" required dir="ltr"></label>
         <label>اسم المنتج بالعربي<input id="productNameAr" required maxlength="160"></label>
         <label>اسم المنتج بالإنجليزي<input id="productNameEn" required maxlength="160" dir="ltr"></label>
@@ -82,6 +139,36 @@
       </section>
       <footer><button type="button" data-close-dialog="productDialog">إلغاء</button><button type="submit" value="default" class="primary">حفظ المنتج</button></footer>
     </form>
+  </dialog>
+
+  <dialog id="assignProductsDialog">
+    <form method="dialog" id="assignProductsForm" class="dialog-card assign-products-dialog">
+      <header><div><span class="eyebrow">إسناد منتجات</span><h2 id="assignProductsTitle">إضافة منتجات إلى القسم</h2></div><button type="button" class="icon-btn" data-close-dialog="assignProductsDialog" aria-label="إغلاق">×</button></header>
+      <label class="assign-search">البحث في المنتجات غير المصنفة<input id="assignProductSearch" type="search" placeholder="ابحث بالاسم العربي أو الإنجليزي"></label>
+      <div class="selection-summary"><strong id="assignSelectionCount">0</strong><span>منتج محدد</span></div>
+      <div id="unassignedProductList" class="unassigned-product-list"></div>
+      <footer><button type="button" data-close-dialog="assignProductsDialog">إلغاء</button><button type="submit" value="default" class="primary" id="confirmAssignProducts">إضافة المنتجات المحددة</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="deleteCategoryDialog">
+    <div class="dialog-card decision-dialog">
+      <header><div><span class="eyebrow">حذف قسم</span><h2>ماذا تريد أن يحدث للمنتجات؟</h2></div><button type="button" class="icon-btn" data-close-dialog="deleteCategoryDialog" aria-label="إغلاق">×</button></header>
+      <p id="deleteCategoryMessage"></p>
+      <div class="decision-options">
+        <button type="button" id="deleteCategoryKeepProducts"><strong>حذف القسم فقط</strong><small>تبقى المنتجات محفوظة بدون قسم ويمكن إضافتها إلى قسم آخر.</small></button>
+        <button type="button" class="danger-choice" id="deleteCategoryWithProducts"><strong>حذف القسم ومنتجاته</strong><small>يتم حذف المنتجات وصورها نهائياً.</small></button>
+      </div>
+      <footer><button type="button" data-close-dialog="deleteCategoryDialog">إلغاء</button></footer>
+    </div>
+  </dialog>
+
+  <dialog id="customerDialog">
+    <div class="dialog-card customer-dialog">
+      <header><div><span class="eyebrow">ملف العميل</span><h2 id="customerDialogTitle">تفاصيل العميل</h2></div><button type="button" class="icon-btn" data-close-dialog="customerDialog" aria-label="إغلاق">×</button></header>
+      <div id="customerDetails"></div>
+      <footer><button type="button" data-close-dialog="customerDialog">إغلاق</button></footer>
+    </div>
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
@@ -101,6 +188,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js"></script>
+  <script src="script.js?v=20260729-2"></script>
 </body>
 </html>

@@ -5,19 +5,32 @@ const DB_NAME = "figsOlivesStoreAssets";
 const DB_STORE = "assets";
 const ADMIN_EMAILS = new Set(["sultan.figsolives@gmail.com", "figsandolives.kw@gmail.com"]);
 const firebaseServices = window.ORDERING_FIREBASE;
+const DEFAULT_APPEARANCE = Object.freeze({
+  heroImage: "",
+  heroTextColor: "#18352a",
+  badgeBackgroundColor: "#ffffff",
+  badgeTextColor: "#18352a"
+});
 
 let categories = [];
 let products = [];
+let appearance = { ...DEFAULT_APPEARANCE };
 let siteCategories = [];
 let siteProducts = [];
+let customers = [];
 let editingImages = [];
 let pendingImageDeletes = new Set();
 let openCategories = new Set();
+let selectedUnassignedProducts = new Set();
 let dragState = null;
 let toastTimer;
 let syncTimer;
 let currentAdmin = null;
 let catalogRef = null;
+let customersRef = null;
+let assignTargetCategoryId = "";
+let pendingDeleteCategoryId = "";
+let currentView = "catalog";
 let ignoreRemoteUntil = 0;
 const assetUrls = new Map();
 
@@ -43,6 +56,26 @@ function escapeHtml(value) {
   }[character]));
 }
 
+function validHexColor(value, fallback) {
+  return /^#[0-9a-f]{6}$/i.test(String(value || "")) ? String(value).toLowerCase() : fallback;
+}
+
+function normalizeAppearance(value = {}) {
+  let heroImage = "";
+  try {
+    const candidate = new URL(String(value.heroImage || ""));
+    if (candidate.protocol === "https:") heroImage = candidate.href;
+  } catch {
+    heroImage = "";
+  }
+  return {
+    heroImage,
+    heroTextColor: validHexColor(value.heroTextColor, DEFAULT_APPEARANCE.heroTextColor),
+    badgeBackgroundColor: validHexColor(value.badgeBackgroundColor, DEFAULT_APPEARANCE.badgeBackgroundColor),
+    badgeTextColor: validHexColor(value.badgeTextColor, DEFAULT_APPEARANCE.badgeTextColor)
+  };
+}
+
 function setCloudStatus(message, type = "") {
   const status = $("#cloudStatus");
   if (!status) return;
@@ -58,7 +91,8 @@ function normalizeData() {
       id: clean(category.id) || `category-${Date.now()}-${index}`,
       nameAr: clean(category.nameAr || category.name) || "قسم جديد",
       nameEn: clean(category.nameEn || category.id) || "New category",
-      order: index + 1
+      active: category.active !== false,
+      order: Number(category.order) || index + 1
     }))
     .sort((a, b) => Number(a.order) - Number(b.order))
     .map((category, index) => ({ ...category, order: index + 1 }));
@@ -73,6 +107,7 @@ function normalizeData() {
       description: clean(product.description),
       descriptionEn: clean(product.descriptionEn),
       category: clean(product.category),
+      active: product.active !== false,
       price: Number(product.price) || 0,
       images,
       image: images[0] || "",
@@ -80,6 +115,7 @@ function normalizeData() {
     };
   });
   categories.forEach((category) => normalizeProductOrder(category.id));
+  normalizeProductOrder("");
 }
 
 function normalizeProductOrder(categoryId) {
@@ -165,10 +201,12 @@ async function loadFallbackData() {
 function applyRemoteCatalog(catalog) {
   products = Array.isArray(catalog?.products) ? catalog.products : [];
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
+  appearance = normalizeAppearance(catalog?.appearance);
   siteProducts = clone(products);
   siteCategories = clone(categories);
   normalizeData();
   render();
+  renderAppearanceSettings();
 }
 
 async function loadData() {
@@ -182,8 +220,10 @@ async function loadData() {
     await loadFallbackData();
     products = clone(siteProducts);
     categories = clone(siteCategories);
+    appearance = { ...DEFAULT_APPEARANCE };
     normalizeData();
     render();
+    renderAppearanceSettings();
     $("#saveState").textContent = "قاعدة البيانات فارغة — اضغط حفظ الآن لرفع البيانات";
   }
   catalogRef.on("value", remoteSnapshot => {
@@ -195,12 +235,44 @@ async function loadData() {
     setCloudStatus("تعذر التزامن", "error");
     console.error(error);
   });
+  loadCustomers();
+}
+
+function loadCustomers() {
+  customersRef?.off();
+  customersRef = firebaseServices.database.ref("orderingPlatform/customers");
+  customersRef.on("value", snapshot => {
+    const value = snapshot.val() || {};
+    customers = Object.entries(value).map(([uid, customer]) => ({
+      uid,
+      ...customer,
+      addresses: Array.isArray(customer?.addresses) ? customer.addresses : Object.values(customer?.addresses || {}),
+      orders: Array.isArray(customer?.orders) ? customer.orders : Object.values(customer?.orders || {}),
+      cart: customer?.cart && typeof customer.cart === "object" ? customer.cart : {}
+    }));
+    renderCustomers();
+  }, error => {
+    console.error("Customer list load failed", error);
+    $("#customerList").innerHTML = `<div class="empty">تعذر تحميل العملاء. تأكد من تحديث قواعد Firebase.</div>`;
+  });
 }
 
 function categoryProducts(categoryId) {
   return products
     .filter((product) => product.category === categoryId)
     .sort((a, b) => Number(a.order) - Number(b.order));
+}
+
+function unassignedProducts() {
+  const categoryIds = new Set(categories.map(category => category.id));
+  return products
+    .filter(product => !product.category || !categoryIds.has(product.category))
+    .sort((a, b) => Number(a.order) - Number(b.order));
+}
+
+function toggleButton(kind, id, active) {
+  const label = active ? "مفعّل" : "غير مفعّل";
+  return `<button type="button" class="status-toggle ${active ? "active" : ""}" data-toggle-${kind}="${escapeHtml(id)}" aria-pressed="${active}" title="تغيير حالة الظهور"><i></i><span>${label}</span></button>`;
 }
 
 function imageSource(product) {
@@ -215,7 +287,7 @@ function render() {
   $("#categoryList").innerHTML = categories.map((category) => {
     const list = categoryProducts(category.id);
     return `
-      <article class="category-card ${openCategories.has(category.id) ? "open" : ""}" data-category-id="${escapeHtml(category.id)}">
+      <article class="category-card ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}">
         <div class="category-head">
           <span class="drag-handle" draggable="true" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span>
           <div class="category-copy">
@@ -224,6 +296,7 @@ function render() {
           </div>
           <span class="count-badge">${list.length} منتج</span>
           <div class="category-actions">
+            ${toggleButton("category", category.id, category.active)}
             <button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button>
             <button data-edit-category="${escapeHtml(category.id)}">تعديل</button>
             <button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button>
@@ -232,7 +305,7 @@ function render() {
         </div>
         <div class="products">
           ${list.length ? list.map((product) => `
-            <div class="product-row" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}">
+            <div class="product-row ${product.active ? "" : "inactive"}" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}">
               <span class="drag-handle" draggable="true" data-drag-kind="product" data-drag-id="${escapeHtml(product.id)}" data-drag-category="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span>
               <div class="product-main">
                 <img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy">
@@ -243,7 +316,9 @@ function render() {
               </div>
               <span class="price">${Number(product.price).toFixed(3)} د.ك</span>
               <div class="product-actions">
+                ${toggleButton("product", product.id, product.active)}
                 <button data-edit-product="${escapeHtml(product.id)}">تعديل</button>
+                <button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button>
                 <button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button>
               </div>
             </div>
@@ -256,8 +331,95 @@ function render() {
   hydrateRenderedImages();
 }
 
+function renderAppearanceSettings() {
+  const preview = $("#heroImagePreview");
+  if (!preview) return;
+  $("#heroTextColor").value = appearance.heroTextColor;
+  $("#badgeBackgroundColor").value = appearance.badgeBackgroundColor;
+  $("#badgeTextColor").value = appearance.badgeTextColor;
+  $("#heroTextColorValue").textContent = appearance.heroTextColor.toUpperCase();
+  $("#badgeBackgroundColorValue").textContent = appearance.badgeBackgroundColor.toUpperCase();
+  $("#badgeTextColorValue").textContent = appearance.badgeTextColor.toUpperCase();
+  preview.classList.toggle("empty", !appearance.heroImage);
+  preview.style.backgroundImage = appearance.heroImage
+    ? `linear-gradient(rgba(8, 28, 20, .38), rgba(8, 28, 20, .38)), url(${JSON.stringify(appearance.heroImage)})`
+    : "";
+  preview.innerHTML = appearance.heroImage
+    ? `<strong style="color:${escapeHtml(appearance.heroTextColor)}">أكل صحي بطعم<br>يستحق التكرار</strong>`
+    : `<span>لم تتم إضافة صورة للواجهة</span>`;
+  $("#badgesPreview").style.setProperty("--preview-badge-background", appearance.badgeBackgroundColor);
+  $("#badgesPreview").style.setProperty("--preview-badge-text", appearance.badgeTextColor);
+}
+
+async function optimizeAndUploadHero(file) {
+  if (!file?.type?.startsWith("image/")) throw new Error("اختر ملف صورة صالحاً");
+  const bitmap = await createImageBitmap(file);
+  const width = 1600;
+  const height = 720;
+  const scale = Math.max(width / bitmap.width, height / bitmap.height);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  const sourceX = Math.max(0, (bitmap.width - sourceWidth) / 2);
+  const sourceY = Math.max(0, (bitmap.height - sourceHeight) / 2);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+  bitmap.close();
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .86));
+  if (!blob) throw new Error("تعذر تجهيز صورة الواجهة");
+  const reference = firebaseServices.storage.ref(`orderingPlatform/catalog/appearance/hero-${Date.now()}.webp`);
+  const upload = await reference.put(blob, {
+    contentType: "image/webp",
+    cacheControl: "public,max-age=31536000,immutable"
+  });
+  return upload.ref.getDownloadURL();
+}
+
+function deleteStoredAppearanceImage(url) {
+  if (!String(url || "").includes("firebasestorage.googleapis.com")) return;
+  firebaseServices.storage.refFromURL(url).delete().catch(error => console.warn("Appearance image cleanup failed", error));
+}
+
+async function uploadHeroImage(file) {
+  if (!file || !currentAdmin) return;
+  const input = $("#heroImageInput");
+  const previousImage = appearance.heroImage;
+  input.disabled = true;
+  $("#saveState").textContent = "جارٍ تجهيز ورفع صورة الواجهة إلى Firebase…";
+  try {
+    appearance.heroImage = await optimizeAndUploadHero(file);
+    renderAppearanceSettings();
+    await saveToFirebase();
+    if (previousImage && previousImage !== appearance.heroImage) deleteStoredAppearanceImage(previousImage);
+    toast("تم حفظ صورة الواجهة بالمقاس 1600 × 720");
+  } catch (error) {
+    appearance.heroImage = previousImage;
+    renderAppearanceSettings();
+    toast(error.message || "تعذر رفع صورة الواجهة");
+  } finally {
+    input.disabled = false;
+    input.value = "";
+  }
+}
+
+async function removeHeroImage() {
+  if (!appearance.heroImage) return toast("لا توجد صورة لحذفها");
+  const previousImage = appearance.heroImage;
+  appearance.heroImage = "";
+  renderAppearanceSettings();
+  try {
+    await saveToFirebase();
+    deleteStoredAppearanceImage(previousImage);
+    toast("تم حذف صورة الواجهة");
+  } catch {
+    appearance.heroImage = previousImage;
+    renderAppearanceSettings();
+  }
+}
+
 async function hydrateRenderedImages() {
-  for (const image of $$(".product-main img")) {
+  for (const image of $$(".product-main img,.unassigned-product img")) {
     const source = image.getAttribute("src");
     if (!source?.startsWith("product-images/")) continue;
     image.src = await resolveAsset(source);
@@ -274,7 +436,7 @@ function markDirty(message = "جارٍ حفظ التعديلات في Firebase�
 async function saveToFirebase() {
   if (!catalogRef || !currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
   normalizeData();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, savedAt: new Date().toISOString() }));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, appearance, savedAt: new Date().toISOString() }));
   clearTimeout(syncTimer);
   ignoreRemoteUntil = Date.now() + 1200;
   $("#saveState").textContent = "جارٍ الحفظ في Firebase…";
@@ -282,6 +444,7 @@ async function saveToFirebase() {
     await catalogRef.update({
       categories: categories.map((category, index) => ({ ...category, order: index + 1 })),
       products: downloadableProducts(),
+      appearance: normalizeAppearance(appearance),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
       updatedBy: currentAdmin.email || currentAdmin.uid
     });
@@ -335,7 +498,7 @@ function saveCategory(event) {
     if (category) Object.assign(category, { nameAr, nameEn });
   } else {
     const id = `category-${Date.now().toString(36)}`;
-    categories.push({ id, nameAr, nameEn, order: categories.length + 1 });
+    categories.push({ id, nameAr, nameEn, active: true, order: categories.length + 1 });
     openCategories.add(id);
   }
   $("#categoryDialog").close();
@@ -344,41 +507,124 @@ function saveCategory(event) {
   toast(existingId ? "تم تعديل القسم" : "تمت إضافة القسم");
 }
 
-function deleteCategory(categoryId) {
+function deleteStoredProductImages(product) {
+  for (const imageUrl of product.images || []) {
+    if (!imageUrl.includes("firebasestorage.googleapis.com")) continue;
+    firebaseServices.storage.refFromURL(imageUrl).delete().catch(error => console.warn("Image cleanup failed", error));
+  }
+}
+
+function requestDeleteCategory(categoryId) {
   const category = categories.find((item) => item.id === categoryId);
+  if (!category) return;
   const count = categoryProducts(categoryId).length;
-  const warning = count
-    ? `القسم يحتوي على ${count} منتج. حذف القسم سيحذف منتجاته أيضاً. هل أنت متأكد؟`
-    : "هل تريد حذف هذا القسم؟";
-  if (!confirm(warning)) return;
-  for (const product of categoryProducts(categoryId)) {
-    for (const imageUrl of product.images || []) {
-      if (!imageUrl.includes("firebasestorage.googleapis.com")) continue;
-      firebaseServices.storage.refFromURL(imageUrl).delete().catch(error => console.warn("Image cleanup failed", error));
-    }
+  if (!count) {
+    if (!confirm(`هل تريد حذف قسم «${category.nameAr}»؟`)) return;
+    categories = categories.filter((item) => item.id !== categoryId);
+    openCategories.delete(categoryId);
+    markDirty();
+    render();
+    toast("تم حذف القسم");
+    return;
+  }
+  pendingDeleteCategoryId = categoryId;
+  $("#deleteCategoryMessage").textContent = `قسم «${category.nameAr}» يحتوي على ${count} منتج. اختر هل تريد الاحتفاظ بهذه المنتجات بدون قسم أم حذفها نهائياً.`;
+  $("#deleteCategoryDialog").showModal();
+}
+
+function deleteCategory(categoryId, deleteProducts) {
+  const affected = categoryProducts(categoryId);
+  if (deleteProducts) {
+    affected.forEach(deleteStoredProductImages);
+    products = products.filter(product => product.category !== categoryId);
+  } else {
+    affected.forEach((product, index) => {
+      product.category = "";
+      product.order = unassignedProducts().length + index + 1;
+    });
   }
   categories = categories.filter((item) => item.id !== categoryId);
-  products = products.filter((product) => product.category !== categoryId);
   openCategories.delete(categoryId);
+  normalizeProductOrder("");
+  pendingDeleteCategoryId = "";
+  $("#deleteCategoryDialog").close();
   markDirty();
   render();
-  toast("تم حذف القسم");
+  toast(deleteProducts ? "تم حذف القسم ومنتجاته" : "تم حذف القسم والاحتفاظ بمنتجاته بدون قسم");
 }
 
 function fillCategorySelect(selectedId = "") {
-  $("#productCategory").innerHTML = categories.map((category) =>
+  $("#productCategory").innerHTML = `<option value="">بدون قسم</option>` + categories.map((category) =>
     `<option value="${escapeHtml(category.id)}" ${category.id === selectedId ? "selected" : ""}>${escapeHtml(category.nameAr)} — ${escapeHtml(category.nameEn)}</option>`
   ).join("");
 }
 
+function renderUnassignedProducts() {
+  const query = clean($("#assignProductSearch").value).toLowerCase();
+  const available = unassignedProducts().filter(product =>
+    !query || `${product.name} ${product.nameEn} ${product.id}`.toLowerCase().includes(query)
+  );
+  $("#assignSelectionCount").textContent = selectedUnassignedProducts.size;
+  $("#confirmAssignProducts").disabled = selectedUnassignedProducts.size === 0;
+  $("#unassignedProductList").innerHTML = available.length ? available.map(product => `
+    <div class="unassigned-product ${selectedUnassignedProducts.has(product.id) ? "selected" : ""} ${product.active ? "" : "inactive"}">
+      <input type="checkbox" value="${escapeHtml(product.id)}" aria-label="اختيار ${escapeHtml(product.name || product.id)}" ${selectedUnassignedProducts.has(product.id) ? "checked" : ""}>
+      <img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy">
+      <span><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || product.id)}</small></span>
+      <b>${Number(product.price).toFixed(3)} د.ك</b>
+      ${toggleButton("unassigned-product", product.id, product.active)}
+    </div>
+  `).join("") : `<div class="empty">لا توجد منتجات غير مضافة إلى قسم${query ? " تطابق البحث" : ""}</div>`;
+  hydrateRenderedImages();
+}
+
+function openAssignProductsDialog(categoryId) {
+  const category = categories.find(item => item.id === categoryId);
+  if (!category) return;
+  assignTargetCategoryId = categoryId;
+  selectedUnassignedProducts = new Set();
+  $("#assignProductsTitle").textContent = `إضافة منتجات إلى قسم ${category.nameAr}`;
+  $("#assignProductSearch").value = "";
+  renderUnassignedProducts();
+  $("#assignProductsDialog").showModal();
+  setTimeout(() => $("#assignProductSearch").focus(), 30);
+}
+
+function assignProductsToCategory(event) {
+  event.preventDefault();
+  if (!assignTargetCategoryId || !selectedUnassignedProducts.size) return;
+  let nextOrder = categoryProducts(assignTargetCategoryId).length + 1;
+  products.forEach(product => {
+    if (!selectedUnassignedProducts.has(product.id)) return;
+    product.category = assignTargetCategoryId;
+    product.order = nextOrder++;
+  });
+  openCategories.add(assignTargetCategoryId);
+  assignTargetCategoryId = "";
+  selectedUnassignedProducts.clear();
+  $("#assignProductsDialog").close();
+  markDirty();
+  render();
+  toast("تمت إضافة المنتجات إلى القسم");
+}
+
+function removeProductFromCategory(productId) {
+  const product = products.find(item => item.id === productId);
+  if (!product?.category) return;
+  const oldCategory = product.category;
+  product.category = "";
+  product.order = unassignedProducts().length + 1;
+  normalizeProductOrder(oldCategory);
+  normalizeProductOrder("");
+  markDirty();
+  render();
+  toast("تمت إزالة المنتج من القسم مع الاحتفاظ به");
+}
+
 async function openProductDialog(product = null, categoryId = "") {
-  if (!categories.length) {
-    toast("أضف قسماً أولاً");
-    return;
-  }
   $("#productDialogTitle").textContent = product ? "تعديل المنتج" : "إضافة منتج جديد";
   $("#productId").value = product?.id || "";
-  fillCategorySelect(product?.category || categoryId || categories[0].id);
+  fillCategorySelect(product?.category || categoryId || categories[0]?.id || "");
   $("#productPrice").value = product ? Number(product.price).toFixed(3) : "0.000";
   $("#productNameAr").value = product?.name || "";
   $("#productNameEn").value = product?.nameEn || "";
@@ -474,8 +720,8 @@ function saveProduct(event) {
   const name = clean($("#productNameAr").value);
   const nameEn = clean($("#productNameEn").value);
   const price = Number($("#productPrice").value);
-  if (!categoryId || !name || !nameEn || !Number.isFinite(price) || price < 0) {
-    return toast("أكمل القسم والاسمين والسعر");
+  if (!name || !nameEn || !Number.isFinite(price) || price < 0) {
+    return toast("أكمل الاسم العربي والإنجليزي والسعر");
   }
   const payload = {
     category: categoryId,
@@ -492,10 +738,11 @@ function saveProduct(event) {
     if (product) Object.assign(product, payload);
   } else {
     const id = `P${Date.now()}`;
-    products.push({ id, ...payload, order: categoryProducts(categoryId).length + 1 });
-    openCategories.add(categoryId);
+    products.push({ id, ...payload, active: true, order: categoryProducts(categoryId).length + 1 });
+    if (categoryId) openCategories.add(categoryId);
   }
   categories.forEach((category) => normalizeProductOrder(category.id));
+  normalizeProductOrder("");
   for (const imageUrl of pendingImageDeletes) {
     if (!imageUrl.includes("firebasestorage.googleapis.com")) continue;
     firebaseServices.storage.refFromURL(imageUrl).delete().catch(error => console.warn("Image cleanup failed", error));
@@ -510,15 +757,113 @@ function saveProduct(event) {
 function deleteProduct(productId) {
   const product = products.find((item) => item.id === productId);
   if (!product || !confirm(`هل تريد حذف المنتج «${product.name}»؟`)) return;
-  for (const imageUrl of product.images || []) {
-    if (!imageUrl.includes("firebasestorage.googleapis.com")) continue;
-    firebaseServices.storage.refFromURL(imageUrl).delete().catch(error => console.warn("Image cleanup failed", error));
-  }
+  deleteStoredProductImages(product);
   products = products.filter((item) => item.id !== productId);
   normalizeProductOrder(product.category);
   markDirty();
   render();
   toast("تم حذف المنتج");
+}
+
+function toggleCategoryActive(categoryId) {
+  const category = categories.find(item => item.id === categoryId);
+  if (!category) return;
+  category.active = category.active === false;
+  markDirty();
+  render();
+  toast(category.active ? "تم تفعيل القسم ومنتجاته في منصة البيع" : "تم إخفاء القسم ومنتجاته من منصة البيع");
+}
+
+function toggleProductActive(productId) {
+  const product = products.find(item => item.id === productId);
+  if (!product) return;
+  product.active = product.active === false;
+  markDirty();
+  render();
+  if ($("#assignProductsDialog")?.open) renderUnassignedProducts();
+  toast(product.active ? "تم تفعيل المنتج" : "تم إخفاء المنتج من منصة البيع");
+}
+
+function adminDate(value) {
+  if (!value) return "غير متوفر";
+  const date = new Date(Number(value) || value);
+  if (Number.isNaN(date.getTime())) return "غير متوفر";
+  return date.toLocaleString("ar-KW", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function customerOrderTotal(customer) {
+  return (customer.orders || []).reduce((sum, order) => sum + Number(order.total || 0), 0);
+}
+
+function renderCustomers() {
+  if (!$("#customerList")) return;
+  const query = clean($("#customerSearch")?.value).toLowerCase();
+  const ordered = customers.slice().sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+  const filtered = ordered.filter(customer =>
+    !query || `${customer.name || ""} ${customer.phone || ""} ${customer.uid}`.toLowerCase().includes(query)
+  );
+  $("#customerCount").textContent = customers.length;
+  $("#customerOrderCount").textContent = customers.reduce((sum, customer) => sum + (customer.orders || []).length, 0);
+  $("#customerList").innerHTML = filtered.length ? filtered.map(customer => {
+    const addressCount = (customer.addresses || []).length;
+    const orderCount = (customer.orders || []).length;
+    return `<article class="customer-card">
+      <div class="customer-avatar">${escapeHtml((customer.name || "ع").trim().charAt(0) || "ع")}</div>
+      <div class="customer-copy"><strong>${escapeHtml(customer.name || "عميل بدون اسم")}</strong><span dir="ltr">${escapeHtml(customer.phone || "—")}</span><small>آخر تحديث: ${escapeHtml(adminDate(customer.updatedAt))}</small></div>
+      <div class="customer-metrics"><span><b>${orderCount}</b> طلب</span><span><b>${addressCount}</b> عنوان</span><span><b>${customerOrderTotal(customer).toFixed(3)}</b> د.ك</span></div>
+      <button class="primary" data-view-customer="${escapeHtml(customer.uid)}">عرض التفاصيل</button>
+    </article>`;
+  }).join("") : `<div class="empty customer-empty">${customers.length ? "لا يوجد عميل يطابق البحث" : "لا يوجد عملاء مسجلون حتى الآن"}</div>`;
+}
+
+function customerAddressHtml(address) {
+  return `<article><strong>${escapeHtml(address.areaName || "عنوان")}</strong><p>${escapeHtml(address.details || "لا توجد تفاصيل")}</p>${Number.isFinite(Number(address.price)) ? `<small>سعر التوصيل: ${Number(address.price).toFixed(3)} د.ك</small>` : ""}</article>`;
+}
+
+function customerOrderHtml(order) {
+  const items = Array.isArray(order.items) ? order.items : Object.values(order.items || {});
+  return `<article class="customer-order">
+    <div class="customer-order-head"><span><strong>${escapeHtml(order.orderId || "طلب")}</strong><small>${escapeHtml(adminDate(order.createdAt))}</small></span><b>${Number(order.total || 0).toFixed(3)} د.ك</b></div>
+    <div class="customer-order-meta"><span>${order.mode === "pickup" ? "استلام" : "توصيل"}</span><span>${escapeHtml(order.status || "مدفوع")}</span><span>${escapeHtml(order.areaName || order.branchId || "")}</span></div>
+    ${items.length ? `<div class="customer-order-items">${items.map(item => `<span><b>${escapeHtml(item.nameAr || item.nameEn || item.id || "منتج")}</b><small>الكمية ${Number(item.quantity || 0)} — ${Number(item.total || 0).toFixed(3)} د.ك</small></span>`).join("")}</div>` : ""}
+  </article>`;
+}
+
+function openCustomerDetails(uid) {
+  const customer = customers.find(item => item.uid === uid);
+  if (!customer) return;
+  const addresses = customer.addresses || [];
+  const orders = (customer.orders || []).slice().sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  const cartEntries = Object.entries(customer.cart || {}).filter(([, quantity]) => Number(quantity) > 0);
+  const cartCount = cartEntries.reduce((sum, [, quantity]) => sum + Number(quantity || 0), 0);
+  $("#customerDialogTitle").textContent = customer.name || "تفاصيل العميل";
+  $("#customerDetails").innerHTML = `
+    <section class="customer-profile">
+      <div class="customer-avatar large">${escapeHtml((customer.name || "ع").trim().charAt(0) || "ع")}</div>
+      <div><h3>${escapeHtml(customer.name || "عميل بدون اسم")}</h3><strong dir="ltr">${escapeHtml(customer.phone || "—")}</strong><small>آخر تحديث: ${escapeHtml(adminDate(customer.updatedAt))}</small></div>
+    </section>
+    <div class="customer-summary">
+      <span><b>${orders.length}</b> طلب</span><span><b>${addresses.length}</b> عنوان</span><span><b>${cartCount}</b> منتج في السلة</span><span><b>${customerOrderTotal(customer).toFixed(3)}</b> د.ك إجمالي الطلبات</span>
+    </div>
+    <section class="customer-detail-section"><h3>معلومات الحساب</h3><dl><div><dt>رقم الهاتف</dt><dd dir="ltr">${escapeHtml(customer.phone || "—")}</dd></div><div><dt>معرّف الحساب</dt><dd dir="ltr">${escapeHtml(customer.uid)}</dd></div></dl></section>
+    <section class="customer-detail-section"><h3>السلة الحالية</h3><div class="customer-order-items current-cart">${cartEntries.length ? cartEntries.map(([productId, quantity]) => {
+      const item = products.find(product => String(product.id) === String(productId));
+      return `<span><b>${escapeHtml(item?.name || productId)}</b><small>الكمية ${Number(quantity)}</small></span>`;
+    }).join("") : `<div class="empty">السلة فارغة</div>`}</div></section>
+    <section class="customer-detail-section"><h3>العناوين</h3><div class="customer-addresses">${addresses.length ? addresses.map(customerAddressHtml).join("") : `<div class="empty">لا توجد عناوين محفوظة</div>`}</div></section>
+    <section class="customer-detail-section"><h3>الطلبات</h3><div class="customer-orders">${orders.length ? orders.map(customerOrderHtml).join("") : `<div class="empty">لا توجد طلبات سابقة</div>`}</div></section>`;
+  $("#customerDialog").showModal();
+}
+
+function showAdminView(view) {
+  currentView = view === "customers" ? "customers" : "catalog";
+  $$("[data-admin-view='catalog']").forEach(element => element.classList.toggle("hidden", currentView !== "catalog"));
+  $("#customersView").classList.toggle("hidden", currentView !== "customers");
+  $("#customersPage").classList.toggle("active", currentView === "customers");
+  $("#addProduct").classList.toggle("hidden", currentView === "customers");
+  $("#addCategory").classList.toggle("hidden", currentView === "customers");
+  if (currentView === "customers") renderCustomers();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function clearDropLines() {
@@ -607,6 +952,7 @@ async function exportData() {
     const zip = new JSZip();
     zip.file("products.json", JSON.stringify(exportProducts, null, 2) + "\n");
     zip.file("categories.json", JSON.stringify(exportCategories, null, 2) + "\n");
+    zip.file("appearance.json", JSON.stringify(normalizeAppearance(appearance), null, 2) + "\n");
     const referencedAssets = [...new Set(exportProducts.flatMap((product) => product.images || []))]
       .filter((path) => path.startsWith("product-images/"));
     for (const path of referencedAssets) {
@@ -661,7 +1007,10 @@ async function initializeAdmin() {
     if (!user) {
       currentAdmin = null;
       catalogRef?.off();
+      customersRef?.off();
       catalogRef = null;
+      customersRef = null;
+      customers = [];
       $("#adminAuthGate").classList.remove("hidden");
       $("#adminSignOut").classList.add("hidden");
       $("#adminGoogleLogin").disabled = false;
@@ -691,8 +1040,34 @@ async function initializeAdmin() {
 
 $("#addCategory").addEventListener("click", () => openCategoryDialog());
 $("#addProduct").addEventListener("click", () => openProductDialog());
+$("#customersPage").addEventListener("click", () => showAdminView("customers"));
+$("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
+$("#customerSearch").addEventListener("input", renderCustomers);
+$("#customerList").addEventListener("click", event => {
+  const button = event.target.closest("[data-view-customer]");
+  if (button) openCustomerDetails(button.dataset.viewCustomer);
+});
 $("#categoryForm").addEventListener("submit", saveCategory);
 $("#productForm").addEventListener("submit", saveProduct);
+$("#assignProductsForm").addEventListener("submit", assignProductsToCategory);
+$("#assignProductSearch").addEventListener("input", renderUnassignedProducts);
+$("#unassignedProductList").addEventListener("change", event => {
+  const input = event.target.closest("input[type='checkbox']");
+  if (!input) return;
+  if (input.checked) selectedUnassignedProducts.add(input.value);
+  else selectedUnassignedProducts.delete(input.value);
+  renderUnassignedProducts();
+});
+$("#unassignedProductList").addEventListener("click", event => {
+  const button = event.target.closest("[data-toggle-unassigned-product]");
+  if (button) toggleProductActive(button.dataset.toggleUnassignedProduct);
+});
+$("#deleteCategoryKeepProducts").addEventListener("click", () => {
+  if (pendingDeleteCategoryId) deleteCategory(pendingDeleteCategoryId, false);
+});
+$("#deleteCategoryWithProducts").addEventListener("click", () => {
+  if (pendingDeleteCategoryId) deleteCategory(pendingDeleteCategoryId, true);
+});
 document.querySelectorAll("[data-close-dialog]").forEach((button) => {
   button.addEventListener("click", () => {
     const dialog = document.getElementById(button.dataset.closeDialog);
@@ -700,6 +1075,18 @@ document.querySelectorAll("[data-close-dialog]").forEach((button) => {
   });
 });
 $("#saveDraft").addEventListener("click", saveDraft);
+$("#saveAppearance").addEventListener("click", () => {
+  saveToFirebase().then(() => toast("تم حفظ مظهر الواجهة في Firebase")).catch(() => undefined);
+});
+$("#heroImageInput").addEventListener("change", event => uploadHeroImage(event.target.files?.[0]));
+$("#removeHeroImage").addEventListener("click", removeHeroImage);
+["heroTextColor", "badgeBackgroundColor", "badgeTextColor"].forEach(id => {
+  $(`#${id}`).addEventListener("input", event => {
+    appearance[id] = validHexColor(event.target.value, DEFAULT_APPEARANCE[id]);
+    renderAppearanceSettings();
+  });
+  $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل الألوان — جارٍ حفظ مظهر الواجهة"));
+});
 $("#resetData").addEventListener("click", resetDraft);
 $("#exportData").addEventListener("click", exportData);
 $("#importData").addEventListener("change", (event) => importJson([...event.target.files]));
@@ -728,13 +1115,19 @@ $("#categoryList").addEventListener("click", (event) => {
   const addProductButton = event.target.closest("[data-add-product]");
   const editCategoryButton = event.target.closest("[data-edit-category]");
   const deleteCategoryButton = event.target.closest("[data-delete-category]");
+  const toggleCategoryButton = event.target.closest("[data-toggle-category]");
   const editProductButton = event.target.closest("[data-edit-product]");
   const deleteProductButton = event.target.closest("[data-delete-product]");
-  if (addProductButton) return openProductDialog(null, addProductButton.dataset.addProduct);
+  const toggleProductButton = event.target.closest("[data-toggle-product]");
+  const removeProductButton = event.target.closest("[data-remove-product-category]");
+  if (addProductButton) return openAssignProductsDialog(addProductButton.dataset.addProduct);
   if (editCategoryButton) return openCategoryDialog(categories.find((category) => category.id === editCategoryButton.dataset.editCategory));
-  if (deleteCategoryButton) return deleteCategory(deleteCategoryButton.dataset.deleteCategory);
+  if (deleteCategoryButton) return requestDeleteCategory(deleteCategoryButton.dataset.deleteCategory);
+  if (toggleCategoryButton) return toggleCategoryActive(toggleCategoryButton.dataset.toggleCategory);
   if (editProductButton) return openProductDialog(products.find((product) => product.id === editProductButton.dataset.editProduct));
   if (deleteProductButton) return deleteProduct(deleteProductButton.dataset.deleteProduct);
+  if (toggleProductButton) return toggleProductActive(toggleProductButton.dataset.toggleProduct);
+  if (removeProductButton) return removeProductFromCategory(removeProductButton.dataset.removeProductCategory);
   if (event.target.closest("button,.drag-handle")) return;
   const header = event.target.closest(".category-head");
   if (!header) return;
