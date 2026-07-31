@@ -1,224 +1,234 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#194433">
-  <title>مخبز التين والزيتون | خبز قمح كامل وأكل صحي في الكويت</title>
-  <meta name="description" content="اطلب خبز القمح الكامل والمخبوزات الطبيعية والأكل الصحي من مخبز التين والزيتون في الكويت. توصيل لجميع المناطق أو استلام من اليرموك وأبو الحصانية.">
-  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
-  <link rel="canonical" href="https://figsolives.online/">
-  <link rel="alternate" hreflang="ar-KW" href="https://figsolives.online/">
-  <link rel="alternate" hreflang="en-KW" href="https://figsolives.online/">
-  <link rel="alternate" hreflang="x-default" href="https://figsolives.online/">
-  <meta property="og:locale" content="ar_KW">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="مخبز التين والزيتون">
-  <meta property="og:title" content="مخبز التين والزيتون | خبز قمح كامل وأكل صحي">
-  <meta property="og:description" content="خبز قمح كامل، مخبوزات طبيعية، ومنتجات أكل صحي للتوصيل في الكويت.">
-  <meta property="og:url" content="https://figsolives.online/">
-  <meta property="og:image" content="https://figsolives.online/og.png">
-  <meta property="og:image:alt" content="مخبز التين والزيتون - أكل صحي ومخبوزات طبيعية">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="مخبز التين والزيتون | خبز قمح كامل وأكل صحي">
-  <meta name="twitter:description" content="اطلب مخبوزات طبيعية وأكلًا صحيًا للتوصيل في الكويت.">
-  <meta name="twitter:image" content="https://figsolives.online/og.png">
-  <link rel="icon" href="logo.png">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#173f32">
+  <title>إدارة منصة البيع</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://firebasestorage.googleapis.com" crossorigin>
-  <link rel="preconnect" href="https://menassafigs-default-rtdb.firebaseio.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260730-1">
-  <link rel="stylesheet" href="payment.css?v=20260729-3">
-  <link rel="stylesheet" href="account.css?v=20260731-2">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Bakery",
-        "@id": "https://figsolives.online/#yarmouk",
-        "name": "مخبز التين والزيتون - فرع اليرموك",
-        "alternateName": "Figs & Olives Bakery - Yarmouk",
-        "url": "https://figsolives.online/",
-        "image": "https://figsolives.online/logo.png",
-        "telephone": "+96522085889",
-        "priceRange": "د.ك",
-        "servesCuisine": ["Healthy food", "Bakery"],
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "قطعة 2، شارع 2",
-          "addressLocality": "اليرموك",
-          "addressCountry": "KW"
-        },
-        "areaServed": {
-          "@type": "Country",
-          "name": "الكويت"
-        },
-        "sameAs": ["https://figsolives.online/"]
-      },
-      {
-        "@type": "Bakery",
-        "@id": "https://figsolives.online/#abu-al-hasaniya",
-        "name": "مطعم التين الطبيعي - فرع أبو الحصانية",
-        "url": "https://figsolives.online/",
-        "telephone": "+96522085886",
-        "address": {
-          "@type": "PostalAddress",
-          "streetAddress": "مول 30",
-          "addressLocality": "أبو الحصانية",
-          "addressCountry": "KW"
-        }
-      },
-      {
-        "@type": "WebSite",
-        "@id": "https://figsolives.online/#website",
-        "url": "https://figsolives.online/",
-        "name": "مخبز التين والزيتون",
-        "inLanguage": ["ar-KW", "en-KW"]
-      }
-    ]
-  }
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260729-3">
 </head>
 <body>
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="brand"><img src="logo.png" alt="مخبز التين والزيتون"><div><strong data-i18n="brand">مخبز التين والزيتون</strong><span data-i18n="tagline">طبيعي، صحي، مصنوع بحب</span></div></div>
-      <div class="header-actions">
-        <button class="language-toggle" id="languageToggle" aria-label="Change language"><span id="languageLabel">English</span></button>
-        <div class="header-search" id="headerSearch">
-          <button class="search-toggle" id="searchToggle" type="button" aria-label="البحث عن منتج" aria-expanded="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-          </button>
-          <div class="search-popover hidden" id="searchPopover">
-            <label class="search-input-wrap">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-              <input id="searchInput" type="search" autocomplete="off" data-i18n-placeholder="searchPlaceholder" placeholder="ابحث عن منتج…">
-            </label>
-            <div class="search-results" id="searchResults"></div>
-          </div>
-        </div>
-        <button class="account-trigger" id="accountButton" aria-label="تسجيل الدخول">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Zm7.25 8.5a7.25 7.25 0 0 0-14.5 0"/></svg>
-          <span id="accountButtonLabel">تسجيل الدخول</span>
-        </button>
-        <button class="header-cart" id="headerCart">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 4h2l1.6 10.1a2 2 0 0 0 2 1.7h7.8a2 2 0 0 0 2-1.7L20 7H6.1M9 20h.01M17 20h.01"/></svg>
-          <span data-i18n="yourCart">سلتك</span> <b id="headerCount">0</b>
-        </button>
-      </div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">ز</span>
+      <div><strong>إدارة منصة البيع</strong><small>مخبز التين والزيتون</small></div>
+    </div>
+    <div class="top-actions">
+      <span class="cloud-status" id="cloudStatus"><i></i><span>جاري الاتصال…</span></span>
+      <a class="nav-button reports-link" href="reports.html">متابعة المنصة</a>
+      <button class="nav-button" id="customersPage">العملاء</button>
+      <button class="nav-button" id="deliveryAreasPage">مناطق التوصيل</button>
+      <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
+      <button class="secondary" id="addCategory">＋ إضافة قسم جديد</button>
+      <button class="sign-out hidden" id="adminSignOut">تسجيل خروج</button>
     </div>
   </header>
 
   <main>
-    <section class="hero" id="storeHero">
-      <div class="hero-content">
-        <h1 data-i18n-html="heroTitle">أكل صحي بطعم<br>يستحق التكرار</h1>
-        <div class="hero-badges"><span data-i18n="naturalIngredients">مكونات طبيعية</span><span data-i18n="dailyPreparation">تحضير يومي</span><span data-i18n="securePayment">دفع آمن</span></div>
+    <section class="intro" data-admin-view="catalog">
+      <div>
+        <span class="eyebrow">لوحة المحتوى</span>
+        <h1>رتّب الأقسام والمنتجات وعدّل بياناتها</h1>
+        <p>اسحب من المقبض لتغيير الترتيب. يظهر خط رمادي واضح في موضع الإفلات.</p>
       </div>
-      <div class="hero-logo"><img src="logo.png" alt=""></div>
+      <div class="stats">
+        <div><strong id="categoryCount">0</strong><span>قسم</span></div>
+        <div><strong id="productCount">0</strong><span>منتج</span></div>
+      </div>
     </section>
 
-    <section class="catalog">
-      <div class="catalog-heading">
-        <div><span class="kicker" data-i18n="ourMenu">قائمتنا</span><h2 data-i18n="whatToday">ماذا تشتهي اليوم؟</h2></div>
+    <section class="notice" data-admin-view="catalog">
+      <div>ⓘ</div>
+      <p><strong>اللوحة متصلة بـ Firebase.</strong> أي إضافة أو تعديل أو تغيير ترتيب يُحفظ في السحابة ويظهر في منصة الطلبات مباشرة. ويمكنك تنزيل نسخة احتياطية متى شئت.</p>
+    </section>
+
+    <section class="toolbar" data-admin-view="catalog">
+      <button id="saveDraft">حفظ الآن</button>
+      <button id="exportData" class="export">تنزيل نسخة احتياطية ZIP</button>
+      <label class="file-button">استيراد JSON<input id="importData" type="file" accept=".json,application/json" multiple></label>
+      <button id="resetData" class="danger-link">إعادة تحميل بيانات Firebase</button>
+      <span id="saveState">جاري تحميل بيانات Firebase…</span>
+    </section>
+
+    <section class="appearance-panel" data-admin-view="catalog">
+      <div class="appearance-heading">
+        <div>
+          <span class="eyebrow">مظهر واجهة المتجر</span>
+          <h2>صورة جملة «أكل صحي بطعم يستحق التكرار» وألوانها</h2>
+          <p>النسبة المناسبة للكادر: <strong>1600 × 720 بكسل</strong>. ارفع صورة واضحة ثم حدد من الأسفل الجزء الذي تريد ظهوره داخل الكادر.</p>
+        </div>
+        <button type="button" class="primary" id="saveAppearance">حفظ مظهر الواجهة</button>
       </div>
-      <div class="categories" id="categories"></div>
-      <div class="product-sections" id="productSections">
-        <div class="catalog-skeleton" aria-label="Loading products">
-          <i></i><i></i><i></i><i></i>
+      <div class="appearance-grid">
+        <div class="hero-image-editor">
+          <div class="hero-image-preview empty" id="heroImagePreview"><span>لم تتم إضافة صورة للواجهة</span></div>
+          <div class="hero-image-actions">
+            <label class="file-button primary">اختيار صورة<input id="heroImageInput" type="file" accept="image/png,image/jpeg,image/webp"></label>
+            <button type="button" class="delete" id="removeHeroImage">حذف الصورة</button>
+          </div>
+          <div class="hero-focal-controls">
+            <label>
+              <span>الموضع الأفقي للصورة <output id="heroPositionXValue">50%</output></span>
+              <input id="heroPositionX" type="range" min="0" max="100" step="1" value="50">
+            </label>
+            <label>
+              <span>الموضع العمودي للصورة <output id="heroPositionYValue">50%</output></span>
+              <input id="heroPositionY" type="range" min="0" max="100" step="1" value="50">
+            </label>
+            <small>حرّك المؤشرين حتى يظهر الجزء المطلوب في المعاينة، ثم اضغط «حفظ مظهر الواجهة».</small>
+          </div>
+        </div>
+        <div class="appearance-colors">
+          <label>
+            <span>لون جملة «أكل صحي بطعم يستحق التكرار»</span>
+            <span class="color-control"><input id="heroTextColor" type="color" value="#18352a"><output id="heroTextColorValue">#18352A</output></span>
+          </label>
+          <label>
+            <span>لون خلفيات العبارات الثلاث</span>
+            <span class="color-control"><input id="badgeBackgroundColor" type="color" value="#ffffff"><output id="badgeBackgroundColorValue">#FFFFFF</output></span>
+          </label>
+          <label>
+            <span>لون نصوص العبارات الثلاث</span>
+            <span class="color-control"><input id="badgeTextColor" type="color" value="#18352a"><output id="badgeTextColorValue">#18352A</output></span>
+          </label>
+          <div class="badges-preview" id="badgesPreview"><span>مكونات طبيعية</span><span>تحضير يومي</span><span>دفع آمن</span></div>
         </div>
       </div>
     </section>
 
-    <section class="seo-content" aria-labelledby="seoTitle">
-      <div class="seo-intro">
-        <span class="kicker">مخبوزات طبيعية في الكويت</span>
-        <h2 id="seoTitle">خبز قمح كامل وأكل صحي من مخبز التين والزيتون</h2>
-        <p>في مخبز التين والزيتون نقدّم مخبوزات طازجة ومنتجات أكل صحي لعشّاق الخيارات الطبيعية. اطلب خبز القمح الكامل، خبز الشعير، خبز الشوفان، منتجات الكيتو، والخيارات الخالية من الجلوتين مع التوصيل إلى جميع مناطق الكويت أو الاستلام من فروعنا.</p>
+    <section id="categoryList" class="category-list" data-admin-view="catalog" aria-live="polite"></section>
+
+    <section id="customersView" class="customers-view hidden" aria-live="polite">
+      <div class="customers-head">
+        <div>
+          <span class="eyebrow">إدارة الحسابات</span>
+          <h1>العملاء</h1>
+          <p>جميع العملاء المسجلين في منصة البيع مع عناوينهم وطلباتهم الحالية والسابقة.</p>
+        </div>
+        <div class="stats">
+          <div><strong id="customerCount">0</strong><span>عميل</span></div>
+          <div><strong id="customerOrderCount">0</strong><span>طلب</span></div>
+        </div>
       </div>
-      <div class="seo-columns">
-        <article>
-          <h3>مخبوزات صحية لكل يوم</h3>
-          <p>تتضمن قائمتنا خبز القمح الكامل، مخبوزات بالخميرة الطبيعية، حبوب وبقوليات مبرعمة، وأطباقًا صحية مختارة. نعرض المكونات وتفاصيل كل منتج داخل صفحة الطلب لتختار ما يناسب نمطك الغذائي.</p>
-        </article>
-        <article>
-          <h3>التوصيل والاستلام في الكويت</h3>
-          <p>نوفر التوصيل إلى جميع مناطق الكويت، كما يمكنك الاستلام من فرع اليرموك: قطعة 2، شارع 2، أو من فرع أبو الحصانية في مول 30.</p>
-        </article>
+      <div class="customers-toolbar">
+        <label>بحث عن عميل
+          <input id="customerSearch" type="search" placeholder="الاسم أو رقم الهاتف" inputmode="search">
+        </label>
+        <button class="secondary" id="backToCatalog">العودة للمنتجات والأقسام</button>
       </div>
-      <div class="seo-faq" itemscope itemtype="https://schema.org/FAQPage">
-        <h2>أسئلة شائعة</h2>
-        <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-          <summary itemprop="name">هل يتوفر خبز قمح كامل؟</summary>
-          <p itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">نعم، تتوفر في القائمة خيارات من خبز القمح الكامل، إلى جانب خبز الشعير والشوفان ومخبوزات صحية أخرى بحسب التوفر اليومي.</span></p>
-        </details>
-        <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-          <summary itemprop="name">هل توجد منتجات كيتو وخالية من الجلوتين؟</summary>
-          <p itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">نعم، تعرض المنصة منتجات كيتو وخيارات خالية من الجلوتين، ويمكنك الاطلاع على وصف ومكونات كل منتج قبل الطلب.</span></p>
-        </details>
-        <details itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-          <summary itemprop="name">هل يتوفر توصيل للأكل الصحي في الكويت؟</summary>
-          <p itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">نعم، يقدم مخبز التين والزيتون التوصيل إلى جميع مناطق الكويت، مع خيار الاستلام من الفروع.</span></p>
-        </details>
+      <div id="customerList" class="customer-list"></div>
+    </section>
+
+    <section id="deliveryAreasView" class="delivery-areas-view hidden" aria-live="polite">
+      <div class="customers-head">
+        <div>
+          <span class="eyebrow">إدارة التوصيل</span>
+          <h1>مناطق التوصيل</h1>
+          <p>تُقرأ هذه المناطق مباشرة من Firebase وتظهر أي إضافة أو تعديل في منصة الطلبات فورًا.</p>
+        </div>
+        <div class="stats"><div><strong id="deliveryAreaCount">0</strong><span>منطقة</span></div></div>
       </div>
+      <div class="delivery-areas-toolbar">
+        <label>بحث عن منطقة<input id="deliveryAreaSearch" type="search" placeholder="الاسم العربي أو الإنجليزي"></label>
+        <button class="primary" id="addDeliveryArea">＋ إضافة منطقة</button>
+        <button class="secondary" id="backFromDeliveryAreas">العودة للمنتجات والأقسام</button>
+      </div>
+      <div id="deliveryAreaList" class="delivery-area-list"></div>
     </section>
   </main>
 
-  <div class="floating-cart hidden" id="floatingCart">
-    <button class="cart-summary" id="cartSummary"><span class="bag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 8.5h13l-1 11h-11l-1-11Zm3 0V6a3.5 3.5 0 0 1 7 0v2.5"/></svg><b id="cartBadge">0</b></span><span><small data-i18n="total">الإجمالي</small><strong id="cartTotal">0.000 د.ك</strong></span></button>
-    <button class="checkout-btn" id="checkoutBtn" data-i18n="checkout">إتمام الدفع ←</button>
-  </div>
+  <dialog id="categoryDialog">
+    <form method="dialog" id="categoryForm" class="dialog-card">
+      <header><div><span class="eyebrow">القسم</span><h2 id="categoryDialogTitle">إضافة قسم جديد</h2></div><button type="button" class="icon-btn" data-close-dialog="categoryDialog" aria-label="إغلاق">×</button></header>
+      <input id="categoryId" type="hidden">
+      <label>اسم القسم بالعربي<input id="categoryNameAr" required maxlength="100"></label>
+      <label>اسم القسم بالإنجليزي<input id="categoryNameEn" required maxlength="100" dir="ltr"></label>
+      <footer><button type="button" data-close-dialog="categoryDialog">إلغاء</button><button type="submit" value="default" class="primary">حفظ القسم</button></footer>
+    </form>
+  </dialog>
 
-  <section class="product-page hidden" id="productPage" aria-hidden="true">
-    <div class="product-page-inner">
-      <button class="product-back" id="productBack">← <span data-i18n="back">رجوع</span></button>
-      <div id="productDetail"></div>
+  <dialog id="productDialog">
+    <form method="dialog" id="productForm" class="dialog-card product-dialog">
+      <header><div><span class="eyebrow">المنتج</span><h2 id="productDialogTitle">إضافة منتج جديد</h2></div><button type="button" class="icon-btn" data-close-dialog="productDialog" aria-label="إغلاق">×</button></header>
+      <input id="productId" type="hidden">
+      <div class="form-grid">
+        <label>القسم<select id="productCategory"></select></label>
+        <label>سعر البيع د.ك<input id="productPrice" type="number" min="0" step="0.001" required dir="ltr"></label>
+        <label>اسم المنتج بالعربي<input id="productNameAr" required maxlength="160"></label>
+        <label>اسم المنتج بالإنجليزي<input id="productNameEn" required maxlength="160" dir="ltr"></label>
+        <label>الوصف العربي<textarea id="productDescriptionAr" rows="4" maxlength="800"></textarea></label>
+        <label>الوصف الإنجليزي<textarea id="productDescriptionEn" rows="4" maxlength="800" dir="ltr"></textarea></label>
+      </div>
+      <section class="image-editor">
+        <div class="section-title"><div><h3>صور المنتج</h3><p>الصورة الأولى هي الرئيسية. يمكن إضافة أكثر من صورة وحذف أو تقديم أي صورة.</p></div><label class="file-button">إضافة صور<input id="productImages" type="file" accept="image/*" multiple></label></div>
+        <div class="url-add"><input id="imageUrl" type="url" placeholder="أو الصق رابط صورة https://..." dir="ltr"><button type="button" id="addImageUrl">إضافة الرابط</button></div>
+        <div id="imageList" class="image-list"></div>
+      </section>
+      <footer><button type="button" data-close-dialog="productDialog">إلغاء</button><button type="submit" value="default" class="primary">حفظ المنتج</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="assignProductsDialog">
+    <form method="dialog" id="assignProductsForm" class="dialog-card assign-products-dialog">
+      <header><div><span class="eyebrow">إسناد منتجات</span><h2 id="assignProductsTitle">إضافة منتجات إلى القسم</h2></div><button type="button" class="icon-btn" data-close-dialog="assignProductsDialog" aria-label="إغلاق">×</button></header>
+      <label class="assign-search">البحث في المنتجات غير المصنفة<input id="assignProductSearch" type="search" placeholder="ابحث بالاسم العربي أو الإنجليزي"></label>
+      <div class="selection-summary"><strong id="assignSelectionCount">0</strong><span>منتج محدد</span></div>
+      <div id="unassignedProductList" class="unassigned-product-list"></div>
+      <footer><button type="button" data-close-dialog="assignProductsDialog">إلغاء</button><button type="submit" value="default" class="primary" id="confirmAssignProducts">إضافة المنتجات المحددة</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="deleteCategoryDialog">
+    <div class="dialog-card decision-dialog">
+      <header><div><span class="eyebrow">حذف قسم</span><h2>ماذا تريد أن يحدث للمنتجات؟</h2></div><button type="button" class="icon-btn" data-close-dialog="deleteCategoryDialog" aria-label="إغلاق">×</button></header>
+      <p id="deleteCategoryMessage"></p>
+      <div class="decision-options">
+        <button type="button" id="deleteCategoryKeepProducts"><strong>حذف القسم فقط</strong><small>تبقى المنتجات محفوظة بدون قسم ويمكن إضافتها إلى قسم آخر.</small></button>
+        <button type="button" class="danger-choice" id="deleteCategoryWithProducts"><strong>حذف القسم ومنتجاته</strong><small>يتم حذف المنتجات وصورها نهائياً.</small></button>
+      </div>
+      <footer><button type="button" data-close-dialog="deleteCategoryDialog">إلغاء</button></footer>
+    </div>
+  </dialog>
+
+  <dialog id="customerDialog">
+    <div class="dialog-card customer-dialog">
+      <header><div><span class="eyebrow">ملف العميل</span><h2 id="customerDialogTitle">تفاصيل العميل</h2></div><button type="button" class="icon-btn" data-close-dialog="customerDialog" aria-label="إغلاق">×</button></header>
+      <div id="customerDetails"></div>
+      <footer><button type="button" data-close-dialog="customerDialog">إغلاق</button></footer>
+    </div>
+  </dialog>
+
+  <dialog id="deliveryAreaDialog">
+    <form method="dialog" id="deliveryAreaForm" class="dialog-card">
+      <header><div><span class="eyebrow">منطقة التوصيل</span><h2 id="deliveryAreaDialogTitle">إضافة منطقة</h2></div><button type="button" class="icon-btn" data-close-dialog="deliveryAreaDialog" aria-label="إغلاق">×</button></header>
+      <input id="deliveryAreaId" type="hidden">
+      <label>اسم المنطقة بالعربي<input id="deliveryAreaNameAr" required maxlength="100"></label>
+      <label>اسم المنطقة بالإنجليزي<input id="deliveryAreaNameEn" required maxlength="100" dir="ltr"></label>
+      <label>سعر التوصيل د.ك<input id="deliveryAreaPrice" type="number" min="0" step="0.001" required dir="ltr"></label>
+      <footer><button type="button" data-close-dialog="deliveryAreaDialog">إلغاء</button><button type="submit" value="default" class="primary">حفظ المنطقة</button></footer>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+  <section class="admin-auth-gate" id="adminAuthGate">
+    <div class="admin-auth-card">
+      <div class="brand-mark">ز</div>
+      <span class="eyebrow">دخول محمي</span>
+      <h1>إدارة منصة البيع</h1>
+      <p>سجّل الدخول بحساب Google الإداري للوصول إلى المنتجات والصور.</p>
+      <button class="primary" id="adminGoogleLogin">الدخول بحساب Google</button>
+      <small id="adminAuthMessage"></small>
     </div>
   </section>
-
-  <div class="modal hidden" id="checkoutModal">
-    <section class="checkout-panel">
-      <div class="checkout-head"><div><span class="kicker">طلبك</span><h2 id="checkoutTitle">إتمام الطلب</h2></div><button id="closeCheckout">×</button></div>
-      <div class="steps" id="steps">
-        <div data-step="1"><i><svg viewBox="0 0 24 24"><path d="M4 5h2l1.3 9h9.6l1.4-6.5H7M9 19h.01M17 19h.01"/></svg></i><span>المراجعة</span></div>
-        <div data-step="2"><i><svg viewBox="0 0 24 24"><path d="M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></svg></i><span>تفاصيل التسليم</span></div>
-        <div data-step="3"><i><svg viewBox="0 0 24 24"><path d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/></svg></i><span>وقت التوصيل</span></div>
-        <div data-step="4"><i><svg viewBox="0 0 24 24"><path d="M3 7.5h18v11H3v-11Zm0 4h18M7 15.5h3"/></svg></i><span>تأكيد ودفع</span></div>
-      </div>
-      <div id="checkoutBody"></div>
-    </section>
-  </div>
-
-  <div class="modal hidden auth-modal" id="authModal" aria-hidden="true">
-    <section class="auth-panel" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <button class="auth-close" id="authClose" aria-label="إغلاق">×</button>
-      <div id="authBody"></div>
-    </section>
-  </div>
-
-  <div class="drawer-layer hidden" id="accountDrawer" aria-hidden="true">
-    <button class="drawer-backdrop" id="drawerBackdrop" aria-label="إغلاق القائمة"></button>
-    <aside class="account-drawer">
-      <header><button id="drawerClose" aria-label="إغلاق">×</button><img src="logo.png" alt=""><span data-i18n="myAccount">حسابي</span></header>
-      <div id="accountContent"></div>
-    </aside>
-  </div>
-
-  <div class="invoice-host"><div class="invoice" id="invoice"></div></div>
-  <div class="toast hidden" id="toast"></div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="config.js?v=20260730-1"></script>
-  <script src="script.js?v=20260731-4"></script>
+  <script src="script.js?v=20260729-3"></script>
 </body>
 </html>
