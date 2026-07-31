@@ -16,6 +16,7 @@ const DEFAULT_APPEARANCE = Object.freeze({
 
 let categories = [];
 let products = [];
+let deliveryAreas = [];
 let appearance = { ...DEFAULT_APPEARANCE };
 let siteCategories = [];
 let siteProducts = [];
@@ -35,6 +36,23 @@ let pendingDeleteCategoryId = "";
 let currentView = "catalog";
 let ignoreRemoteUntil = 0;
 const assetUrls = new Map();
+
+function normalizeDeliveryAreas(value) {
+  const source = Array.isArray(value) ? value : [];
+  return source.map((area, index) => {
+    const nameAr = clean(area.nameAr || area.name);
+    const nameEn = clean(area.nameEn || area.nameEnglish || area.name) || nameAr;
+    return {
+      id: clean(area.id) || `area-${Date.now()}-${index}`,
+      nameAr,
+      nameEn,
+      name: nameAr,
+      price: Math.max(0, Number(area.price) || 0),
+      order: Number(area.order) || index + 1
+    };
+  }).filter(area => area.nameAr).sort((a, b) => a.order - b.order)
+    .map((area, index) => ({ ...area, order: index + 1 }));
+}
 
 function toast(message) {
   const element = $("#toast");
@@ -201,20 +219,26 @@ async function resolveAsset(path) {
 }
 
 async function loadFallbackData() {
-  [siteProducts, siteCategories] = await Promise.all([
+  const [productsData, categoriesData, areasData] = await Promise.all([
     fetchFirst(["../products.json", "../منصة الطلبات/products.json", "products.json"]),
-    fetchFirst(["../categories.json", "../منصة الطلبات/categories.json", "categories.json"])
+    fetchFirst(["../categories.json", "../منصة الطلبات/categories.json", "categories.json"]),
+    fetchFirst(["../منصة الطلبات/delivery-areas.json", "delivery-areas.json"])
   ]);
+  siteProducts = productsData;
+  siteCategories = categoriesData;
+  deliveryAreas = normalizeDeliveryAreas(areasData);
 }
 
 function applyRemoteCatalog(catalog) {
   products = Array.isArray(catalog?.products) ? catalog.products : [];
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
+  deliveryAreas = normalizeDeliveryAreas(catalog?.deliveryAreas);
   appearance = normalizeAppearance(catalog?.appearance);
   siteProducts = clone(products);
   siteCategories = clone(categories);
   normalizeData();
   render();
+  renderDeliveryAreas();
   renderAppearanceSettings();
 }
 
@@ -223,15 +247,22 @@ async function loadData() {
   catalogRef = firebaseServices.database.ref("orderingPlatform/catalog");
   const snapshot = await catalogRef.once("value");
   if (snapshot.exists()) {
-    applyRemoteCatalog(snapshot.val());
+    const remoteCatalog = snapshot.val();
+    applyRemoteCatalog(remoteCatalog);
+    if (!Array.isArray(remoteCatalog.deliveryAreas)) {
+      deliveryAreas = normalizeDeliveryAreas(await fetchFirst(["../منصة الطلبات/delivery-areas.json", "delivery-areas.json"]));
+      await saveToFirebase();
+    }
     $("#saveState").textContent = "تم تحميل آخر نسخة من Firebase";
   } else {
     await loadFallbackData();
     products = clone(siteProducts);
     categories = clone(siteCategories);
+    deliveryAreas = normalizeDeliveryAreas(deliveryAreas);
     appearance = { ...DEFAULT_APPEARANCE };
     normalizeData();
     render();
+    renderDeliveryAreas();
     renderAppearanceSettings();
     $("#saveState").textContent = "قاعدة البيانات فارغة — اضغط حفظ الآن لرفع البيانات";
   }
@@ -291,6 +322,7 @@ function imageSource(product) {
 
 function render() {
   normalizeData();
+  deliveryAreas = normalizeDeliveryAreas(deliveryAreas);
   $("#categoryCount").textContent = categories.length;
   $("#productCount").textContent = products.length;
   $("#categoryList").innerHTML = categories.map((category) => {
@@ -446,7 +478,7 @@ function markDirty(message = "جارٍ حفظ التعديلات في Firebase�
 async function saveToFirebase() {
   if (!catalogRef || !currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
   normalizeData();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, appearance, savedAt: new Date().toISOString() }));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, deliveryAreas, appearance, savedAt: new Date().toISOString() }));
   clearTimeout(syncTimer);
   ignoreRemoteUntil = Date.now() + 1200;
   $("#saveState").textContent = "جارٍ الحفظ في Firebase…";
@@ -454,6 +486,7 @@ async function saveToFirebase() {
     await catalogRef.update({
       categories: categories.map((category, index) => ({ ...category, order: index + 1 })),
       products: downloadableProducts(),
+      deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
       appearance: normalizeAppearance(appearance),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
       updatedBy: currentAdmin.email || currentAdmin.uid
@@ -472,6 +505,58 @@ async function saveToFirebase() {
 
 function saveDraft() {
   saveToFirebase().then(() => toast("تم الحفظ في Firebase")).catch(() => undefined);
+}
+
+function renderDeliveryAreas() {
+  const list = $("#deliveryAreaList");
+  if (!list) return;
+  const query = clean($("#deliveryAreaSearch")?.value).toLocaleLowerCase();
+  const filtered = deliveryAreas.filter(area => [area.nameAr, area.nameEn].some(name => name.toLocaleLowerCase().includes(query)));
+  $("#deliveryAreaCount").textContent = deliveryAreas.length;
+  list.innerHTML = filtered.length ? filtered.map(area => `
+    <article class="delivery-area-card" data-delivery-area-id="${escapeHtml(area.id)}">
+      <div class="delivery-area-names"><strong>${escapeHtml(area.nameAr)}</strong><small dir="ltr">${escapeHtml(area.nameEn)}</small></div>
+      <label class="delivery-area-price">سعر التوصيل د.ك<input type="number" min="0" step="0.001" value="${Number(area.price).toFixed(3)}" data-delivery-area-price="${escapeHtml(area.id)}"></label>
+      <button class="secondary" data-edit-delivery-area="${escapeHtml(area.id)}">تعديل الاسم</button>
+    </article>`).join("") : `<div class="empty">لا توجد مناطق مطابقة للبحث</div>`;
+}
+
+function openDeliveryAreaDialog(area = null) {
+  $("#deliveryAreaDialogTitle").textContent = area ? "تعديل منطقة" : "إضافة منطقة";
+  $("#deliveryAreaId").value = area?.id || "";
+  $("#deliveryAreaNameAr").value = area?.nameAr || "";
+  $("#deliveryAreaNameEn").value = area?.nameEn || "";
+  $("#deliveryAreaPrice").value = area?.price ?? "";
+  $("#deliveryAreaDialog").showModal();
+}
+
+function saveDeliveryArea(event) {
+  event.preventDefault();
+  const id = clean($("#deliveryAreaId").value);
+  const nameAr = clean($("#deliveryAreaNameAr").value);
+  const nameEn = clean($("#deliveryAreaNameEn").value);
+  const price = Number($("#deliveryAreaPrice").value);
+  if (!nameAr || !nameEn || !Number.isFinite(price) || price < 0) return;
+  const next = { id: id || `area-${Date.now().toString(36)}`, nameAr, nameEn, name: nameAr, price, order: id ? deliveryAreas.find(area => area.id === id)?.order : deliveryAreas.length + 1 };
+  const index = deliveryAreas.findIndex(area => area.id === id);
+  if (index >= 0) deliveryAreas[index] = next; else deliveryAreas.push(next);
+  deliveryAreas = normalizeDeliveryAreas(deliveryAreas);
+  $("#deliveryAreaDialog").close();
+  renderDeliveryAreas();
+  markDirty("تم تعديل مناطق التوصيل — جارٍ الحفظ");
+}
+
+function showDeliveryAreasView() {
+  currentView = "deliveryAreas";
+  $$(`[data-admin-view='catalog']`).forEach(element => element.classList.add("hidden"));
+  $("#customersView").classList.add("hidden");
+  $("#deliveryAreasView").classList.remove("hidden");
+  $("#customersPage").classList.remove("active");
+  $("#deliveryAreasPage").classList.add("active");
+  $("#addProduct").classList.add("hidden");
+  $("#addCategory").classList.add("hidden");
+  renderDeliveryAreas();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function resetDraft() {
@@ -869,7 +954,9 @@ function showAdminView(view) {
   currentView = view === "customers" ? "customers" : "catalog";
   $$("[data-admin-view='catalog']").forEach(element => element.classList.toggle("hidden", currentView !== "catalog"));
   $("#customersView").classList.toggle("hidden", currentView !== "customers");
+  $("#deliveryAreasView").classList.add("hidden");
   $("#customersPage").classList.toggle("active", currentView === "customers");
+  $("#deliveryAreasPage").classList.remove("active");
   $("#addProduct").classList.toggle("hidden", currentView === "customers");
   $("#addCategory").classList.toggle("hidden", currentView === "customers");
   if (currentView === "customers") renderCustomers();
@@ -956,6 +1043,7 @@ async function exportData() {
   normalizeData();
   const exportProducts = downloadableProducts();
   const exportCategories = categories.map((category, index) => ({ ...category, order: index + 1 }));
+  const exportDeliveryAreas = normalizeDeliveryAreas(deliveryAreas);
   $("#saveState").textContent = "جارٍ تجهيز النسخة الاحتياطية…";
   try {
     if (!window.JSZip) throw new Error("تعذر تحميل أداة ZIP");
@@ -963,6 +1051,7 @@ async function exportData() {
     zip.file("products.json", JSON.stringify(exportProducts, null, 2) + "\n");
     zip.file("categories.json", JSON.stringify(exportCategories, null, 2) + "\n");
     zip.file("appearance.json", JSON.stringify(normalizeAppearance(appearance), null, 2) + "\n");
+    zip.file("delivery-areas.json", JSON.stringify(exportDeliveryAreas, null, 2) + "\n");
     const referencedAssets = [...new Set(exportProducts.flatMap((product) => product.images || []))]
       .filter((path) => path.startsWith("product-images/"));
     for (const path of referencedAssets) {
@@ -1052,6 +1141,24 @@ $("#addCategory").addEventListener("click", () => openCategoryDialog());
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
+$("#deliveryAreasPage").addEventListener("click", showDeliveryAreasView);
+$("#backFromDeliveryAreas").addEventListener("click", () => showAdminView("catalog"));
+$("#addDeliveryArea").addEventListener("click", () => openDeliveryAreaDialog());
+$("#deliveryAreaForm").addEventListener("submit", saveDeliveryArea);
+$("#deliveryAreaSearch").addEventListener("input", renderDeliveryAreas);
+$("#deliveryAreaList").addEventListener("click", event => {
+  const button = event.target.closest("[data-edit-delivery-area]");
+  if (button) openDeliveryAreaDialog(deliveryAreas.find(area => area.id === button.dataset.editDeliveryArea));
+});
+$("#deliveryAreaList").addEventListener("change", event => {
+  const input = event.target.closest("[data-delivery-area-price]");
+  if (!input) return;
+  const area = deliveryAreas.find(item => item.id === input.dataset.deliveryAreaPrice);
+  const price = Number(input.value);
+  if (!area || !Number.isFinite(price) || price < 0) return renderDeliveryAreas();
+  area.price = price;
+  markDirty("تم تعديل سعر التوصيل — جارٍ الحفظ");
+});
 $("#customerSearch").addEventListener("input", renderCustomers);
 $("#customerList").addEventListener("click", event => {
   const button = event.target.closest("[data-view-customer]");
