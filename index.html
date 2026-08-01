@@ -19,6 +19,7 @@
     <div class="top-actions">
       <span class="cloud-status" id="cloudStatus"><i></i><span>جاري الاتصال…</span></span>
       <a class="nav-button reports-link" href="reports.html">متابعة المنصة</a>
+      <button class="nav-button" id="liveVisitorsPage">الزوار الآن</button>
       <button class="nav-button" id="customersPage">العملاء</button>
       <button class="nav-button" id="deliveryAreasPage">مناطق التوصيل</button>
       <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
@@ -137,6 +138,19 @@
         <button class="secondary" id="backFromDeliveryAreas">العودة للمنتجات والأقسام</button>
       </div>
       <div id="deliveryAreaList" class="delivery-area-list"></div>
+    </section>
+
+    <section id="liveVisitorsView" class="live-visitors-view hidden" aria-live="polite">
+      <div class="customers-head">
+        <div><span class="eyebrow">بث مباشر</span><h1>الزوار الآن</h1><p>يُحدَّث العدد تلقائياً. تعتبر الزيارة نشطة عند وجود نشاط خلال آخر 90 ثانية.</p></div>
+        <button class="secondary" id="backFromLiveVisitors">العودة للمنتجات والأقسام</button>
+      </div>
+      <div class="live-visitor-stats">
+        <article><strong id="liveVisitorCount">0</strong><span>يتصفحون الآن</span></article>
+        <article><strong id="liveNewVisitorCount">0</strong><span>زوار جدد</span></article>
+        <article><strong id="liveRegisteredVisitorCount">0</strong><span>مسجلون مسبقاً</span></article>
+      </div>
+      <p class="live-visitors-updated" id="liveVisitorsUpdated">بانتظار البيانات…</p>
     </section>
   </main>
 
