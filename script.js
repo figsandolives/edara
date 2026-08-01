@@ -31,6 +31,8 @@ let syncTimer;
 let currentAdmin = null;
 let catalogRef = null;
 let customersRef = null;
+let visitorPresenceRef = null;
+let visitorPresence = [];
 let assignTargetCategoryId = "";
 let pendingDeleteCategoryId = "";
 let currentView = "catalog";
@@ -276,6 +278,29 @@ async function loadData() {
     console.error(error);
   });
   loadCustomers();
+  loadVisitorPresence();
+}
+
+function renderLiveVisitors() {
+  const now = Date.now();
+  const active = visitorPresence.filter(visitor => now - Number(visitor.lastSeenAt || 0) <= 90000);
+  const registered = active.filter(visitor => visitor.visitorType === "registered").length;
+  $("#liveVisitorCount").textContent = active.length;
+  $("#liveNewVisitorCount").textContent = active.length - registered;
+  $("#liveRegisteredVisitorCount").textContent = registered;
+  $("#liveVisitorsUpdated").textContent = `آخر تحديث: ${new Date(now).toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+}
+
+function loadVisitorPresence() {
+  visitorPresenceRef?.off();
+  visitorPresenceRef = firebaseServices.database.ref("orderingPlatform/visitorPresence");
+  visitorPresenceRef.on("value", snapshot => {
+    visitorPresence = Object.values(snapshot.val() || {});
+    renderLiveVisitors();
+  }, error => {
+    console.error(error);
+    $("#liveVisitorsUpdated").textContent = "تعذر تحميل الزوار المباشرين";
+  });
 }
 
 function loadCustomers() {
@@ -551,11 +576,27 @@ function showDeliveryAreasView() {
   $$(`[data-admin-view='catalog']`).forEach(element => element.classList.add("hidden"));
   $("#customersView").classList.add("hidden");
   $("#deliveryAreasView").classList.remove("hidden");
+  $("#liveVisitorsView").classList.add("hidden");
   $("#customersPage").classList.remove("active");
   $("#deliveryAreasPage").classList.add("active");
   $("#addProduct").classList.add("hidden");
   $("#addCategory").classList.add("hidden");
   renderDeliveryAreas();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showLiveVisitorsView() {
+  currentView = "liveVisitors";
+  $$("[data-admin-view='catalog']").forEach(element => element.classList.add("hidden"));
+  $("#customersView").classList.add("hidden");
+  $("#deliveryAreasView").classList.add("hidden");
+  $("#liveVisitorsView").classList.remove("hidden");
+  $("#customersPage").classList.remove("active");
+  $("#deliveryAreasPage").classList.remove("active");
+  $("#liveVisitorsPage").classList.add("active");
+  $("#addProduct").classList.add("hidden");
+  $("#addCategory").classList.add("hidden");
+  renderLiveVisitors();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -955,8 +996,10 @@ function showAdminView(view) {
   $$("[data-admin-view='catalog']").forEach(element => element.classList.toggle("hidden", currentView !== "catalog"));
   $("#customersView").classList.toggle("hidden", currentView !== "customers");
   $("#deliveryAreasView").classList.add("hidden");
+  $("#liveVisitorsView").classList.add("hidden");
   $("#customersPage").classList.toggle("active", currentView === "customers");
   $("#deliveryAreasPage").classList.remove("active");
+  $("#liveVisitorsPage").classList.remove("active");
   $("#addProduct").classList.toggle("hidden", currentView === "customers");
   $("#addCategory").classList.toggle("hidden", currentView === "customers");
   if (currentView === "customers") renderCustomers();
@@ -1107,6 +1150,7 @@ async function initializeAdmin() {
       currentAdmin = null;
       catalogRef?.off();
       customersRef?.off();
+      visitorPresenceRef?.off();
       catalogRef = null;
       customersRef = null;
       customers = [];
@@ -1141,6 +1185,8 @@ $("#addCategory").addEventListener("click", () => openCategoryDialog());
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
+$("#liveVisitorsPage").addEventListener("click", showLiveVisitorsView);
+$("#backFromLiveVisitors").addEventListener("click", () => showAdminView("catalog"));
 $("#deliveryAreasPage").addEventListener("click", showDeliveryAreasView);
 $("#backFromDeliveryAreas").addEventListener("click", () => showAdminView("catalog"));
 $("#addDeliveryArea").addEventListener("click", () => openDeliveryAreaDialog());
@@ -1313,3 +1359,4 @@ $("#categoryList").addEventListener("dragend", () => {
 });
 
 initializeAdmin();
+setInterval(renderLiveVisitors, 10000);
