@@ -550,7 +550,7 @@ function renderDeliveryAreas() {
     <article class="delivery-area-card" data-delivery-area-id="${escapeHtml(area.id)}">
       <div class="delivery-area-names"><strong>${escapeHtml(area.nameAr)}</strong><small dir="ltr">${escapeHtml(area.nameEn)}</small></div>
       <label class="delivery-area-price">سعر التوصيل د.ك<input type="number" min="0" step="0.001" value="${Number(area.price).toFixed(3)}" data-delivery-area-price="${escapeHtml(area.id)}"></label>
-      <button class="secondary" data-edit-delivery-area="${escapeHtml(area.id)}">تعديل الاسم</button>
+      <div class="delivery-area-actions"><button class="secondary" data-edit-delivery-area="${escapeHtml(area.id)}">تعديل الاسم</button><button class="delete" data-delete-delivery-area="${escapeHtml(area.id)}">حذف</button></div>
     </article>`).join("") : `<div class="empty">لا توجد مناطق مطابقة للبحث</div>`;
 }
 
@@ -1203,8 +1203,15 @@ $("#addDeliveryArea").addEventListener("click", () => openDeliveryAreaDialog());
 $("#deliveryAreaForm").addEventListener("submit", saveDeliveryArea);
 $("#deliveryAreaSearch").addEventListener("input", renderDeliveryAreas);
 $("#deliveryAreaList").addEventListener("click", event => {
-  const button = event.target.closest("[data-edit-delivery-area]");
-  if (button) openDeliveryAreaDialog(deliveryAreas.find(area => area.id === button.dataset.editDeliveryArea));
+  const editButton = event.target.closest("[data-edit-delivery-area]");
+  if (editButton) return openDeliveryAreaDialog(deliveryAreas.find(area => area.id === editButton.dataset.editDeliveryArea));
+  const deleteButton = event.target.closest("[data-delete-delivery-area]");
+  if (!deleteButton) return;
+  const area = deliveryAreas.find(item => item.id === deleteButton.dataset.deleteDeliveryArea);
+  if (!area || !confirm(`حذف منطقة ${area.nameAr}؟`)) return;
+  deliveryAreas = deliveryAreas.filter(item => item.id !== area.id);
+  renderDeliveryAreas();
+  markDirty("تم حذف منطقة التوصيل — جارٍ الحفظ");
 });
 $("#deliveryAreaList").addEventListener("change", event => {
   const input = event.target.closest("[data-delivery-area-price]");
