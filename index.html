@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260729-3">
+  <link rel="stylesheet" href="style.css?v=20260801-1">
 </head>
 <body>
   <header class="topbar">
@@ -146,11 +146,12 @@
         <button class="secondary" id="backFromLiveVisitors">العودة للمنتجات والأقسام</button>
       </div>
       <div class="live-visitor-stats">
-        <article><strong id="liveVisitorCount">0</strong><span>يتصفحون الآن</span></article>
+        <button type="button" class="live-visitor-card" id="liveVisitorListTrigger" aria-expanded="false" aria-controls="liveVisitorList"><strong id="liveVisitorCount">0</strong><span>يتصفحون الآن</span><small>اضغط لعرض القائمة</small></button>
         <article><strong id="liveNewVisitorCount">0</strong><span>زوار جدد</span></article>
         <article><strong id="liveRegisteredVisitorCount">0</strong><span>مسجلون مسبقاً</span></article>
       </div>
       <p class="live-visitors-updated" id="liveVisitorsUpdated">بانتظار البيانات…</p>
+      <section class="live-visitor-list hidden" id="liveVisitorList"><header><div><h2>المتصفحون الآن</h2><p>تظهر بيانات العميل للمسجل فقط.</p></div><button class="secondary" id="closeLiveVisitorList" type="button">إخفاء القائمة</button></header><div id="liveVisitorListItems"></div></section>
     </section>
   </main>
 
@@ -243,6 +244,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260729-3"></script>
+  <script src="script.js?v=20260801-1"></script>
 </body>
 </html>
