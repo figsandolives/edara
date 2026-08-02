@@ -72,6 +72,29 @@ function clean(value) {
   return String(value || "").trim();
 }
 
+function normalizeEnglishDigits(value) {
+  return String(value ?? "").replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))).replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))).replace(/\D/g, "");
+}
+
+function normalizePreparation(value) {
+  const first = Math.max(1, Math.min(999, Number(normalizeEnglishDigits(value?.first)) || 2));
+  const unit = value?.unit === "day" ? "day" : "hour";
+  const hasSecond = value?.hasSecond === true && Number(normalizeEnglishDigits(value?.second)) > 0;
+  return { first, unit, hasSecond, second: hasSecond ? Math.min(999, Number(normalizeEnglishDigits(value.second))) : null, secondUnit: value?.secondUnit === "day" ? "day" : unit };
+}
+
+function normalizeProductOptions(value) {
+  if (!value || typeof value !== "object") return null;
+  const priceBased = value.priceBased === true;
+  const items = (Array.isArray(value.items) ? value.items : []).map((item, index) => ({
+    id: clean(item.id) || `option-${index + 1}`,
+    nameAr: clean(item.nameAr || item.name),
+    nameEn: clean(item.nameEn || item.nameAr || item.name),
+    price: priceBased ? Math.max(0, Number(item.price) || 0) : 0
+  })).filter(item => item.nameAr && item.nameEn);
+  return value.enabled !== false && items.length ? { enabled: true, required: value.required === true, multiple: value.multiple === true, priceBased, items } : null;
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -140,6 +163,8 @@ function normalizeData() {
       price: Number(product.price) || 0,
       images,
       image: images[0] || "",
+      options: normalizeProductOptions(product.options),
+      preparation: normalizePreparation(product.preparation),
       order: Number(product.order) || index + 1
     };
   });
@@ -251,6 +276,9 @@ async function loadData() {
   if (snapshot.exists()) {
     const remoteCatalog = snapshot.val();
     applyRemoteCatalog(remoteCatalog);
+    if ((remoteCatalog.products || []).some(product => !product.preparation)) {
+      await saveToFirebase();
+    }
     if (!Array.isArray(remoteCatalog.deliveryAreas)) {
       deliveryAreas = normalizeDeliveryAreas(await fetchFirst(["../منصة الطلبات/delivery-areas.json", "delivery-areas.json"]));
       await saveToFirebase();
@@ -774,12 +802,85 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productNameEn").value = product?.nameEn || "";
   $("#productDescriptionAr").value = product?.description || "";
   $("#productDescriptionEn").value = product?.descriptionEn || "";
+  const preparation = normalizePreparation(product?.preparation);
+  $("#productPreparationFirst").value = preparation.first;
+  $("#productPreparationUnit").value = preparation.unit;
+  $("#productPreparationTwoPeriods").checked = preparation.hasSecond;
+  $("#productPreparationSecond").value = preparation.second || "";
+  $("#productPreparationSecondUnit").value = preparation.secondUnit;
+  renderPreparationFields();
+  const options = normalizeProductOptions(product?.options);
+  $("#productOptionsEnabled").checked = Boolean(options);
+  $("#productOptionsRequired").checked = options?.required === true;
+  $("#productOptionsMultiple").checked = options?.multiple === true;
+  $("#productOptionsPriceBased").checked = options?.priceBased === true;
+  editingProductOptions = options?.items ? clone(options.items) : [];
+  renderProductOptions();
   editingImages = [...(product?.images || [product?.image].filter(Boolean))];
   pendingImageDeletes = new Set();
   $("#imageUrl").value = "";
   await renderImageEditor();
   $("#productDialog").showModal();
   setTimeout(() => $("#productNameAr").focus(), 30);
+}
+
+let editingProductOptions = [];
+function syncEditingProductOptions() {
+  editingProductOptions.forEach((option, index) => {
+    const nameAr = $(`[data-option-ar="${index}"]`);
+    const nameEn = $(`[data-option-en="${index}"]`);
+    const price = $(`[data-option-price="${index}"]`);
+    if (nameAr) option.nameAr = nameAr.value;
+    if (nameEn) option.nameEn = nameEn.value;
+    if (price) option.price = Math.max(0, Number(price.value) || 0);
+  });
+}
+function renderProductOptions() {
+  syncEditingProductOptions();
+  const enabled = $("#productOptionsEnabled").checked;
+  const priceBased = $("#productOptionsPriceBased").checked;
+  $("#productOptionsBody").classList.toggle("hidden", !enabled);
+  $("#productPrice").disabled = enabled && priceBased;
+  if (enabled && priceBased) $("#productPrice").value = "0.000";
+  const container = $("#productOptionItems");
+  container.innerHTML = editingProductOptions.length ? editingProductOptions.map((option, index) => `
+    <div class="option-item" data-option-index="${index}">
+      <label>اسم الخيار بالعربي<input data-option-ar="${index}" value="${escapeHtml(option.nameAr || "")}" maxlength="80"></label>
+      <label>اسم الخيار بالإنجليزي<input data-option-en="${index}" value="${escapeHtml(option.nameEn || "")}" maxlength="80" dir="ltr"></label>
+      ${priceBased ? `<label>السعر د.ك<input data-option-price="${index}" type="number" min="0" step="0.001" value="${Number(option.price || 0).toFixed(3)}" dir="ltr"></label>` : ""}
+      <button type="button" data-remove-option="${index}" aria-label="حذف الخيار">×</button>
+    </div>`).join("") : `<div class="empty">أضف خياراً واحداً على الأقل</div>`;
+}
+
+function readProductOptions() {
+  if (!$("#productOptionsEnabled").checked) return null;
+  const items = editingProductOptions.map((option, index) => ({
+    id: option.id || `option-${Date.now()}-${index}`,
+    nameAr: clean($(`[data-option-ar="${index}"]`)?.value),
+    nameEn: clean($(`[data-option-en="${index}"]`)?.value),
+    price: Math.max(0, Number($(`[data-option-price="${index}"]`)?.value) || 0)
+  })).filter(option => option.nameAr || option.nameEn);
+  if (!items.length || items.some(option => !option.nameAr || !option.nameEn)) {
+    toast("أكمل اسم كل خيار بالعربي والإنجليزي");
+    return undefined;
+  }
+  const priceBased = $("#productOptionsPriceBased").checked;
+  return { enabled: true, required: $("#productOptionsRequired").checked, multiple: $("#productOptionsMultiple").checked, priceBased, items };
+}
+
+function renderPreparationFields() {
+  $("#productPreparationSecondWrap").classList.toggle("hidden", !$("#productPreparationTwoPeriods").checked);
+}
+
+function readPreparation() {
+  const first = Number(normalizeEnglishDigits($("#productPreparationFirst").value));
+  const hasSecond = $("#productPreparationTwoPeriods").checked;
+  const second = Number(normalizeEnglishDigits($("#productPreparationSecond").value));
+  if (!first || (hasSecond && !second)) {
+    toast("اكتب وقت التحضير بالأرقام");
+    return undefined;
+  }
+  return normalizePreparation({ first, unit: $("#productPreparationUnit").value, hasSecond, second, secondUnit: $("#productPreparationSecondUnit").value });
 }
 
 async function renderImageEditor() {
@@ -864,18 +965,23 @@ function saveProduct(event) {
   const name = clean($("#productNameAr").value);
   const nameEn = clean($("#productNameEn").value);
   const price = Number($("#productPrice").value);
-  if (!name || !nameEn || !Number.isFinite(price) || price < 0) {
+  const options = readProductOptions();
+  if (options === undefined) return;
+  const preparation = readPreparation();
+  if (preparation === undefined) return;
+  if (!name || !nameEn || (!options?.priceBased && (!Number.isFinite(price) || price < 0))) {
     return toast("أكمل الاسم العربي والإنجليزي والسعر");
   }
   const payload = {
     category: categoryId,
     name,
     nameEn,
-    price: Number(price.toFixed(3)),
+    price: options?.priceBased ? 0 : Number(price.toFixed(3)),
     description: clean($("#productDescriptionAr").value),
     descriptionEn: clean($("#productDescriptionEn").value),
     images: [...editingImages],
     image: editingImages[0] || ""
+    ,options, preparation
   };
   if (existingId) {
     const product = products.find((item) => item.id === existingId);
@@ -1282,6 +1388,23 @@ $("#productImages").addEventListener("change", (event) => {
   event.target.value = "";
 });
 $("#addImageUrl").addEventListener("click", addImageUrl);
+$("#productOptionsEnabled").addEventListener("change", renderProductOptions);
+$("#productPreparationTwoPeriods").addEventListener("change", renderPreparationFields);
+["productPreparationFirst", "productPreparationSecond"].forEach(id => $("#" + id).addEventListener("input", event => { event.target.value = normalizeEnglishDigits(event.target.value); }));
+$("#productOptionsPriceBased").addEventListener("change", event => {
+  if (event.target.checked) $("#productOptionsRequired").checked = true;
+  renderProductOptions();
+});
+$("#addProductOption").addEventListener("click", () => {
+  editingProductOptions.push({ id: `option-${Date.now()}-${editingProductOptions.length}`, nameAr: "", nameEn: "", price: 0 });
+  renderProductOptions();
+});
+$("#productOptionItems").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-option]");
+  if (!button) return;
+  editingProductOptions.splice(Number(button.dataset.removeOption), 1);
+  renderProductOptions();
+});
 
 $("#imageList").addEventListener("click", (event) => {
   const removeButton = event.target.closest("[data-remove-image]");

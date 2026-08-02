@@ -177,6 +177,31 @@
         <label>الوصف العربي<textarea id="productDescriptionAr" rows="4" maxlength="800"></textarea></label>
         <label>الوصف الإنجليزي<textarea id="productDescriptionEn" rows="4" maxlength="800" dir="ltr"></textarea></label>
       </div>
+      <section class="preparation-editor">
+        <div class="section-title"><div><h3>وقت التحضير</h3><p>سيظهر للعميل فوق صورة المنتج.</p></div></div>
+        <div class="preparation-grid">
+          <label>الوقت الأول<input id="productPreparationFirst" type="text" inputmode="numeric" maxlength="3" value="2" dir="ltr"></label>
+          <label>الوحدة<select id="productPreparationUnit"><option value="hour">ساعة</option><option value="day">يوم</option></select></label>
+        </div>
+        <label class="options-enable preparation-toggle"><input id="productPreparationTwoPeriods" type="checkbox"> <span>احتمال فترتين</span></label>
+        <div class="preparation-grid hidden" id="productPreparationSecondWrap">
+          <label>الوقت الثاني<input id="productPreparationSecond" type="text" inputmode="numeric" maxlength="3" value="" dir="ltr"></label>
+          <label>الوحدة<select id="productPreparationSecondUnit"><option value="hour">ساعة</option><option value="day">يوم</option></select></label>
+        </div>
+      </section>
+      <section class="product-options-editor" id="productOptionsEditor">
+        <label class="options-enable"><input id="productOptionsEnabled" type="checkbox"> <span>إضافة خيارات للمنتج</span></label>
+        <div class="options-editor-body hidden" id="productOptionsBody">
+          <p>ستظهر هذه الخيارات للعميل عند الضغط على «إضافة».</p>
+          <div class="options-settings">
+            <label><input id="productOptionsRequired" type="checkbox"> الاختيار إلزامي</label>
+            <label><input id="productOptionsMultiple" type="checkbox"> السماح باختيار أكثر من خيار</label>
+            <label><input id="productOptionsPriceBased" type="checkbox"> السعر حسب الخيارات</label>
+          </div>
+          <div class="option-items-head"><strong>الخيارات</strong><button type="button" id="addProductOption">＋ إضافة خيار</button></div>
+          <div id="productOptionItems" class="option-items"></div>
+        </div>
+      </section>
       <section class="image-editor">
         <div class="section-title"><div><h3>صور المنتج</h3><p>الصورة الأولى هي الرئيسية. يمكن إضافة أكثر من صورة وحذف أو تقديم أي صورة.</p></div><label class="file-button">إضافة صور<input id="productImages" type="file" accept="image/*" multiple></label></div>
         <div class="url-add"><input id="imageUrl" type="url" placeholder="أو الصق رابط صورة https://..." dir="ltr"><button type="button" id="addImageUrl">إضافة الرابط</button></div>
