@@ -37,6 +37,7 @@ let assignTargetCategoryId = "";
 let pendingDeleteCategoryId = "";
 let currentView = "catalog";
 let ignoreRemoteUntil = 0;
+let productSearch = "";
 const assetUrls = new Map();
 
 function normalizeDeliveryAreas(value) {
@@ -381,13 +382,23 @@ function imageSource(product) {
   return assetUrls.get(source) || source;
 }
 
+function productMatchesSearch(product) {
+  const query = productSearch.trim().toLocaleLowerCase();
+  if (!query) return true;
+  return [product.name, product.nameEn, product.description, product.descriptionEn]
+    .filter(Boolean).join(" ").toLocaleLowerCase().includes(query);
+}
+
 function render() {
   normalizeData();
   deliveryAreas = normalizeDeliveryAreas(deliveryAreas);
   $("#categoryCount").textContent = categories.length;
   $("#productCount").textContent = products.length;
-  $("#categoryList").innerHTML = categories.map((category) => {
-    const list = categoryProducts(category.id);
+  const hasSearch = Boolean(productSearch.trim());
+  const categoryMarkup = categories.map((category) => {
+    const list = categoryProducts(category.id).filter(productMatchesSearch);
+    if (hasSearch && list.length) openCategories.add(category.id);
+    if (hasSearch && !list.length) return "";
     return `
       <article class="category-card ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}">
         <div class="category-head">
@@ -429,6 +440,7 @@ function render() {
       </article>
     `;
   }).join("");
+  $("#categoryList").innerHTML = categoryMarkup || (hasSearch ? `<div class="empty">لا توجد منتجات تطابق «${escapeHtml(productSearch)}»</div>` : `<div class="empty">لا توجد أقسام بعد</div>`);
 
   hydrateRenderedImages();
 }
@@ -1296,6 +1308,7 @@ async function initializeAdmin() {
 }
 
 $("#addCategory").addEventListener("click", () => openCategoryDialog());
+$("#productSearch").addEventListener("input", event => { productSearch = event.target.value; render(); });
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
