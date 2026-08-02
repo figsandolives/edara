@@ -430,6 +430,7 @@ function render() {
               <span class="price">${Number(product.price).toFixed(3)} د.ك</span>
               <div class="product-actions">
                 ${toggleButton("product", product.id, product.active)}
+                <button data-duplicate-product="${escapeHtml(product.id)}">تكرار</button>
                 <button data-edit-product="${escapeHtml(product.id)}">تعديل</button>
                 <button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button>
                 <button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button>
@@ -1016,6 +1017,28 @@ function saveProduct(event) {
   toast(existingId ? "تم تعديل المنتج" : "تمت إضافة المنتج");
 }
 
+function duplicateProduct(productId) {
+  const source = products.find(product => product.id === productId);
+  if (!source) return;
+  const siblings = categoryProducts(source.category);
+  const sourceIndex = siblings.findIndex(product => product.id === source.id);
+  const insertOrder = sourceIndex < 0 ? siblings.length + 1 : sourceIndex + 2;
+  products.forEach(product => {
+    if (product.category === source.category && Number(product.order) >= insertOrder) product.order = Number(product.order) + 1;
+  });
+  const copy = clone(source);
+  copy.id = `P${Date.now()}`;
+  copy.order = insertOrder;
+  copy.name = `${source.name} (نسخة)`;
+  copy.nameEn = `${source.nameEn || source.name} (Copy)`;
+  products.push(copy);
+  openCategories.add(source.category);
+  normalizeProductOrder(source.category);
+  markDirty("تم تكرار المنتج — جارٍ الحفظ في Firebase");
+  render();
+  toast("تم تكرار المنتج أسفل المنتج الأصلي");
+}
+
 function deleteProduct(productId) {
   const product = products.find((item) => item.id === productId);
   if (!product || !confirm(`هل تريد حذف المنتج «${product.name}»؟`)) return;
@@ -1439,6 +1462,7 @@ $("#categoryList").addEventListener("click", (event) => {
   const editCategoryButton = event.target.closest("[data-edit-category]");
   const deleteCategoryButton = event.target.closest("[data-delete-category]");
   const toggleCategoryButton = event.target.closest("[data-toggle-category]");
+  const duplicateProductButton = event.target.closest("[data-duplicate-product]");
   const editProductButton = event.target.closest("[data-edit-product]");
   const deleteProductButton = event.target.closest("[data-delete-product]");
   const toggleProductButton = event.target.closest("[data-toggle-product]");
@@ -1447,6 +1471,7 @@ $("#categoryList").addEventListener("click", (event) => {
   if (editCategoryButton) return openCategoryDialog(categories.find((category) => category.id === editCategoryButton.dataset.editCategory));
   if (deleteCategoryButton) return requestDeleteCategory(deleteCategoryButton.dataset.deleteCategory);
   if (toggleCategoryButton) return toggleCategoryActive(toggleCategoryButton.dataset.toggleCategory);
+  if (duplicateProductButton) return duplicateProduct(duplicateProductButton.dataset.duplicateProduct);
   if (editProductButton) return openProductDialog(products.find((product) => product.id === editProductButton.dataset.editProduct));
   if (deleteProductButton) return deleteProduct(deleteProductButton.dataset.deleteProduct);
   if (toggleProductButton) return toggleProductActive(toggleProductButton.dataset.toggleProduct);
