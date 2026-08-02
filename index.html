@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260802-1">
+  <link rel="stylesheet" href="style.css?v=20260802-2">
 </head>
 <body>
   <header class="topbar">
@@ -198,6 +198,8 @@
             <label><input id="productOptionsRequired" type="checkbox"> الاختيار إلزامي</label>
             <label><input id="productOptionsMultiple" type="checkbox"> السماح باختيار أكثر من خيار</label>
             <label><input id="productOptionsPriceBased" type="checkbox"> السعر حسب الخيارات</label>
+            <label><input id="productOptionsPreparationEnabled" type="checkbox"> وقت التحضير حسب الاختيار</label>
+            <label><input id="productOptionsImagesEnabled" type="checkbox"> صور للخيارات</label>
           </div>
           <div class="option-items-head"><strong>الخيارات</strong><button type="button" id="addProductOption">＋ إضافة خيار</button></div>
           <div id="productOptionItems" class="option-items"></div>
@@ -270,6 +272,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260802-1"></script>
+  <script src="script.js?v=20260802-2"></script>
 </body>
 </html>

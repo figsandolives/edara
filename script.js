@@ -122,9 +122,10 @@ function normalizeProductOptions(value) {
     nameAr: clean(item.nameAr || item.name),
     nameEn: clean(item.nameEn || item.nameAr || item.name),
     price: priceBased ? Math.max(0, Number(item.price) || 0) : 0,
-    preparation: item.preparation ? normalizePreparation(item.preparation) : null
+    preparation: item.preparation ? normalizePreparation(item.preparation) : null,
+    image: clean(item.image)
   })).filter(item => item.nameAr && item.nameEn);
-  return value.enabled !== false && items.length ? { enabled: true, required: value.required === true, multiple: value.multiple === true, priceBased, items } : null;
+  return value.enabled !== false && items.length ? { enabled: true, required: value.required === true, multiple: value.multiple === true, priceBased, preparationEnabled: value.preparationEnabled === true, imagesEnabled: value.imagesEnabled === true, items } : null;
 }
 
 function escapeHtml(value) {
@@ -874,6 +875,8 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productOptionsRequired").checked = options?.required === true;
   $("#productOptionsMultiple").checked = options?.multiple === true;
   $("#productOptionsPriceBased").checked = options?.priceBased === true;
+  $("#productOptionsPreparationEnabled").checked = options?.preparationEnabled === true;
+  $("#productOptionsImagesEnabled").checked = options?.imagesEnabled === true;
   editingProductOptions = options?.items ? clone(options.items) : [];
   renderProductOptions();
   editingImages = [...(product?.images || [product?.image].filter(Boolean))];
@@ -890,15 +893,22 @@ function syncEditingProductOptions() {
     const nameAr = $(`[data-option-ar="${index}"]`);
     const nameEn = $(`[data-option-en="${index}"]`);
     const price = $(`[data-option-price="${index}"]`);
+    const preparation = $(`[data-option-prep="${index}"]`);
+    const preparationUnit = $(`[data-option-prep-unit="${index}"]`);
+    const image = $(`[data-option-image="${index}"]`);
     if (nameAr) option.nameAr = nameAr.value;
     if (nameEn) option.nameEn = nameEn.value;
     if (price) option.price = Math.max(0, Number(price.value) || 0);
+    if (preparation) option.preparation = normalizePreparation({ first: preparation.value, unit: preparationUnit?.value });
+    if (image) option.image = image.value;
   });
 }
 function renderProductOptions() {
   syncEditingProductOptions();
   const enabled = $("#productOptionsEnabled").checked;
   const priceBased = $("#productOptionsPriceBased").checked;
+  const preparationEnabled = $("#productOptionsPreparationEnabled").checked;
+  const imagesEnabled = $("#productOptionsImagesEnabled").checked;
   $("#productOptionsBody").classList.toggle("hidden", !enabled);
   $("#productPrice").disabled = enabled && priceBased;
   if (enabled && priceBased) $("#productPrice").value = "0.000";
@@ -908,7 +918,8 @@ function renderProductOptions() {
       <label>اسم الخيار بالعربي<input data-option-ar="${index}" value="${escapeHtml(option.nameAr || "")}" maxlength="80"></label>
       <label>اسم الخيار بالإنجليزي<input data-option-en="${index}" value="${escapeHtml(option.nameEn || "")}" maxlength="80" dir="ltr"></label>
       ${priceBased ? `<label>السعر د.ك<input data-option-price="${index}" type="number" min="0" step="0.001" value="${Number(option.price || 0).toFixed(3)}" dir="ltr"></label>` : ""}
-      <label class="option-preparation">وقت التحضير<input data-option-prep="${index}" type="text" inputmode="numeric" maxlength="3" value="${option.preparation?.first || 2}" dir="ltr"><select data-option-prep-unit="${index}"><option value="hour" ${option.preparation?.unit !== "day" ? "selected" : ""}>ساعة</option><option value="day" ${option.preparation?.unit === "day" ? "selected" : ""}>يوم</option></select></label>
+      ${preparationEnabled ? `<label class="option-preparation">وقت التحضير<input data-option-prep="${index}" type="text" inputmode="numeric" maxlength="3" value="${option.preparation?.first || 2}" dir="ltr"><select data-option-prep-unit="${index}"><option value="hour" ${option.preparation?.unit !== "day" ? "selected" : ""}>ساعة</option><option value="day" ${option.preparation?.unit === "day" ? "selected" : ""}>يوم</option></select></label>` : ""}
+      ${imagesEnabled ? `<label class="option-image">صورة الخيار<input data-option-image="${index}" type="url" value="${escapeHtml(option.image || "")}" placeholder="رابط صورة"><span class="file-button">رفع<input data-option-image-file="${index}" type="file" accept="image/*"></span></label>` : ""}
       <button type="button" data-remove-option="${index}" aria-label="حذف الخيار">×</button>
     </div>`).join("") : `<div class="empty">أضف خياراً واحداً على الأقل</div>`;
 }
@@ -920,14 +931,15 @@ function readProductOptions() {
     nameAr: clean($(`[data-option-ar="${index}"]`)?.value),
     nameEn: clean($(`[data-option-en="${index}"]`)?.value),
     price: Math.max(0, Number($(`[data-option-price="${index}"]`)?.value) || 0),
-    preparation: normalizePreparation({ first: $(`[data-option-prep="${index}"]`)?.value, unit: $(`[data-option-prep-unit="${index}"]`)?.value })
+    preparation: $("#productOptionsPreparationEnabled").checked ? normalizePreparation({ first: $(`[data-option-prep="${index}"]`)?.value, unit: $(`[data-option-prep-unit="${index}"]`)?.value }) : null,
+    image: clean($(`[data-option-image="${index}"]`)?.value || option.image)
   })).filter(option => option.nameAr || option.nameEn);
   if (!items.length || items.some(option => !option.nameAr || !option.nameEn)) {
     toast("أكمل اسم كل خيار بالعربي والإنجليزي");
     return undefined;
   }
   const priceBased = $("#productOptionsPriceBased").checked;
-  return { enabled: true, required: $("#productOptionsRequired").checked, multiple: $("#productOptionsMultiple").checked, priceBased, items };
+  return { enabled: true, required: $("#productOptionsRequired").checked, multiple: $("#productOptionsMultiple").checked, priceBased, preparationEnabled: $("#productOptionsPreparationEnabled").checked, imagesEnabled: $("#productOptionsImagesEnabled").checked, items };
 }
 
 function renderPreparationFields() {
@@ -1480,6 +1492,8 @@ $("#productOptionsPriceBased").addEventListener("change", event => {
   if (event.target.checked) $("#productOptionsRequired").checked = true;
   renderProductOptions();
 });
+$("#productOptionsPreparationEnabled").addEventListener("change", renderProductOptions);
+$("#productOptionsImagesEnabled").addEventListener("change", renderProductOptions);
 $("#addProductOption").addEventListener("click", () => {
   editingProductOptions.push({ id: `option-${Date.now()}-${editingProductOptions.length}`, nameAr: "", nameEn: "", price: 0, preparation: { first: 2, unit: "hour", hasSecond: false, second: null, secondUnit: "hour" } });
   renderProductOptions();
@@ -1489,6 +1503,20 @@ $("#productOptionItems").addEventListener("click", event => {
   if (!button) return;
   editingProductOptions.splice(Number(button.dataset.removeOption), 1);
   renderProductOptions();
+});
+$("#productOptionItems").addEventListener("change", async event => {
+  const input = event.target.closest("[data-option-image-file]");
+  const file = input?.files?.[0];
+  if (!input || !file) return;
+  const index = Number(input.dataset.optionImageFile);
+  try {
+    editingProductOptions[index].image = await optimizeImage(file, $("#productId").value || "new-product");
+    renderProductOptions();
+  } catch (error) { toast(error.message || "تعذر رفع الصورة"); }
+});
+$("#productOptionItems").addEventListener("input", event => {
+  const input = event.target.closest("[data-option-prep]");
+  if (input) input.value = normalizeEnglishDigits(input.value);
 });
 
 $("#imageList").addEventListener("click", (event) => {
