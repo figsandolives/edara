@@ -38,6 +38,8 @@ let pendingDeleteCategoryId = "";
 let currentView = "catalog";
 let ignoreRemoteUntil = 0;
 let productSearch = "";
+let toastPreparationMigrationComplete = false;
+let breadSizeOptionsMigrationComplete = false;
 const assetUrls = new Map();
 
 function normalizeDeliveryAreas(value) {
@@ -84,6 +86,34 @@ function normalizePreparation(value) {
   return { first, unit, hasSecond, second: hasSecond ? Math.min(999, Number(normalizeEnglishDigits(value.second))) : null, secondUnit: value?.secondUnit === "day" ? "day" : unit };
 }
 
+function isToastProduct(product) {
+  const category = categories.find(item => item.id === product.category);
+  return [product.category, category?.nameAr, category?.nameEn, product.name, product.nameEn]
+    .filter(Boolean).join(" ").toLocaleLowerCase().includes("toast") || String(product.name || "").includes("توست");
+}
+
+function setToastPreparation() {
+  products.filter(isToastProduct).forEach(product => {
+    product.preparation = { first: 1, unit: "day", hasSecond: true, second: 2, secondUnit: "day" };
+  });
+}
+
+function setBreadSizeOptions() {
+  const targets = ["خبز القمح الكامل السادة", "خبز الشعير الكامل السادة", "خبز الشوفان بحبة البركة", "خبز الشوفان الكامل السادة", "خبز التين والزيتون", "خبز الكركم", "خبز الشمندر", "خبز الخضار", "خبز الحبوب العشرة"];
+  const sizes = [
+    { id: "regular", nameAr: "الحجم العادي (٣ حبات)", nameEn: "Regular size (3 pieces)", price: 1, preparation: { first: 2, unit: "hour" } },
+    { id: "small", nameAr: "الحجم الصغير (١٢ حبة)", nameEn: "Small size (12 pieces)", price: 4, preparation: { first: 1, unit: "day" } },
+    { id: "mini", nameAr: "الحجم الميني (١٢ حبة)", nameEn: "Mini size (12 pieces)", price: 3, preparation: { first: 1, unit: "day" } },
+    { id: "bite", nameAr: "حجم اللقمة (١٢ حبة)", nameEn: "Bite size (12 pieces)", price: 2, preparation: { first: 1, unit: "day" } }
+  ];
+  products.filter(product => targets.some(name => product.name.includes(name))).forEach(product => {
+    product.name = product.name.replace(/\s*\(?\s*[٣3]\s*(?:حبات|حبة|خبزات)\s*\)?/g, "").replace(/\s*-\s*$/g, "").trim();
+    product.nameEn = product.nameEn.replace(/\s*\(?\s*3\s*(?:pieces|pcs)\s*\)?/ig, "").replace(/\s*-\s*$/g, "").trim();
+    product.price = 0;
+    product.options = { enabled: true, required: true, multiple: false, priceBased: true, items: sizes.map(size => ({ ...size, preparation: normalizePreparation(size.preparation) })) };
+  });
+}
+
 function normalizeProductOptions(value) {
   if (!value || typeof value !== "object") return null;
   const priceBased = value.priceBased === true;
@@ -91,7 +121,8 @@ function normalizeProductOptions(value) {
     id: clean(item.id) || `option-${index + 1}`,
     nameAr: clean(item.nameAr || item.name),
     nameEn: clean(item.nameEn || item.nameAr || item.name),
-    price: priceBased ? Math.max(0, Number(item.price) || 0) : 0
+    price: priceBased ? Math.max(0, Number(item.price) || 0) : 0,
+    preparation: item.preparation ? normalizePreparation(item.preparation) : null
   })).filter(item => item.nameAr && item.nameEn);
   return value.enabled !== false && items.length ? { enabled: true, required: value.required === true, multiple: value.multiple === true, priceBased, items } : null;
 }
@@ -277,6 +308,20 @@ async function loadData() {
   if (snapshot.exists()) {
     const remoteCatalog = snapshot.val();
     applyRemoteCatalog(remoteCatalog);
+    toastPreparationMigrationComplete = remoteCatalog.toastPreparationMigrationV1 === true;
+    if (!toastPreparationMigrationComplete) {
+      setToastPreparation();
+      toastPreparationMigrationComplete = true;
+      render();
+      await saveToFirebase();
+    }
+    breadSizeOptionsMigrationComplete = remoteCatalog.breadSizeOptionsMigrationV1 === true;
+    if (!breadSizeOptionsMigrationComplete) {
+      setBreadSizeOptions();
+      breadSizeOptionsMigrationComplete = true;
+      render();
+      await saveToFirebase();
+    }
     if ((remoteCatalog.products || []).some(product => !product.preparation)) {
       await saveToFirebase();
     }
@@ -562,6 +607,8 @@ async function saveToFirebase() {
       products: downloadableProducts(),
       deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
       appearance: normalizeAppearance(appearance),
+      ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
+      ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
       updatedBy: currentAdmin.email || currentAdmin.uid
     });
@@ -861,6 +908,7 @@ function renderProductOptions() {
       <label>اسم الخيار بالعربي<input data-option-ar="${index}" value="${escapeHtml(option.nameAr || "")}" maxlength="80"></label>
       <label>اسم الخيار بالإنجليزي<input data-option-en="${index}" value="${escapeHtml(option.nameEn || "")}" maxlength="80" dir="ltr"></label>
       ${priceBased ? `<label>السعر د.ك<input data-option-price="${index}" type="number" min="0" step="0.001" value="${Number(option.price || 0).toFixed(3)}" dir="ltr"></label>` : ""}
+      <label class="option-preparation">وقت التحضير<input data-option-prep="${index}" type="text" inputmode="numeric" maxlength="3" value="${option.preparation?.first || 2}" dir="ltr"><select data-option-prep-unit="${index}"><option value="hour" ${option.preparation?.unit !== "day" ? "selected" : ""}>ساعة</option><option value="day" ${option.preparation?.unit === "day" ? "selected" : ""}>يوم</option></select></label>
       <button type="button" data-remove-option="${index}" aria-label="حذف الخيار">×</button>
     </div>`).join("") : `<div class="empty">أضف خياراً واحداً على الأقل</div>`;
 }
@@ -871,7 +919,8 @@ function readProductOptions() {
     id: option.id || `option-${Date.now()}-${index}`,
     nameAr: clean($(`[data-option-ar="${index}"]`)?.value),
     nameEn: clean($(`[data-option-en="${index}"]`)?.value),
-    price: Math.max(0, Number($(`[data-option-price="${index}"]`)?.value) || 0)
+    price: Math.max(0, Number($(`[data-option-price="${index}"]`)?.value) || 0),
+    preparation: normalizePreparation({ first: $(`[data-option-prep="${index}"]`)?.value, unit: $(`[data-option-prep-unit="${index}"]`)?.value })
   })).filter(option => option.nameAr || option.nameEn);
   if (!items.length || items.some(option => !option.nameAr || !option.nameEn)) {
     toast("أكمل اسم كل خيار بالعربي والإنجليزي");
@@ -1432,7 +1481,7 @@ $("#productOptionsPriceBased").addEventListener("change", event => {
   renderProductOptions();
 });
 $("#addProductOption").addEventListener("click", () => {
-  editingProductOptions.push({ id: `option-${Date.now()}-${editingProductOptions.length}`, nameAr: "", nameEn: "", price: 0 });
+  editingProductOptions.push({ id: `option-${Date.now()}-${editingProductOptions.length}`, nameAr: "", nameEn: "", price: 0, preparation: { first: 2, unit: "hour", hasSecond: false, second: null, secondUnit: "hour" } });
   renderProductOptions();
 });
 $("#productOptionItems").addEventListener("click", event => {
