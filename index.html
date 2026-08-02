@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260802-2">
+  <link rel="stylesheet" href="style.css?v=20260802-4">
 </head>
 <body>
   <header class="topbar">
@@ -200,6 +200,12 @@
             <label><input id="productOptionsPriceBased" type="checkbox"> السعر حسب الخيارات</label>
             <label><input id="productOptionsPreparationEnabled" type="checkbox"> وقت التحضير حسب الاختيار</label>
             <label><input id="productOptionsImagesEnabled" type="checkbox"> صور للخيارات</label>
+            <label><input id="productOptionsNestedEnabled" type="checkbox"> خيار داخل خيار</label>
+          </div>
+          <div class="multiple-options-settings hidden" id="productOptionsMultipleSettings">
+            <label>عنوان الخيارات بالعربي<input id="productOptionsTitleAr" maxlength="80" placeholder="مثال: اختر الإضافات"></label>
+            <label>عنوان الخيارات بالإنجليزي<input id="productOptionsTitleEn" maxlength="80" dir="ltr" placeholder="Example: Choose extras"></label>
+            <label>الحد الأقصى للاختيارات<input id="productOptionsMaxSelections" type="text" inputmode="numeric" maxlength="2" value="2" dir="ltr"></label>
           </div>
           <div class="option-items-head"><strong>الخيارات</strong><div class="option-actions"><button type="button" id="copyProductOptions">نسخ الخيارات</button><button type="button" id="pasteProductOptions" disabled>لصق الخيارات</button><button type="button" id="addProductOption">＋ إضافة خيار</button></div></div>
           <div id="productOptionItems" class="option-items"></div>
@@ -272,6 +278,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260802-2"></script>
+  <script src="script.js?v=20260802-4"></script>
 </body>
 </html>
