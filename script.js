@@ -879,7 +879,8 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productPreparationSecondUnit").value = preparation.secondUnit;
   renderPreparationFields();
   const options = normalizeProductOptions(product?.options);
-  $("#productOptionsEnabled").checked = Boolean(options);
+  editingSelectionFlow = product?.options?.selectionFlow?.enabled === true ? clone(product.options.selectionFlow) : null;
+  $("#productOptionsEnabled").checked = Boolean(options || editingSelectionFlow);
   $("#productOptionsRequired").checked = options?.required === true;
   $("#productOptionsMultiple").checked = options?.multiple === true;
   $("#productOptionsPriceBased").checked = options?.priceBased === true;
@@ -900,6 +901,7 @@ async function openProductDialog(product = null, categoryId = "") {
 }
 
 let editingProductOptions = [];
+let editingSelectionFlow = null;
 const optionsClipboardKey = "figs-and-olives-product-options-clipboard";
 let copiedProductOptions = (() => {
   try { return JSON.parse(localStorage.getItem(optionsClipboardKey) || "null"); } catch { return null; }
@@ -943,6 +945,11 @@ function renderProductOptions() {
   $("#productPrice").disabled = enabled && priceBased;
   if (enabled && priceBased) $("#productPrice").value = "0.000";
   const container = $("#productOptionItems");
+  if (editingSelectionFlow) {
+    $("#productPrice").disabled = true;
+    container.innerHTML = `<div class="notice"><div>✓</div><p>هذا المنتج مُعدّ بتسلسل: نوع العجينة ثم الحجم والكمية ثم الحشوات. سيتم الاحتفاظ بهذه الإعدادات عند حفظ المنتج.</p></div>`;
+    return;
+  }
   container.innerHTML = editingProductOptions.length ? editingProductOptions.map((option, index) => `
     <div class="option-item" data-option-index="${index}">
       <label>اسم الخيار بالعربي<input data-option-ar="${index}" value="${escapeHtml(option.nameAr || "")}" maxlength="80"></label>
@@ -958,6 +965,7 @@ function renderProductOptions() {
 
 function readProductOptions() {
   if (!$("#productOptionsEnabled").checked) return null;
+  if (editingSelectionFlow) return { enabled: true, selectionFlow: clone(editingSelectionFlow) };
   const items = editingProductOptions.map((option, index) => ({
     id: option.id || `option-${Date.now()}-${index}`,
     nameAr: clean($(`[data-option-ar="${index}"]`)?.value),
@@ -1575,11 +1583,13 @@ $("#pasteProductOptions").addEventListener("click", () => {
   $("#productOptionsTitleAr").value = options.titleAr || "";
   $("#productOptionsTitleEn").value = options.titleEn || "";
   $("#productOptionsMaxSelections").value = options.maxSelections || 2;
+  editingSelectionFlow = null;
   editingProductOptions = options.items || [];
   renderProductOptions();
   toast("تم لصق الخيارات — احفظ المنتج لإتمام التغيير");
 });
 $("#addProductOption").addEventListener("click", () => {
+  editingSelectionFlow = null;
   editingProductOptions.push({ id: `option-${Date.now()}-${editingProductOptions.length}`, nameAr: "", nameEn: "", price: 0, preparation: { first: 2, unit: "hour", hasSecond: false, second: null, secondUnit: "hour" }, subOptions: [] });
   renderProductOptions();
 });
