@@ -904,12 +904,10 @@ function syncEditingProductOptions() {
     const price = $(`[data-option-price="${index}"]`);
     const preparation = $(`[data-option-prep="${index}"]`);
     const preparationUnit = $(`[data-option-prep-unit="${index}"]`);
-    const image = $(`[data-option-image="${index}"]`);
     if (nameAr) option.nameAr = nameAr.value;
     if (nameEn) option.nameEn = nameEn.value;
     if (price) option.price = Math.max(0, Number(price.value) || 0);
     if (preparation) option.preparation = normalizePreparation({ first: preparation.value, unit: preparationUnit?.value });
-    if (image) option.image = image.value;
   });
 }
 function renderProductOptions() {
@@ -928,7 +926,7 @@ function renderProductOptions() {
       <label>اسم الخيار بالإنجليزي<input data-option-en="${index}" value="${escapeHtml(option.nameEn || "")}" maxlength="80" dir="ltr"></label>
       ${priceBased ? `<label>السعر د.ك<input data-option-price="${index}" type="number" min="0" step="0.001" value="${Number(option.price || 0).toFixed(3)}" dir="ltr"></label>` : ""}
       ${preparationEnabled ? `<label class="option-preparation">وقت التحضير<input data-option-prep="${index}" type="text" inputmode="numeric" maxlength="3" value="${option.preparation?.first || 2}" dir="ltr"><select data-option-prep-unit="${index}"><option value="hour" ${option.preparation?.unit !== "day" ? "selected" : ""}>ساعة</option><option value="day" ${option.preparation?.unit === "day" ? "selected" : ""}>يوم</option></select></label>` : ""}
-      ${imagesEnabled ? `<label class="option-image">صورة الخيار<input data-option-image="${index}" type="url" value="${escapeHtml(option.image || "")}" placeholder="رابط صورة"><span class="file-button">رفع<input data-option-image-file="${index}" type="file" accept="image/*"></span></label>` : ""}
+      ${imagesEnabled ? `<label class="option-image">صورة الخيار${option.image ? `<img src="${escapeHtml(option.image)}" alt="صورة الخيار">` : ""}<span class="file-button">اختيار صورة من الجهاز<input data-option-image-file="${index}" type="file" accept="image/*"></span></label>` : ""}
       <button type="button" data-remove-option="${index}" aria-label="حذف الخيار">×</button>
     </div>`).join("") : `<div class="empty">أضف خياراً واحداً على الأقل</div>`;
   updateOptionsClipboardButton();
@@ -942,7 +940,7 @@ function readProductOptions() {
     nameEn: clean($(`[data-option-en="${index}"]`)?.value),
     price: Math.max(0, Number($(`[data-option-price="${index}"]`)?.value) || 0),
     preparation: $("#productOptionsPreparationEnabled").checked ? normalizePreparation({ first: $(`[data-option-prep="${index}"]`)?.value, unit: $(`[data-option-prep-unit="${index}"]`)?.value }) : null,
-    image: clean($(`[data-option-image="${index}"]`)?.value || option.image)
+    image: clean(option.image)
   })).filter(option => option.nameAr || option.nameEn);
   if (!items.length || items.some(option => !option.nameAr || !option.nameEn)) {
     toast("أكمل اسم كل خيار بالعربي والإنجليزي");

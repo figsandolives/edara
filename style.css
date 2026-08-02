@@ -56,6 +56,6 @@ dialog{border:0;padding:0;background:transparent;width:min(760px,calc(100% - 24p
 @media(max-width:760px){.delivery-areas-toolbar{align-items:stretch;flex-direction:column}.delivery-area-card{grid-template-columns:1fr}.delivery-area-card button{width:100%}}
 @media(max-width:760px){.live-visitor-stats{grid-template-columns:1fr}.live-visitor-stats strong{font-size:34px}}
 .product-options-editor:has(#productOptionsPriceBased:checked) .option-item{grid-template-columns:1fr 1fr .72fr 1fr auto}.option-preparation{grid-template-columns:1fr .9fr;align-items:end}.option-preparation select{padding:9px 5px!important}
-.option-image{grid-template-columns:1fr auto;align-items:end}.option-image .file-button{padding:9px;font-size:9px;white-space:nowrap}
+.option-image{grid-template-columns:auto 1fr;align-items:center}.option-image img{width:42px;height:42px;object-fit:cover;border-radius:9px;background:#eef2ef}.option-image .file-button{padding:9px;font-size:9px;white-space:nowrap}
 .product-options-editor:has(#productOptionsPriceBased:checked):has(#productOptionsPreparationEnabled:checked):has(#productOptionsImagesEnabled:checked) .option-item{grid-template-columns:1fr 1fr .72fr 1fr 1fr auto}
 .option-actions{display:flex;gap:7px;flex-wrap:wrap}.option-actions button{padding:7px 10px;font-size:11px}.option-actions #pasteProductOptions:disabled{opacity:.45;cursor:not-allowed}
