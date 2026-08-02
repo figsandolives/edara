@@ -888,6 +888,15 @@ async function openProductDialog(product = null, categoryId = "") {
 }
 
 let editingProductOptions = [];
+const optionsClipboardKey = "figs-and-olives-product-options-clipboard";
+let copiedProductOptions = (() => {
+  try { return JSON.parse(localStorage.getItem(optionsClipboardKey) || "null"); } catch { return null; }
+})();
+const cloneOptions = value => JSON.parse(JSON.stringify(value));
+function updateOptionsClipboardButton() {
+  const button = $("#pasteProductOptions");
+  if (button) button.disabled = !copiedProductOptions;
+}
 function syncEditingProductOptions() {
   editingProductOptions.forEach((option, index) => {
     const nameAr = $(`[data-option-ar="${index}"]`);
@@ -922,6 +931,7 @@ function renderProductOptions() {
       ${imagesEnabled ? `<label class="option-image">صورة الخيار<input data-option-image="${index}" type="url" value="${escapeHtml(option.image || "")}" placeholder="رابط صورة"><span class="file-button">رفع<input data-option-image-file="${index}" type="file" accept="image/*"></span></label>` : ""}
       <button type="button" data-remove-option="${index}" aria-label="حذف الخيار">×</button>
     </div>`).join("") : `<div class="empty">أضف خياراً واحداً على الأقل</div>`;
+  updateOptionsClipboardButton();
 }
 
 function readProductOptions() {
@@ -1494,6 +1504,28 @@ $("#productOptionsPriceBased").addEventListener("change", event => {
 });
 $("#productOptionsPreparationEnabled").addEventListener("change", renderProductOptions);
 $("#productOptionsImagesEnabled").addEventListener("change", renderProductOptions);
+$("#copyProductOptions").addEventListener("click", () => {
+  const options = readProductOptions();
+  if (!options) return toast("فعّل خيارات المنتج وأضف خياراً واحداً على الأقل لنسخها");
+  if (options === undefined) return;
+  copiedProductOptions = cloneOptions(options);
+  localStorage.setItem(optionsClipboardKey, JSON.stringify(copiedProductOptions));
+  updateOptionsClipboardButton();
+  toast("تم نسخ الخيارات بكل إعداداتها");
+});
+$("#pasteProductOptions").addEventListener("click", () => {
+  if (!copiedProductOptions) return;
+  const options = cloneOptions(copiedProductOptions);
+  $("#productOptionsEnabled").checked = true;
+  $("#productOptionsRequired").checked = options.required === true;
+  $("#productOptionsMultiple").checked = options.multiple === true;
+  $("#productOptionsPriceBased").checked = options.priceBased === true;
+  $("#productOptionsPreparationEnabled").checked = options.preparationEnabled === true;
+  $("#productOptionsImagesEnabled").checked = options.imagesEnabled === true;
+  editingProductOptions = options.items || [];
+  renderProductOptions();
+  toast("تم لصق الخيارات — احفظ المنتج لإتمام التغيير");
+});
 $("#addProductOption").addEventListener("click", () => {
   editingProductOptions.push({ id: `option-${Date.now()}-${editingProductOptions.length}`, nameAr: "", nameEn: "", price: 0, preparation: { first: 2, unit: "hour", hasSecond: false, second: null, secondUnit: "hour" } });
   renderProductOptions();
