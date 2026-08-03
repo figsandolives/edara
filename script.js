@@ -38,6 +38,7 @@ let pendingDeleteCategoryId = "";
 let currentView = "catalog";
 let ignoreRemoteUntil = 0;
 let productSearch = "";
+let activeCatalogType = "bakery";
 let toastPreparationMigrationComplete = false;
 let breadSizeOptionsMigrationComplete = false;
 const assetUrls = new Map();
@@ -73,6 +74,14 @@ function clone(value) {
 
 function clean(value) {
   return String(value || "").trim();
+}
+
+function catalogTypeOf(entry) {
+  return entry?.catalogType === "restaurant" ? "restaurant" : "bakery";
+}
+
+function scopedCategories() {
+  return categories.filter(category => catalogTypeOf(category) === activeCatalogType);
 }
 
 function normalizeEnglishDigits(value) {
@@ -189,6 +198,7 @@ function normalizeData() {
       id: clean(category.id) || `category-${Date.now()}-${index}`,
       nameAr: clean(category.nameAr || category.name) || "قسم جديد",
       nameEn: clean(category.nameEn || category.id) || "New category",
+      catalogType: catalogTypeOf(category),
       active: category.active !== false,
       order: Number(category.order) || index + 1
     }))
@@ -205,6 +215,7 @@ function normalizeData() {
       description: clean(product.description),
       descriptionEn: clean(product.descriptionEn),
       category: clean(product.category),
+      catalogType: catalogTypeOf(product),
       active: product.active !== false,
       price: Number(product.price) || 0,
       images,
@@ -451,10 +462,12 @@ function productMatchesSearch(product) {
 function render() {
   normalizeData();
   deliveryAreas = normalizeDeliveryAreas(deliveryAreas);
-  $("#categoryCount").textContent = categories.length;
-  $("#productCount").textContent = products.length;
+  const currentCategories = scopedCategories();
+  const currentCategoryIds = new Set(currentCategories.map(category => category.id));
+  $("#categoryCount").textContent = currentCategories.length;
+  $("#productCount").textContent = products.filter(product => catalogTypeOf(product) === activeCatalogType && currentCategoryIds.has(product.category)).length;
   const hasSearch = Boolean(productSearch.trim());
-  const categoryMarkup = categories.map((category) => {
+  const categoryMarkup = currentCategories.map((category) => {
     const list = categoryProducts(category.id).filter(productMatchesSearch);
     if (hasSearch && list.length) openCategories.add(category.id);
     if (hasSearch && !list.length) return "";
@@ -744,7 +757,7 @@ function saveCategory(event) {
     if (category) Object.assign(category, { nameAr, nameEn });
   } else {
     const id = `category-${Date.now().toString(36)}`;
-    categories.push({ id, nameAr, nameEn, active: true, order: categories.length + 1 });
+    categories.push({ id, nameAr, nameEn, catalogType: activeCatalogType, active: true, order: scopedCategories().length + 1 });
     openCategories.add(id);
   }
   $("#categoryDialog").close();
@@ -800,7 +813,7 @@ function deleteCategory(categoryId, deleteProducts) {
 }
 
 function fillCategorySelect(selectedId = "") {
-  $("#productCategory").innerHTML = `<option value="">بدون قسم</option>` + categories.map((category) =>
+  $("#productCategory").innerHTML = `<option value="">بدون قسم</option>` + scopedCategories().map((category) =>
     `<option value="${escapeHtml(category.id)}" ${category.id === selectedId ? "selected" : ""}>${escapeHtml(category.nameAr)} — ${escapeHtml(category.nameEn)}</option>`
   ).join("");
 }
@@ -1110,6 +1123,7 @@ function saveProduct(event) {
   }
   const payload = {
     category: categoryId,
+    catalogType: categoryId ? catalogTypeOf(categories.find(category => category.id === categoryId)) : activeCatalogType,
     name,
     nameEn,
     price: options?.priceBased ? 0 : Number(price.toFixed(3)),
@@ -1454,6 +1468,12 @@ async function initializeAdmin() {
 }
 
 $("#addCategory").addEventListener("click", () => openCategoryDialog());
+$("#catalogScope").addEventListener("change", event => {
+  activeCatalogType = event.target.value === "restaurant" ? "restaurant" : "bakery";
+  productSearch = "";
+  $("#productSearch").value = "";
+  render();
+});
 $("#productSearch").addEventListener("input", event => { productSearch = event.target.value; render(); });
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
