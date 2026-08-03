@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260802-4">
+  <link rel="stylesheet" href="style.css?v=20260803-5">
 </head>
 <body>
   <header class="topbar">
@@ -47,6 +47,9 @@
     </section>
 
     <section class="toolbar" data-admin-view="catalog">
+      <label class="catalog-scope">عرض أصناف
+        <select id="catalogScope"><option value="bakery">أصناف المخبز</option><option value="restaurant">أصناف المطعم</option></select>
+      </label>
       <button id="saveDraft">حفظ الآن</button>
       <button id="exportData" class="export">تنزيل نسخة احتياطية ZIP</button>
       <label class="file-button">استيراد JSON<input id="importData" type="file" accept=".json,application/json" multiple></label>
@@ -278,6 +281,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260803-1"></script>
+  <script src="script.js?v=20260803-2"></script>
 </body>
 </html>
