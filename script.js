@@ -116,6 +116,11 @@ function setBreadSizeOptions() {
 
 function normalizeProductOptions(value) {
   if (!value || typeof value !== "object") return null;
+  // Selection flows have their own multi-step schema.  They must survive
+  // catalog saves even though they intentionally do not use `options.items`.
+  if (value.selectionFlow?.enabled === true && Array.isArray(value.selectionFlow.steps)) {
+    return { enabled: true, selectionFlow: clone(value.selectionFlow) };
+  }
   const nestedEnabled = value.nestedEnabled === true;
   const priceBased = value.priceBased === true || nestedEnabled;
   const items = (Array.isArray(value.items) ? value.items : []).map((item, index) => ({
