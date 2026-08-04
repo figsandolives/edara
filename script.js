@@ -20,6 +20,7 @@ let categories = [];
 let products = [];
 let deliveryAreas = [];
 let appearance = { ...DEFAULT_APPEARANCE };
+let catalogAppearances = { bakery: normalizeAppearance(), restaurant: normalizeAppearance() };
 let siteCategories = [];
 let siteProducts = [];
 let customers = [];
@@ -192,6 +193,25 @@ function normalizeAppearance(value = {}) {
   };
 }
 
+function normalizeCatalogAppearances(value = {}) {
+  const catalogs = value?.catalogs;
+  if (catalogs && typeof catalogs === "object") {
+    return { bakery: normalizeAppearance(catalogs.bakery), restaurant: normalizeAppearance(catalogs.restaurant) };
+  }
+  // Existing shared settings become the starting point for both catalogues.
+  const legacy = normalizeAppearance(value);
+  return { bakery: { ...legacy, heroBadges: [...legacy.heroBadges] }, restaurant: { ...legacy, heroBadges: [...legacy.heroBadges] } };
+}
+
+function catalogAppearancePayload() {
+  return {
+    catalogs: {
+      bakery: normalizeAppearance(catalogAppearances.bakery),
+      restaurant: normalizeAppearance(catalogAppearances.restaurant)
+    }
+  };
+}
+
 function setCloudStatus(message, type = "") {
   const status = $("#cloudStatus");
   if (!status) return;
@@ -326,7 +346,8 @@ function applyRemoteCatalog(catalog) {
   products = Array.isArray(catalog?.products) ? catalog.products : [];
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
   deliveryAreas = normalizeDeliveryAreas(catalog?.deliveryAreas);
-  appearance = normalizeAppearance(catalog?.appearance);
+  catalogAppearances = normalizeCatalogAppearances(catalog?.appearance);
+  appearance = catalogAppearances[activeCatalogType];
   siteProducts = clone(products);
   siteCategories = clone(categories);
   normalizeData();
@@ -369,7 +390,8 @@ async function loadData() {
     products = clone(siteProducts);
     categories = clone(siteCategories);
     deliveryAreas = normalizeDeliveryAreas(deliveryAreas);
-    appearance = { ...DEFAULT_APPEARANCE };
+    catalogAppearances = { bakery: normalizeAppearance(), restaurant: normalizeAppearance() };
+    appearance = catalogAppearances[activeCatalogType];
     normalizeData();
     render();
     renderDeliveryAreas();
@@ -527,7 +549,7 @@ function render() {
   hydrateRenderedImages();
 }
 
-function renderAppearanceSettings() {
+function renderAppearanceSettings(preserveTextInput = false) {
   const preview = $("#heroImagePreview");
   if (!preview) return;
   $("#heroPositionX").value = String(appearance.heroPositionX);
@@ -540,10 +562,12 @@ function renderAppearanceSettings() {
   $("#heroTextColorValue").textContent = appearance.heroTextColor.toUpperCase();
   $("#badgeBackgroundColorValue").textContent = appearance.badgeBackgroundColor.toUpperCase();
   $("#badgeTextColorValue").textContent = appearance.badgeTextColor.toUpperCase();
-  $("#heroTitleText").value = appearance.heroTitle;
-  $("#heroBadgeOneText").value = appearance.heroBadges[0];
-  $("#heroBadgeTwoText").value = appearance.heroBadges[1];
-  $("#heroBadgeThreeText").value = appearance.heroBadges[2];
+  if (!preserveTextInput) {
+    $("#heroTitleText").value = appearance.heroTitle;
+    $("#heroBadgeOneText").value = appearance.heroBadges[0];
+    $("#heroBadgeTwoText").value = appearance.heroBadges[1];
+    $("#heroBadgeThreeText").value = appearance.heroBadges[2];
+  }
   preview.classList.toggle("empty", !appearance.heroImage);
   preview.style.backgroundImage = appearance.heroImage
     ? `linear-gradient(rgba(8, 28, 20, .38), rgba(8, 28, 20, .38)), url(${JSON.stringify(appearance.heroImage)})`
@@ -638,7 +662,7 @@ function markDirty(message = "جارٍ حفظ التعديلات في Firebase�
 async function saveToFirebase() {
   if (!catalogRef || !currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
   normalizeData();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, deliveryAreas, appearance, savedAt: new Date().toISOString() }));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, deliveryAreas, appearance: catalogAppearancePayload(), savedAt: new Date().toISOString() }));
   clearTimeout(syncTimer);
   ignoreRemoteUntil = Date.now() + 1200;
   $("#saveState").textContent = "جارٍ الحفظ في Firebase…";
@@ -647,7 +671,7 @@ async function saveToFirebase() {
       categories: categories.map((category, index) => ({ ...category, order: index + 1 })),
       products: downloadableProducts(),
       deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
-      appearance: normalizeAppearance(appearance),
+      appearance: catalogAppearancePayload(),
       ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
       ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
@@ -1393,7 +1417,7 @@ async function exportData() {
     const zip = new JSZip();
     zip.file("products.json", JSON.stringify(exportProducts, null, 2) + "\n");
     zip.file("categories.json", JSON.stringify(exportCategories, null, 2) + "\n");
-    zip.file("appearance.json", JSON.stringify(normalizeAppearance(appearance), null, 2) + "\n");
+    zip.file("appearance.json", JSON.stringify(catalogAppearancePayload(), null, 2) + "\n");
     zip.file("delivery-areas.json", JSON.stringify(exportDeliveryAreas, null, 2) + "\n");
     const referencedAssets = [...new Set(exportProducts.flatMap((product) => product.images || []))]
       .filter((path) => path.startsWith("product-images/"));
@@ -1484,9 +1508,11 @@ async function initializeAdmin() {
 $("#addCategory").addEventListener("click", () => openCategoryDialog());
 $("#catalogScope").addEventListener("change", event => {
   activeCatalogType = event.target.value === "restaurant" ? "restaurant" : "bakery";
+  appearance = catalogAppearances[activeCatalogType];
   productSearch = "";
   $("#productSearch").value = "";
   render();
+  renderAppearanceSettings();
 });
 $("#productSearch").addEventListener("input", event => { productSearch = event.target.value; render(); });
 $("#addProduct").addEventListener("click", () => openProductDialog());
@@ -1575,11 +1601,16 @@ $("#removeHeroImage").addEventListener("click", removeHeroImage);
 });
 ["heroTitleText", "heroBadgeOneText", "heroBadgeTwoText", "heroBadgeThreeText"].forEach((id, index) => {
   $(`#${id}`).addEventListener("input", event => {
+    if (index === 0) appearance.heroTitle = event.target.value.slice(0, 120);
+    else appearance.heroBadges[index - 1] = event.target.value.slice(0, 45);
+    renderAppearanceSettings(true);
+  });
+  $(`#${id}`).addEventListener("change", event => {
     if (index === 0) appearance.heroTitle = validAppearanceText(event.target.value, DEFAULT_APPEARANCE.heroTitle, 120);
     else appearance.heroBadges[index - 1] = validAppearanceText(event.target.value, DEFAULT_APPEARANCE.heroBadges[index - 1], 45);
     renderAppearanceSettings();
+    markDirty("تم تعديل نصوص الواجهة — جارٍ الحفظ");
   });
-  $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل نصوص الواجهة — جارٍ الحفظ"));
 });
 $("#resetData").addEventListener("click", resetDraft);
 $("#exportData").addEventListener("click", exportData);
