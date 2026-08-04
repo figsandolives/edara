@@ -11,13 +11,15 @@ const DEFAULT_APPEARANCE = Object.freeze({
   heroPositionY: 50,
   heroTextColor: "#18352a",
   badgeBackgroundColor: "#ffffff",
-  badgeTextColor: "#18352a"
+  badgeTextColor: "#18352a",
+  heroTitle: "أكل صحي بطعم\nيستحق التكرار",
+  heroBadges: ["مكونات طبيعية", "تحضير يومي", "دفع آمن"]
 });
 
 let categories = [];
 let products = [];
 let deliveryAreas = [];
-let appearance = { bakery: { ...DEFAULT_APPEARANCE }, restaurant: { ...DEFAULT_APPEARANCE } };
+let appearance = { ...DEFAULT_APPEARANCE };
 let siteCategories = [];
 let siteProducts = [];
 let customers = [];
@@ -165,6 +167,11 @@ function validPercent(value, fallback) {
   return Number.isFinite(number) ? Math.min(100, Math.max(0, number)) : fallback;
 }
 
+function validAppearanceText(value, fallback, maxLength) {
+  const text = String(value ?? "").trim().slice(0, maxLength);
+  return text || fallback;
+}
+
 function normalizeAppearance(value = {}) {
   let heroImage = "";
   try {
@@ -179,21 +186,10 @@ function normalizeAppearance(value = {}) {
     heroPositionY: validPercent(value.heroPositionY, DEFAULT_APPEARANCE.heroPositionY),
     heroTextColor: validHexColor(value.heroTextColor, DEFAULT_APPEARANCE.heroTextColor),
     badgeBackgroundColor: validHexColor(value.badgeBackgroundColor, DEFAULT_APPEARANCE.badgeBackgroundColor),
-    badgeTextColor: validHexColor(value.badgeTextColor, DEFAULT_APPEARANCE.badgeTextColor)
+    badgeTextColor: validHexColor(value.badgeTextColor, DEFAULT_APPEARANCE.badgeTextColor),
+    heroTitle: validAppearanceText(value.heroTitle, DEFAULT_APPEARANCE.heroTitle, 120),
+    heroBadges: DEFAULT_APPEARANCE.heroBadges.map((fallback, index) => validAppearanceText(value.heroBadges?.[index], fallback, 45))
   };
-}
-
-function normalizeAppearanceCatalogs(value = {}) {
-  const legacy = normalizeAppearance(value);
-  const source = value?.catalogs || value;
-  return {
-    bakery: normalizeAppearance(source?.bakery || legacy),
-    restaurant: normalizeAppearance(source?.restaurant || legacy)
-  };
-}
-
-function activeAppearance() {
-  return appearance[activeCatalogType] || appearance.bakery;
 }
 
 function setCloudStatus(message, type = "") {
@@ -330,7 +326,7 @@ function applyRemoteCatalog(catalog) {
   products = Array.isArray(catalog?.products) ? catalog.products : [];
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
   deliveryAreas = normalizeDeliveryAreas(catalog?.deliveryAreas);
-  appearance = normalizeAppearanceCatalogs(catalog?.appearance);
+  appearance = normalizeAppearance(catalog?.appearance);
   siteProducts = clone(products);
   siteCategories = clone(categories);
   normalizeData();
@@ -373,7 +369,7 @@ async function loadData() {
     products = clone(siteProducts);
     categories = clone(siteCategories);
     deliveryAreas = normalizeDeliveryAreas(deliveryAreas);
-    appearance = { bakery: { ...DEFAULT_APPEARANCE }, restaurant: { ...DEFAULT_APPEARANCE } };
+    appearance = { ...DEFAULT_APPEARANCE };
     normalizeData();
     render();
     renderDeliveryAreas();
@@ -532,29 +528,33 @@ function render() {
 }
 
 function renderAppearanceSettings() {
-  const currentAppearance = activeAppearance();
   const preview = $("#heroImagePreview");
   if (!preview) return;
-  $("#heroPositionX").value = String(currentAppearance.heroPositionX);
-  $("#heroPositionY").value = String(currentAppearance.heroPositionY);
-  $("#heroPositionXValue").textContent = `${Math.round(currentAppearance.heroPositionX)}%`;
-  $("#heroPositionYValue").textContent = `${Math.round(currentAppearance.heroPositionY)}%`;
-  $("#heroTextColor").value = currentAppearance.heroTextColor;
-  $("#badgeBackgroundColor").value = currentAppearance.badgeBackgroundColor;
-  $("#badgeTextColor").value = currentAppearance.badgeTextColor;
-  $("#heroTextColorValue").textContent = currentAppearance.heroTextColor.toUpperCase();
-  $("#badgeBackgroundColorValue").textContent = currentAppearance.badgeBackgroundColor.toUpperCase();
-  $("#badgeTextColorValue").textContent = currentAppearance.badgeTextColor.toUpperCase();
-  preview.classList.toggle("empty", !currentAppearance.heroImage);
-  preview.style.backgroundImage = currentAppearance.heroImage
-    ? `linear-gradient(rgba(8, 28, 20, .38), rgba(8, 28, 20, .38)), url(${JSON.stringify(currentAppearance.heroImage)})`
+  $("#heroPositionX").value = String(appearance.heroPositionX);
+  $("#heroPositionY").value = String(appearance.heroPositionY);
+  $("#heroPositionXValue").textContent = `${Math.round(appearance.heroPositionX)}%`;
+  $("#heroPositionYValue").textContent = `${Math.round(appearance.heroPositionY)}%`;
+  $("#heroTextColor").value = appearance.heroTextColor;
+  $("#badgeBackgroundColor").value = appearance.badgeBackgroundColor;
+  $("#badgeTextColor").value = appearance.badgeTextColor;
+  $("#heroTextColorValue").textContent = appearance.heroTextColor.toUpperCase();
+  $("#badgeBackgroundColorValue").textContent = appearance.badgeBackgroundColor.toUpperCase();
+  $("#badgeTextColorValue").textContent = appearance.badgeTextColor.toUpperCase();
+  $("#heroTitleText").value = appearance.heroTitle;
+  $("#heroBadgeOneText").value = appearance.heroBadges[0];
+  $("#heroBadgeTwoText").value = appearance.heroBadges[1];
+  $("#heroBadgeThreeText").value = appearance.heroBadges[2];
+  preview.classList.toggle("empty", !appearance.heroImage);
+  preview.style.backgroundImage = appearance.heroImage
+    ? `linear-gradient(rgba(8, 28, 20, .38), rgba(8, 28, 20, .38)), url(${JSON.stringify(appearance.heroImage)})`
     : "";
-  preview.style.backgroundPosition = `${currentAppearance.heroPositionX}% ${currentAppearance.heroPositionY}%`;
-  preview.innerHTML = currentAppearance.heroImage
-    ? `<strong style="color:${escapeHtml(currentAppearance.heroTextColor)}">${activeCatalogType === "restaurant" ? "مطعم التين الطبيعي" : "مخبز التين والزيتون"}<br>أكل صحي بطعم يستحق التكرار</strong>`
+  preview.style.backgroundPosition = `${appearance.heroPositionX}% ${appearance.heroPositionY}%`;
+  preview.innerHTML = appearance.heroImage
+    ? `<strong style="color:${escapeHtml(appearance.heroTextColor)}">${escapeHtml(appearance.heroTitle).replace(/\n/g, "<br>")}</strong>`
     : `<span>لم تتم إضافة صورة للواجهة</span>`;
-  $("#badgesPreview").style.setProperty("--preview-badge-background", currentAppearance.badgeBackgroundColor);
-  $("#badgesPreview").style.setProperty("--preview-badge-text", currentAppearance.badgeTextColor);
+  $("#badgesPreview").style.setProperty("--preview-badge-background", appearance.badgeBackgroundColor);
+  $("#badgesPreview").style.setProperty("--preview-badge-text", appearance.badgeTextColor);
+  $$("#badgesPreview span").forEach((badge, index) => { badge.textContent = appearance.heroBadges[index]; });
 }
 
 async function optimizeAndUploadHero(file) {
@@ -586,18 +586,17 @@ function deleteStoredAppearanceImage(url) {
 async function uploadHeroImage(file) {
   if (!file || !currentAdmin) return;
   const input = $("#heroImageInput");
-  const currentAppearance = activeAppearance();
-  const previousImage = currentAppearance.heroImage;
+  const previousImage = appearance.heroImage;
   input.disabled = true;
   $("#saveState").textContent = "جارٍ تجهيز ورفع صورة الواجهة إلى Firebase…";
   try {
-    currentAppearance.heroImage = await optimizeAndUploadHero(file);
+    appearance.heroImage = await optimizeAndUploadHero(file);
     renderAppearanceSettings();
     await saveToFirebase();
-    if (previousImage && previousImage !== currentAppearance.heroImage) deleteStoredAppearanceImage(previousImage);
+    if (previousImage && previousImage !== appearance.heroImage) deleteStoredAppearanceImage(previousImage);
     toast("تم حفظ الصورة — حدد الجزء الظاهر من أدوات الموضع");
   } catch (error) {
-    currentAppearance.heroImage = previousImage;
+    appearance.heroImage = previousImage;
     renderAppearanceSettings();
     toast(error.message || "تعذر رفع صورة الواجهة");
   } finally {
@@ -607,17 +606,16 @@ async function uploadHeroImage(file) {
 }
 
 async function removeHeroImage() {
-  const currentAppearance = activeAppearance();
-  if (!currentAppearance.heroImage) return toast("لا توجد صورة لحذفها");
-  const previousImage = currentAppearance.heroImage;
-  currentAppearance.heroImage = "";
+  if (!appearance.heroImage) return toast("لا توجد صورة لحذفها");
+  const previousImage = appearance.heroImage;
+  appearance.heroImage = "";
   renderAppearanceSettings();
   try {
     await saveToFirebase();
     deleteStoredAppearanceImage(previousImage);
     toast("تم حذف صورة الواجهة");
   } catch {
-    currentAppearance.heroImage = previousImage;
+    appearance.heroImage = previousImage;
     renderAppearanceSettings();
   }
 }
@@ -649,7 +647,7 @@ async function saveToFirebase() {
       categories: categories.map((category, index) => ({ ...category, order: index + 1 })),
       products: downloadableProducts(),
       deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
-      appearance: { catalogs: normalizeAppearanceCatalogs(appearance) },
+      appearance: normalizeAppearance(appearance),
       ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
       ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
@@ -1395,7 +1393,7 @@ async function exportData() {
     const zip = new JSZip();
     zip.file("products.json", JSON.stringify(exportProducts, null, 2) + "\n");
     zip.file("categories.json", JSON.stringify(exportCategories, null, 2) + "\n");
-    zip.file("appearance.json", JSON.stringify({ catalogs: normalizeAppearanceCatalogs(appearance) }, null, 2) + "\n");
+    zip.file("appearance.json", JSON.stringify(normalizeAppearance(appearance), null, 2) + "\n");
     zip.file("delivery-areas.json", JSON.stringify(exportDeliveryAreas, null, 2) + "\n");
     const referencedAssets = [...new Set(exportProducts.flatMap((product) => product.images || []))]
       .filter((path) => path.startsWith("product-images/"));
@@ -1489,7 +1487,6 @@ $("#catalogScope").addEventListener("change", event => {
   productSearch = "";
   $("#productSearch").value = "";
   render();
-  renderAppearanceSettings();
 });
 $("#productSearch").addEventListener("input", event => { productSearch = event.target.value; render(); });
 $("#addProduct").addEventListener("click", () => openProductDialog());
@@ -1564,17 +1561,25 @@ $("#heroImageInput").addEventListener("change", event => uploadHeroImage(event.t
 $("#removeHeroImage").addEventListener("click", removeHeroImage);
 ["heroPositionX", "heroPositionY"].forEach(id => {
   $(`#${id}`).addEventListener("input", event => {
-    activeAppearance()[id] = validPercent(event.target.value, DEFAULT_APPEARANCE[id]);
+    appearance[id] = validPercent(event.target.value, DEFAULT_APPEARANCE[id]);
     renderAppearanceSettings();
   });
   $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل موضع صورة الواجهة — جارٍ الحفظ"));
 });
 ["heroTextColor", "badgeBackgroundColor", "badgeTextColor"].forEach(id => {
   $(`#${id}`).addEventListener("input", event => {
-    activeAppearance()[id] = validHexColor(event.target.value, DEFAULT_APPEARANCE[id]);
+    appearance[id] = validHexColor(event.target.value, DEFAULT_APPEARANCE[id]);
     renderAppearanceSettings();
   });
   $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل الألوان — جارٍ حفظ مظهر الواجهة"));
+});
+["heroTitleText", "heroBadgeOneText", "heroBadgeTwoText", "heroBadgeThreeText"].forEach((id, index) => {
+  $(`#${id}`).addEventListener("input", event => {
+    if (index === 0) appearance.heroTitle = validAppearanceText(event.target.value, DEFAULT_APPEARANCE.heroTitle, 120);
+    else appearance.heroBadges[index - 1] = validAppearanceText(event.target.value, DEFAULT_APPEARANCE.heroBadges[index - 1], 45);
+    renderAppearanceSettings();
+  });
+  $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل نصوص الواجهة — جارٍ الحفظ"));
 });
 $("#resetData").addEventListener("click", resetDraft);
 $("#exportData").addEventListener("click", exportData);
