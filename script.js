@@ -506,13 +506,13 @@ function render() {
   $("#categoryCount").textContent = currentCategories.length;
   $("#productCount").textContent = products.filter(product => catalogTypeOf(product) === activeCatalogType && currentCategoryIds.has(product.category)).length;
   const hasSearch = Boolean(productSearch.trim());
-  const headingMarkup = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order)).map(item => `<article class="category-card heading-card"><div class="category-head"><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${(item.categoryIds || []).length} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div></div></article>`).join("");
+  const headingMarkup = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order)).map(item => `<article class="category-card heading-card" style="order:${Number(item.order) || 0}"><div class="category-head"><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${(item.categoryIds || []).length} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div></div></article>`).join("");
   const categoryMarkup = headingMarkup + currentCategories.map((category) => {
     const list = categoryProducts(category.id).filter(productMatchesSearch);
     if (hasSearch && list.length) openCategories.add(category.id);
     if (hasSearch && !list.length) return "";
     return `
-      <article class="category-card ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}">
+      <article class="category-card ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}" style="order:${Number(category.order) || 0}">
         <div class="category-head">
           <span class="drag-handle" draggable="true" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span>
           <div class="category-copy">
@@ -523,6 +523,7 @@ function render() {
           <div class="category-actions">
             ${toggleButton("category", category.id, category.active)}
             <button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button>
+            <button data-duplicate-category="${escapeHtml(category.id)}">نسخ</button>
             <button data-edit-category="${escapeHtml(category.id)}">تعديل</button>
             <button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button>
           </div>
@@ -1225,6 +1226,30 @@ function duplicateProduct(productId) {
   toast("تم تكرار المنتج أسفل المنتج الأصلي");
 }
 
+function duplicateCategory(categoryId) {
+  const source = categories.find(category => category.id === categoryId);
+  if (!source) return;
+  const catalogType = catalogTypeOf(source);
+  const sourceProducts = categoryProducts(source.id);
+  const insertOrder = Number(source.order) + 1;
+  categories.forEach(category => {
+    if (catalogTypeOf(category) === catalogType && Number(category.order) >= insertOrder) category.order = Number(category.order) + 1;
+  });
+  const copyId = `category-${Date.now().toString(36)}`;
+  categories.push({ ...clone(source), id: copyId, order: insertOrder });
+  sourceProducts.forEach((product, index) => {
+    const copy = clone(product);
+    copy.id = `P${Date.now().toString(36)}${index}`;
+    copy.category = copyId;
+    copy.order = Number(product.order) || index + 1;
+    products.push(copy);
+  });
+  openCategories.add(copyId);
+  markDirty("تم نسخ القسم بكل محتوياته — جارٍ الحفظ في Firebase");
+  render();
+  toast("تمت إضافة النسخة تحت القسم مباشرة");
+}
+
 function deleteProduct(productId) {
   const product = products.find((item) => item.id === productId);
   if (!product || !confirm(`هل تريد حذف المنتج «${product.name}»؟`)) return;
@@ -1518,7 +1543,7 @@ async function initializeAdmin() {
 
 $("#addCategory").addEventListener("click", () => openCategoryDialog());
 $("#addHeading").addEventListener("click", () => { $("#headingNameAr").value = ""; $("#headingNameEn").value = ""; $("#headingDialog").showModal(); });
-$("#headingForm").addEventListener("submit", event => { event.preventDefault(); const nameAr = clean($("#headingNameAr").value), nameEn = clean($("#headingNameEn").value); if (!nameAr || !nameEn) return toast("اكتب اسم العنوان باللغتين"); headings.push({ id: `heading-${Date.now().toString(36)}`, nameAr, nameEn, catalogType: activeCatalogType, order: headings.filter(item => catalogTypeOf(item) === activeCatalogType).length + 1, categoryIds: [], subheadings: [] }); $("#headingDialog").close(); markDirty(); render(); });
+$("#headingForm").addEventListener("submit", event => { event.preventDefault(); const nameAr = clean($("#headingNameAr").value), nameEn = clean($("#headingNameEn").value); if (!nameAr || !nameEn) return toast("اكتب اسم العنوان باللغتين"); headings.push({ id: `heading-${Date.now().toString(36)}`, nameAr, nameEn, catalogType: activeCatalogType, order: Math.max(0, ...scopedCategories().map(item => Number(item.order) || 0), ...headings.filter(item => catalogTypeOf(item) === activeCatalogType).map(item => Number(item.order) || 0)) + 1, categoryIds: [], subheadings: [] }); $("#headingDialog").close(); markDirty(); render(); });
 $("#headingLinkForm").addEventListener("submit", event => { event.preventDefault(); const heading = headings.find(item => item.id === editingHeadingId); if (!heading) return; const hasSubheadings = $("#enableSubheadings").checked; heading.subheadings = hasSubheadings ? editingSubheadings : []; heading.categoryIds = hasSubheadings ? [] : $$("#headingCategoryChoices input:checked").map(input => input.value); $("#headingLinkDialog").close(); markDirty(); render(); toast("تم ربط الأقسام بالعنوان"); });
 function renderSubheadingColumns() { $("#subheadingColumns").innerHTML = editingSubheadings.map((subheading, index) => { const selected = (subheading.categoryIds || []).map(id => scopedCategories().find(category => category.id === id)).filter(Boolean); return `<section class="subheading-column"><header><span>${escapeHtml(subheading.nameAr)}</span><span><button type="button" data-move-subheading="${index}" data-subdirection="up">↑</button><button type="button" data-move-subheading="${index}" data-subdirection="down">↓</button><button type="button" data-remove-subheading="${index}">×</button></span></header><strong>ترتيب الأقسام المختارة</strong>${selected.map((category, categoryIndex) => `<div class="subheading-sort-row"><span>${escapeHtml(category.nameAr)}</span><button type="button" data-move-subcategory="${index}" data-category-direction="up" data-category-index="${categoryIndex}">↑</button><button type="button" data-move-subcategory="${index}" data-category-direction="down" data-category-index="${categoryIndex}">↓</button></div>`).join("")}${scopedCategories().map(category => `<label><input type="checkbox" value="${escapeHtml(category.id)}" ${(subheading.categoryIds || []).includes(category.id) ? "checked" : ""} data-subheading-category="${index}"> ${escapeHtml(category.nameAr)}</label>`).join("")}</section>`; }).join(""); }
 $("#enableSubheadings").addEventListener("change", event => { $("#subheadingEditor").classList.toggle("hidden", !event.target.checked); $("#directHeadingLink").classList.toggle("hidden", event.target.checked); });
@@ -1745,6 +1770,7 @@ $("#categoryList").addEventListener("click", (event) => {
   const linkHeadingButton = event.target.closest("[data-link-heading]");
   const moveHeadingButton = event.target.closest("[data-move-heading]");
   const addProductButton = event.target.closest("[data-add-product]");
+  const duplicateCategoryButton = event.target.closest("[data-duplicate-category]");
   const editCategoryButton = event.target.closest("[data-edit-category]");
   const deleteCategoryButton = event.target.closest("[data-delete-category]");
   const toggleCategoryButton = event.target.closest("[data-toggle-category]");
@@ -1753,9 +1779,10 @@ $("#categoryList").addEventListener("click", (event) => {
   const deleteProductButton = event.target.closest("[data-delete-product]");
   const toggleProductButton = event.target.closest("[data-toggle-product]");
   const removeProductButton = event.target.closest("[data-remove-product-category]");
-  if (moveHeadingButton) { const list = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a,b) => Number(a.order)-Number(b.order)); const index = list.findIndex(item => item.id === moveHeadingButton.dataset.moveHeading); const next = index + (moveHeadingButton.dataset.direction === "up" ? -1 : 1); if (next >= 0 && next < list.length) { const a=list[index], b=list[next], order=a.order; a.order=b.order; b.order=order; markDirty(); render(); } return; }
+  if (moveHeadingButton) { const heading = headings.find(item => item.id === moveHeadingButton.dataset.moveHeading); const list = [...scopedCategories().map(item => ({ type: "category", item })), ...headings.filter(item => catalogTypeOf(item) === activeCatalogType).map(item => ({ type: "heading", item }))].sort((a, b) => Number(a.item.order) - Number(b.item.order) || (a.type === "heading" ? -1 : 1)); const index = list.findIndex(item => item.type === "heading" && item.item.id === heading?.id); const next = index + (moveHeadingButton.dataset.direction === "up" ? -1 : 1); if (heading && next >= 0 && next < list.length) { const target = list[next]; heading.order = target.type === "category" ? Number(target.item.order) + (moveHeadingButton.dataset.direction === "up" ? -0.5 : 0.5) : target.item.order; markDirty(); render(); } return; }
   if (linkHeadingButton) { const heading = headings.find(item => item.id === linkHeadingButton.dataset.linkHeading); if (!heading) return; editingHeadingId = heading.id; editingSubheadings = Array.isArray(heading.subheadings) ? JSON.parse(JSON.stringify(heading.subheadings)) : []; $("#headingLinkTitle").textContent = heading.nameAr; $("#enableSubheadings").checked = editingSubheadings.length > 0; $("#subheadingEditor").classList.toggle("hidden", !editingSubheadings.length); $("#directHeadingLink").classList.toggle("hidden", Boolean(editingSubheadings.length)); $("#headingCategoryChoices").classList.add("hidden"); $("#headingCategoryChoices").innerHTML = scopedCategories().map(category => `<label class="heading-category-choice"><input type="checkbox" value="${escapeHtml(category.id)}" ${(heading.categoryIds || []).includes(category.id) ? "checked" : ""}><span>${escapeHtml(category.nameAr)} <small>${escapeHtml(category.nameEn)}</small></span></label>`).join(""); renderSubheadingColumns(); $("#headingLinkDialog").showModal(); return; }
   if (addProductButton) return openAssignProductsDialog(addProductButton.dataset.addProduct);
+  if (duplicateCategoryButton) return duplicateCategory(duplicateCategoryButton.dataset.duplicateCategory);
   if (editCategoryButton) return openCategoryDialog(categories.find((category) => category.id === editCategoryButton.dataset.editCategory));
   if (deleteCategoryButton) return requestDeleteCategory(deleteCategoryButton.dataset.deleteCategory);
   if (toggleCategoryButton) return toggleCategoryActive(toggleCategoryButton.dataset.toggleCategory);
