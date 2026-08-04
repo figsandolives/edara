@@ -17,6 +17,8 @@ const DEFAULT_APPEARANCE = Object.freeze({
 });
 
 let categories = [];
+let headings = [];
+let restaurantEnabled = true;
 let products = [];
 let deliveryAreas = [];
 let appearance = { ...DEFAULT_APPEARANCE };
@@ -29,6 +31,8 @@ let pendingImageDeletes = new Set();
 let openCategories = new Set();
 let selectedUnassignedProducts = new Set();
 let dragState = null;
+let editingHeadingId = "";
+let editingSubheadings = [];
 let toastTimer;
 let syncTimer;
 let currentAdmin = null;
@@ -345,6 +349,10 @@ async function loadFallbackData() {
 function applyRemoteCatalog(catalog) {
   products = Array.isArray(catalog?.products) ? catalog.products : [];
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
+  headings = Array.isArray(catalog?.headings) ? catalog.headings : [];
+  restaurantEnabled = catalog?.restaurantEnabled !== false;
+  $("#restaurantEnabled").checked = restaurantEnabled;
+  $("#restaurantEnabledLabel").textContent = restaurantEnabled ? "مفعّل" : "مغلق";
   deliveryAreas = normalizeDeliveryAreas(catalog?.deliveryAreas);
   catalogAppearances = normalizeCatalogAppearances(catalog?.appearance);
   appearance = catalogAppearances[activeCatalogType];
@@ -498,7 +506,8 @@ function render() {
   $("#categoryCount").textContent = currentCategories.length;
   $("#productCount").textContent = products.filter(product => catalogTypeOf(product) === activeCatalogType && currentCategoryIds.has(product.category)).length;
   const hasSearch = Boolean(productSearch.trim());
-  const categoryMarkup = currentCategories.map((category) => {
+  const headingMarkup = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order)).map(item => `<article class="category-card heading-card"><div class="category-head"><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${(item.categoryIds || []).length} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div></div></article>`).join("");
+  const categoryMarkup = headingMarkup + currentCategories.map((category) => {
     const list = categoryProducts(category.id).filter(productMatchesSearch);
     if (hasSearch && list.length) openCategories.add(category.id);
     if (hasSearch && !list.length) return "";
@@ -662,13 +671,15 @@ function markDirty(message = "جارٍ حفظ التعديلات في Firebase�
 async function saveToFirebase() {
   if (!catalogRef || !currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
   normalizeData();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, products, deliveryAreas, appearance: catalogAppearancePayload(), savedAt: new Date().toISOString() }));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, appearance: catalogAppearancePayload(), savedAt: new Date().toISOString() }));
   clearTimeout(syncTimer);
   ignoreRemoteUntil = Date.now() + 1200;
   $("#saveState").textContent = "جارٍ الحفظ في Firebase…";
   try {
     await catalogRef.update({
       categories: categories.map((category, index) => ({ ...category, order: index + 1 })),
+      headings,
+      restaurantEnabled,
       products: downloadableProducts(),
       deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
       appearance: catalogAppearancePayload(),
@@ -1506,6 +1517,14 @@ async function initializeAdmin() {
 }
 
 $("#addCategory").addEventListener("click", () => openCategoryDialog());
+$("#addHeading").addEventListener("click", () => { $("#headingNameAr").value = ""; $("#headingNameEn").value = ""; $("#headingDialog").showModal(); });
+$("#headingForm").addEventListener("submit", event => { event.preventDefault(); const nameAr = clean($("#headingNameAr").value), nameEn = clean($("#headingNameEn").value); if (!nameAr || !nameEn) return toast("اكتب اسم العنوان باللغتين"); headings.push({ id: `heading-${Date.now().toString(36)}`, nameAr, nameEn, catalogType: activeCatalogType, order: headings.filter(item => catalogTypeOf(item) === activeCatalogType).length + 1, categoryIds: [], subheadings: [] }); $("#headingDialog").close(); markDirty(); render(); });
+$("#headingLinkForm").addEventListener("submit", event => { event.preventDefault(); const heading = headings.find(item => item.id === editingHeadingId); if (!heading) return; const hasSubheadings = $("#enableSubheadings").checked; heading.subheadings = hasSubheadings ? editingSubheadings : []; heading.categoryIds = hasSubheadings ? [] : $$("#headingCategoryChoices input:checked").map(input => input.value); $("#headingLinkDialog").close(); markDirty(); render(); toast("تم ربط الأقسام بالعنوان"); });
+function renderSubheadingColumns() { $("#subheadingColumns").innerHTML = editingSubheadings.map((subheading, index) => { const selected = (subheading.categoryIds || []).map(id => scopedCategories().find(category => category.id === id)).filter(Boolean); return `<section class="subheading-column"><header><span>${escapeHtml(subheading.nameAr)}</span><span><button type="button" data-move-subheading="${index}" data-subdirection="up">↑</button><button type="button" data-move-subheading="${index}" data-subdirection="down">↓</button><button type="button" data-remove-subheading="${index}">×</button></span></header><strong>ترتيب الأقسام المختارة</strong>${selected.map((category, categoryIndex) => `<div class="subheading-sort-row"><span>${escapeHtml(category.nameAr)}</span><button type="button" data-move-subcategory="${index}" data-category-direction="up" data-category-index="${categoryIndex}">↑</button><button type="button" data-move-subcategory="${index}" data-category-direction="down" data-category-index="${categoryIndex}">↓</button></div>`).join("")}${scopedCategories().map(category => `<label><input type="checkbox" value="${escapeHtml(category.id)}" ${(subheading.categoryIds || []).includes(category.id) ? "checked" : ""} data-subheading-category="${index}"> ${escapeHtml(category.nameAr)}</label>`).join("")}</section>`; }).join(""); }
+$("#enableSubheadings").addEventListener("change", event => { $("#subheadingEditor").classList.toggle("hidden", !event.target.checked); $("#directHeadingLink").classList.toggle("hidden", event.target.checked); });
+$("#addSubheading").addEventListener("click", () => { const nameAr = clean($("#subheadingNameAr").value), nameEn = clean($("#subheadingNameEn").value); if (!nameAr || !nameEn) return toast("اكتب اسم العنوان الفرعي باللغتين"); editingSubheadings.push({ id: `subheading-${Date.now().toString(36)}`, nameAr, nameEn, categoryIds: [] }); $("#subheadingNameAr").value=""; $("#subheadingNameEn").value=""; renderSubheadingColumns(); });
+$("#subheadingColumns").addEventListener("change", event => { const input = event.target.closest("[data-subheading-category]"); if (!input) return; const subheading = editingSubheadings[Number(input.dataset.subheadingCategory)]; if (!subheading) return; const id = input.value; subheading.categoryIds = subheading.categoryIds || []; subheading.categoryIds = input.checked ? [...new Set([...subheading.categoryIds, id])] : subheading.categoryIds.filter(item => item !== id); });
+$("#subheadingColumns").addEventListener("click", event => { const categoryMove = event.target.closest("[data-move-subcategory]"); if (categoryMove) { const subheading = editingSubheadings[Number(categoryMove.dataset.moveSubcategory)], index = Number(categoryMove.dataset.categoryIndex), next = index + (categoryMove.dataset.categoryDirection === "up" ? -1 : 1); if (subheading && next >= 0 && next < subheading.categoryIds.length) [subheading.categoryIds[index], subheading.categoryIds[next]] = [subheading.categoryIds[next], subheading.categoryIds[index]]; renderSubheadingColumns(); return; } const move = event.target.closest("[data-move-subheading]"); if (move) { const index = Number(move.dataset.moveSubheading), next = index + (move.dataset.subdirection === "up" ? -1 : 1); if (next >= 0 && next < editingSubheadings.length) [editingSubheadings[index], editingSubheadings[next]] = [editingSubheadings[next], editingSubheadings[index]]; renderSubheadingColumns(); return; } const button = event.target.closest("[data-remove-subheading]"); if (!button) return; editingSubheadings.splice(Number(button.dataset.removeSubheading), 1); renderSubheadingColumns(); });
 $("#catalogScope").addEventListener("change", event => {
   activeCatalogType = event.target.value === "restaurant" ? "restaurant" : "bakery";
   appearance = catalogAppearances[activeCatalogType];
@@ -1514,6 +1533,7 @@ $("#catalogScope").addEventListener("change", event => {
   render();
   renderAppearanceSettings();
 });
+$("#restaurantEnabled").addEventListener("change", event => { restaurantEnabled = event.target.checked; $("#restaurantEnabledLabel").textContent = restaurantEnabled ? "مفعّل" : "مغلق"; markDirty("تم تعديل ظهور زر أصناف المطعم — جارٍ الحفظ"); });
 $("#productSearch").addEventListener("input", event => { productSearch = event.target.value; render(); });
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
@@ -1721,6 +1741,8 @@ $("#imageList").addEventListener("click", (event) => {
 });
 
 $("#categoryList").addEventListener("click", (event) => {
+  const linkHeadingButton = event.target.closest("[data-link-heading]");
+  const moveHeadingButton = event.target.closest("[data-move-heading]");
   const addProductButton = event.target.closest("[data-add-product]");
   const editCategoryButton = event.target.closest("[data-edit-category]");
   const deleteCategoryButton = event.target.closest("[data-delete-category]");
@@ -1730,6 +1752,8 @@ $("#categoryList").addEventListener("click", (event) => {
   const deleteProductButton = event.target.closest("[data-delete-product]");
   const toggleProductButton = event.target.closest("[data-toggle-product]");
   const removeProductButton = event.target.closest("[data-remove-product-category]");
+  if (moveHeadingButton) { const list = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a,b) => Number(a.order)-Number(b.order)); const index = list.findIndex(item => item.id === moveHeadingButton.dataset.moveHeading); const next = index + (moveHeadingButton.dataset.direction === "up" ? -1 : 1); if (next >= 0 && next < list.length) { const a=list[index], b=list[next], order=a.order; a.order=b.order; b.order=order; markDirty(); render(); } return; }
+  if (linkHeadingButton) { const heading = headings.find(item => item.id === linkHeadingButton.dataset.linkHeading); if (!heading) return; editingHeadingId = heading.id; editingSubheadings = Array.isArray(heading.subheadings) ? JSON.parse(JSON.stringify(heading.subheadings)) : []; $("#headingLinkTitle").textContent = heading.nameAr; $("#enableSubheadings").checked = editingSubheadings.length > 0; $("#subheadingEditor").classList.toggle("hidden", !editingSubheadings.length); $("#directHeadingLink").classList.toggle("hidden", Boolean(editingSubheadings.length)); $("#headingCategoryChoices").innerHTML = scopedCategories().map(category => `<label class="heading-category-choice"><input type="checkbox" value="${escapeHtml(category.id)}" ${(heading.categoryIds || []).includes(category.id) ? "checked" : ""}><span>${escapeHtml(category.nameAr)} <small>${escapeHtml(category.nameEn)}</small></span></label>`).join(""); renderSubheadingColumns(); $("#headingLinkDialog").showModal(); return; }
   if (addProductButton) return openAssignProductsDialog(addProductButton.dataset.addProduct);
   if (editCategoryButton) return openCategoryDialog(categories.find((category) => category.id === editCategoryButton.dataset.editCategory));
   if (deleteCategoryButton) return requestDeleteCategory(deleteCategoryButton.dataset.deleteCategory);

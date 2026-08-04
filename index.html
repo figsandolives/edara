@@ -24,6 +24,7 @@
       <button class="nav-button" id="deliveryAreasPage">مناطق التوصيل</button>
       <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
       <button class="secondary" id="addCategory">＋ إضافة قسم جديد</button>
+      <button class="secondary" id="addHeading">＋ إضافة عنوان</button>
       <button class="sign-out hidden" id="adminSignOut">تسجيل خروج</button>
     </div>
   </header>
@@ -50,6 +51,7 @@
       <label class="catalog-scope">عرض أصناف
         <select id="catalogScope"><option value="bakery">أصناف المخبز</option><option value="restaurant">أصناف المطعم</option></select>
       </label>
+      <label class="restaurant-visibility">زر أصناف المطعم <input id="restaurantEnabled" type="checkbox" checked> <span id="restaurantEnabledLabel">مفعّل</span></label>
       <button id="saveDraft">حفظ الآن</button>
       <button id="exportData" class="export">تنزيل نسخة احتياطية ZIP</button>
       <label class="file-button">استيراد JSON<input id="importData" type="file" accept=".json,application/json" multiple></label>
@@ -174,6 +176,8 @@
       <footer><button type="button" data-close-dialog="categoryDialog">إلغاء</button><button type="submit" value="default" class="primary">حفظ القسم</button></footer>
     </form>
   </dialog>
+  <dialog id="headingDialog"><form method="dialog" id="headingForm" class="dialog-card"><header><div><span class="eyebrow">عنوان رئيسي</span><h2>إضافة عنوان</h2></div><button type="button" class="icon-btn" data-close-dialog="headingDialog">×</button></header><label>اسم العنوان بالعربي<input id="headingNameAr" required maxlength="100"></label><label>اسم العنوان بالإنجليزي<input id="headingNameEn" required maxlength="100" dir="ltr"></label><footer><button type="button" data-close-dialog="headingDialog">إلغاء</button><button class="primary" type="submit">إضافة العنوان</button></footer></form></dialog>
+  <dialog id="headingLinkDialog"><form method="dialog" id="headingLinkForm" class="dialog-card"><header><div><span class="eyebrow">ربط الأقسام</span><h2 id="headingLinkTitle">العنوان</h2></div><button type="button" class="icon-btn" data-close-dialog="headingLinkDialog">×</button></header><label class="options-enable"><input id="enableSubheadings" type="checkbox"> <span>تفعيل العناوين الفرعية</span></label><div id="subheadingEditor" class="hidden"><div class="form-grid"><label>عنوان فرعي عربي<input id="subheadingNameAr" maxlength="100"></label><label>عنوان فرعي إنجليزي<input id="subheadingNameEn" maxlength="100" dir="ltr"></label></div><button type="button" id="addSubheading">＋ إضافة عنوان فرعي</button><div id="subheadingColumns" class="subheading-columns"></div></div><div id="directHeadingLink"><p>اختر الأقسام التي ستظهر داخل هذا العنوان.</p><div id="headingCategoryChoices" class="heading-category-choices"></div></div><footer><button type="button" data-close-dialog="headingLinkDialog">إلغاء</button><button class="primary" type="submit">إتمام الربط</button></footer></form></dialog>
 
   <dialog id="productDialog">
     <form method="dialog" id="productForm" class="dialog-card product-dialog">
