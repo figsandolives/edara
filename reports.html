@@ -1,5 +1,36 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>متابعة المنصة</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800;900&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="reports.css"></head><body>
-<header class="topbar"><a class="brand reports-brand" href="index.html"><span class="brand-mark">ز</span><div><strong>متابعة المنصة</strong><small>مخبز التين والزيتون</small></div></a><a class="nav-button" href="index.html">العودة للإدارة</a></header>
-<main class="reports-shell"><section class="reports-hero"><div><span class="eyebrow">تقارير الاستخدام اليومية</span><h1>أداء منصة الطلبات</h1><p>اختر يوماً لعرض حركة الزوار والسلال والطلبات والتفاعل مع المنتجات.</p></div><label>تاريخ التقرير<input id="reportDate" type="date"></label></section><section class="report-cards" id="reportCards"></section><section class="report-grid"><article class="report-panel"><header><div><span class="eyebrow">التفاعل</span><h2>أكثر المنتجات نقراً</h2></div></header><div id="topProducts" class="rank-list"></div></article><article class="report-panel"><header><div><span class="eyebrow">التفاعل</span><h2>أكثر الأقسام نقراً</h2></div></header><div id="topCategories" class="rank-list"></div></article></section></main><dialog id="reportDetail"><article class="dialog-card report-detail"><button class="icon-btn" id="closeReportDetail">×</button><header><div><span class="eyebrow">تفاصيل التقرير</span><h2 id="detailTitle"></h2></div></header><div id="detailList"></div></article></dialog><section class="admin-auth-gate" id="adminAuthGate"><div class="admin-auth-card"><div class="brand-mark">ز</div><span class="eyebrow">دخول محمي</span><h1>متابعة المنصة</h1><p>سجّل الدخول بحساب Google الإداري لعرض بيانات التقارير.</p><button class="primary" id="adminGoogleLogin">الدخول بحساب Google</button><small id="adminAuthMessage"></small></div></section>
-<script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script><script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script><script src="firebase-config.js"></script><script src="reports.js"></script></body></html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>أداء منصة الطلبات</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="reports.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand reports-brand" href="index.html"><span class="brand-mark">ز</span><div><strong>متابعة المنصة</strong><small>مخبز التين والزيتون</small></div></a><a class="nav-button" href="index.html">العودة للإدارة</a></header>
+  <main class="reports-shell" id="reportPrintable">
+    <section class="reports-hero">
+      <div><span class="eyebrow">تقارير الاستخدام والمبيعات</span><h1>أداء منصة الطلبات</h1><p>راقب رحلة العميل من الزيارة وحتى إتمام الشراء، وحدد الفترة التي تريد تحليلها.</p></div>
+      <div class="report-actions">
+        <label>من تاريخ<input id="reportStartDate" type="date"></label>
+        <label>إلى تاريخ<input id="reportEndDate" type="date"></label>
+        <button id="downloadReport" class="primary report-download" type="button">تحميل التقرير PDF</button>
+      </div>
+    </section>
+    <p class="report-range" id="reportRange"></p>
+
+    <section class="report-group"><header class="group-heading"><div><span class="eyebrow">المجموعة الأولى</span><h2>زوار الموقع</h2></div><p>اضغط على أي بطاقة لعرض بيانات الزوار ضمن الفترة المختارة.</p></header><div class="metric-grid metric-grid-three" id="visitorMetrics"></div></section>
+
+    <section class="report-group"><header class="group-heading"><div><span class="eyebrow">المجموعة الثانية</span><h2>تقارير الشراء</h2></div><p>يتم تحديث السلال غير المكتملة تلقائياً عند إتمام الطلب أو تعديل السلة أو تفريغها.</p></header><div class="metric-grid" id="purchaseMetrics"></div>
+      <article class="cart-report-card"><header><div><span class="eyebrow">متابعة دورية</span><h2>سجل السلات في الفترة</h2></div><span class="live-dot">محدّث الآن</span></header><div class="table-wrap"><table class="cart-report-table"><thead><tr><th>اسم الزبون</th><th>رقم الهاتف</th><th>تاريخ ووقت إنشاء السلة</th><th>قيمة السلة</th><th>منتجات السلة</th><th>إتمام الشراء</th></tr></thead><tbody id="remainingCarts"></tbody></table></div></article>
+    </section>
+
+    <section class="report-grid"><article class="report-panel"><header><div><span class="eyebrow">التفاعل</span><h2>أكثر المنتجات نقراً</h2></div></header><div id="topProducts" class="rank-list"></div></article><article class="report-panel"><header><div><span class="eyebrow">التفاعل</span><h2>أكثر الأقسام نقراً</h2></div></header><div id="topCategories" class="rank-list"></div></article></section>
+  </main>
+
+  <dialog id="reportDetail"><article class="dialog-card report-detail"><button class="icon-btn" id="closeReportDetail" aria-label="إغلاق">×</button><button class="detail-back hidden" id="detailBack" type="button">← رجوع</button><header><div><span class="eyebrow">بيانات الفترة المختارة</span><h2 id="detailTitle"></h2><p id="detailSubtitle"></p></div></header><div id="detailList"></div></article></dialog>
+  <section class="admin-auth-gate" id="adminAuthGate"><div class="admin-auth-card"><div class="brand-mark">ز</div><span class="eyebrow">دخول محمي</span><h1>متابعة المنصة</h1><p>سجّل الدخول بحساب Google الإداري لعرض بيانات التقارير.</p><button class="primary" id="adminGoogleLogin">الدخول بحساب Google</button><small id="adminAuthMessage"></small></div></section>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script><script src="firebase-config.js"></script><script src="reports.js"></script>
+</body></html>
