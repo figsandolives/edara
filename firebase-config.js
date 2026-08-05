@@ -23,7 +23,9 @@
     app,
     auth: window.firebase.auth(app),
     database: window.firebase.database(app),
-    storage: window.firebase.storage(app),
+    // صفحة التقارير لا تحتاج Storage. إبقاؤه اختيارياً يمنع تعطل تسجيل
+    // الدخول إذا لم تُحمّل مكتبة firebase-storage في صفحة خفيفة.
+    storage: typeof window.firebase.storage === "function" ? window.firebase.storage(app) : null,
     config: firebaseConfig
   });
   window.dispatchEvent(new CustomEvent("ordering-firebase-ready"));
