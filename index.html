@@ -203,6 +203,13 @@
           <label>الوحدة<select id="productPreparationSecondUnit"><option value="hour">ساعة</option><option value="day">يوم</option></select></label>
         </div>
       </section>
+      <section class="minimum-order-editor">
+        <label class="options-enable"><input id="productMinimumOrderEnabled" type="checkbox"> <span>تفعيل أقل كمية للطلب</span></label>
+        <div class="minimum-order-fields hidden" id="productMinimumOrderBody">
+          <label>أقل كمية مطلوبة<input id="productMinimumOrderQuantity" type="number" min="1" max="99" step="1" value="1" inputmode="numeric" dir="ltr"></label>
+          <label>الوحدة<select id="productMinimumOrderUnit"><option value="dozen">درزن</option><option value="piece">حبة</option><option value="bowl">ماعون</option><option value="bag">كيس</option><option value="kilo">كيلو</option><option value="bottle">بطل</option></select></label>
+        </div>
+      </section>
       <section class="product-options-editor" id="productOptionsEditor">
         <label class="options-enable"><input id="productOptionsEnabled" type="checkbox"> <span>إضافة خيارات للمنتج</span></label>
         <div class="options-editor-body hidden" id="productOptionsBody">
@@ -214,6 +221,8 @@
             <label><input id="productOptionsPreparationEnabled" type="checkbox"> وقت التحضير حسب الاختيار</label>
             <label><input id="productOptionsImagesEnabled" type="checkbox"> صور للخيارات</label>
             <label><input id="productOptionsNestedEnabled" type="checkbox"> خيار داخل خيار</label>
+            <label><input id="productOptionsMinimumEnabled" type="checkbox"> تفعيل أقل كمية لكل خيار</label>
+            <label><input id="productOptionsQuantityEnabled" type="checkbox"> تفعيل تحديد الكمية لكل خيار</label>
           </div>
           <div class="multiple-options-settings hidden" id="productOptionsMultipleSettings">
             <label>عنوان الخيارات بالعربي<input id="productOptionsTitleAr" maxlength="80" placeholder="مثال: اختر الإضافات"></label>
