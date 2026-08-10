@@ -254,6 +254,8 @@ function normalizeData() {
       id: String(product.id || `P${Date.now()}${index}`),
       name: clean(product.name),
       nameEn: clean(product.nameEn),
+      badgeAr: clean(product.badgeAr),
+      badgeEn: clean(product.badgeEn),
       description: clean(product.description),
       descriptionEn: clean(product.descriptionEn),
       category: clean(product.category),
@@ -946,6 +948,8 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productPrice").value = product ? Number(product.price).toFixed(3) : "0.000";
   $("#productNameAr").value = product?.name || "";
   $("#productNameEn").value = product?.nameEn || "";
+  $("#productBadgeAr").value = product?.badgeAr || "";
+  $("#productBadgeEn").value = product?.badgeEn || "";
   $("#productDescriptionAr").value = product?.description || "";
   $("#productDescriptionEn").value = product?.descriptionEn || "";
   const preparation = normalizePreparation(product?.preparation);
@@ -1208,6 +1212,8 @@ function saveProduct(event) {
     catalogType: categoryId ? catalogTypeOf(categories.find(category => category.id === categoryId)) : activeCatalogType,
     name,
     nameEn,
+    badgeAr: clean($("#productBadgeAr").value),
+    badgeEn: clean($("#productBadgeEn").value),
     price: options?.priceBased ? 0 : Number(price.toFixed(3)),
     description: clean($("#productDescriptionAr").value),
     descriptionEn: clean($("#productDescriptionEn").value),

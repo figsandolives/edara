@@ -188,6 +188,8 @@
         <label>سعر البيع د.ك<input id="productPrice" type="number" min="0" step="0.001" required dir="ltr"></label>
         <label>اسم المنتج بالعربي<input id="productNameAr" required maxlength="160"></label>
         <label>اسم المنتج بالإنجليزي<input id="productNameEn" required maxlength="160" dir="ltr"></label>
+        <label>عبارة مميزة بالعربي<input id="productBadgeAr" maxlength="80" placeholder="مثال: الأكثر طلباً"></label>
+        <label>عبارة مميزة بالإنجليزي<input id="productBadgeEn" maxlength="80" dir="ltr" placeholder="e.g. Best seller"></label>
         <label>الوصف العربي<textarea id="productDescriptionAr" rows="4" maxlength="800"></textarea></label>
         <label>الوصف الإنجليزي<textarea id="productDescriptionEn" rows="4" maxlength="800" dir="ltr"></textarea></label>
       </div>
@@ -300,6 +302,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260803-2"></script>
+  <script src="script.js?v=20260810-product-badge-1"></script>
 </body>
 </html>
