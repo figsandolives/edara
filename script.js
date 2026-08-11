@@ -995,6 +995,23 @@ let copiedProductOptions = (() => {
   try { return JSON.parse(localStorage.getItem(optionsClipboardKey) || "null"); } catch { return null; }
 })();
 const cloneOptions = value => JSON.parse(JSON.stringify(value));
+let pastedOptionSequence = 0;
+function cloneOptionsForProduct(value) {
+  const copied = cloneOptions(value);
+  // A paste must never retain option identifiers from the source product.
+  // This keeps each product's options isolated even after subsequent edits.
+  if (!Array.isArray(copied?.items)) return copied;
+  const stamp = `${Date.now().toString(36)}-${++pastedOptionSequence}`;
+  copied.items = copied.items.map((item, index) => ({
+    ...item,
+    id: `option-${stamp}-${index + 1}`,
+    subOptions: (Array.isArray(item.subOptions) ? item.subOptions : []).map((subOption, subIndex) => ({
+      ...subOption,
+      id: `sub-option-${stamp}-${index + 1}-${subIndex + 1}`
+    }))
+  }));
+  return copied;
+}
 function updateOptionsClipboardButton() {
   const button = $("#pasteProductOptions");
   if (button) button.disabled = !copiedProductOptions;
@@ -1741,7 +1758,7 @@ $("#copyProductOptions").addEventListener("click", () => {
 });
 $("#pasteProductOptions").addEventListener("click", () => {
   if (!copiedProductOptions) return;
-  const options = cloneOptions(copiedProductOptions);
+  const options = cloneOptionsForProduct(copiedProductOptions);
   $("#productOptionsEnabled").checked = true;
   $("#productOptionsRequired").checked = options.required === true;
   $("#productOptionsMultiple").checked = options.multiple === true;
