@@ -7,7 +7,14 @@ const selectedCartKeys = new Set();
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const eventTime = event => Number(event?.createdAt || 0);
-const localDay = value => value ? new Date(Number(value)).toLocaleDateString("en-CA", { timeZone: KUWAIT_TZ }) : "";
+// لا نعتمد صيغة المتصفح المختصرة للتاريخ؛ بعض المتصفحات كانت تُرجع اليوم التالي
+// داخل حقل التاريخ، فيظهر التقرير بأصفار رغم وجود بيانات في اليوم الصحيح.
+const localDay = value => {
+  if (!value) return "";
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: KUWAIT_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(Number(value)));
+  const read = type => parts.find(part => part.type === type)?.value || "";
+  return `${read("year")}-${read("month")}-${read("day")}`;
+};
 const dateTime = value => value ? new Date(Number(value)).toLocaleString("ar-KW", { dateStyle: "medium", timeStyle: "short", timeZone: KUWAIT_TZ }) : "—";
 const displayDate = value => String(value || "").split("-").reverse().join("-");
 const money = value => `${Number(value || 0).toFixed(3)} د.ك`;
@@ -119,7 +126,7 @@ function showPerson(index) {
 
 function cartReportHtml(records) {
   const rows = records.map((record, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(record.latest.customerName || record.created.customerName || "زائر غير مسجل")}</td><td dir="ltr">${escapeHtml(record.latest.phone || record.created.phone || "—")}</td><td>${dateTime(eventTime(record.created))}</td><td>${dateTime(eventTime(record.latest))}</td><td>${escapeHtml(record.items.map(item => `${item.name} × ${item.quantity}`).join("، "))}</td><td>${money(record.total)}</td><td>${record.completed ? "تم الشراء" : "لم يتم الشراء"}</td></tr>`).join("");
-  return `<section class="cart-pdf" dir="rtl"><header><img src="logo.png" alt=""><div><small>مخبز التين والزيتون</small><h1>تقرير السلات</h1><p>${escapeHtml(rangeLabel())}</p></div></header><div class="cart-pdf-summary"><span>عدد السلات: <b>${records.length}</b></span><span>إجمالي القيمة: <b>${money(records.reduce((sum, record) => sum + record.total, 0))}</b></span><span>تاريخ التقرير: <b>${dateTime(Date.now())}</b></span></div><table><thead><tr><th>#</th><th>العميل</th><th>الهاتف</th><th>وقت الإنشاء</th><th>آخر حركة</th><th>المنتجات</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table><footer>هذا التقرير يعرض فقط السلات ذات المنتجات المقروءة في النظام.</footer></section>`;
+  return `<section class="cart-pdf" dir="rtl"><header><span style="display:grid;place-items:center;width:72px;height:72px;border-radius:18px;background:#173d2d;color:#fff;font-size:38px;font-weight:900">ز</span><div><small>مخبز التين والزيتون</small><h1>تقرير السلات</h1><p>${escapeHtml(rangeLabel())}</p></div></header><div class="cart-pdf-summary"><span>عدد السلات: <b>${records.length}</b></span><span>إجمالي القيمة: <b>${money(records.reduce((sum, record) => sum + record.total, 0))}</b></span><span>تاريخ التقرير: <b>${dateTime(Date.now())}</b></span></div><table><thead><tr><th>#</th><th>العميل</th><th>الهاتف</th><th>وقت الإنشاء</th><th>آخر حركة</th><th>المنتجات</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table><footer>هذا التقرير يعرض فقط السلات ذات المنتجات المقروءة في النظام.</footer></section>`;
 }
 
 async function downloadCartReport() {
