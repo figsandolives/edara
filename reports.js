@@ -57,24 +57,34 @@ function cartRecords() {
   const cartEvents = events.filter(event => ["cart_created", "cart_updated"].includes(event.type)).sort((a, b) => eventTime(a) - eventTime(b));
   const records = new Map();
   cartEvents.forEach(event => {
-    const key = event.visitorId || `event-${eventTime(event)}`;
+    // السلة النشطة مرتبطة بالعميل، لا بلحظة الضغط على زر الإضافة.
+    // لذلك لا ينشئ cart_created لاحق سجلاً آخر للعميل نفسه بعد تعديل أو تفريغ.
+    const phone = String(event.phone || event.customer?.phone || "").replace(/\D/g, "");
+    const key = phone ? `phone:${phone}` : (event.visitorId || `event-${eventTime(event)}`);
     const current = records.get(key);
-    if (!current || event.type === "cart_created") records.set(key, { key, visitorId: key, created: event, latest: event });
-    else current.latest = event;
+    if (!current) records.set(key, { key, visitorId: event.visitorId || key, customerKey: key, created: event, latest: event });
+    else {
+      current.latest = event;
+      // نحتفظ ببيانات العميل إن لم تكن موجودة في أول حركة قديمة.
+      if (!current.created.phone && phone) current.created = { ...current.created, phone, customerName: event.customerName || event.customer?.name || current.created.customerName };
+    }
   });
   const completed = events.filter(event => event.type === "checkout_complete");
   return [...records.values()].map(record => {
-    const completedEvent = completed.find(event => event.visitorId === record.visitorId && eventTime(event) >= eventTime(record.created));
+    const recordPhone = String(record.latest.phone || record.latest.customer?.phone || record.created.phone || record.created.customer?.phone || "").replace(/\D/g, "");
+    const completedEvent = completed.find(event => eventTime(event) >= eventTime(record.created) && (event.visitorId === record.visitorId || (recordPhone && String(event.phone || event.customer?.phone || "").replace(/\D/g, "") === recordPhone)));
     const items = readableCartItems(record.latest.cartItems);
     const total = Number(record.latest.cartValue || 0) || (items || []).reduce((sum, item) => sum + item.total, 0);
     return { ...record, items, total, completed: Boolean(completedEvent), completedEvent };
-  }).filter(record => record.items && (inRange(eventTime(record.created)) || inRange(eventTime(record.latest))))
-    .sort((a, b) => eventTime(b.latest) - eventTime(a.latest));
+  }).filter(record => record.items && (inRange(eventTime(record.created)) || inRange(eventTime(record.latest))));
 }
 
 function filteredCarts() {
   const filter = $("#cartStatusFilter").value;
-  return cartRecords().filter(record => filter === "all" || (filter === "completed" ? record.completed : !record.completed));
+  const records = cartRecords().filter(record => filter === "all" || (filter === "completed" ? record.completed : !record.completed));
+  const sort = $("#cartSort").value;
+  const value = record => sort.startsWith("value") ? record.total : (sort.startsWith("created") ? eventTime(record.created) : eventTime(record.latest));
+  return records.sort((a, b) => sort.endsWith("asc") ? value(a) - value(b) : value(b) - value(a));
 }
 
 function cartKey(record) { return `${record.visitorId}:${eventTime(record.created)}`; }
@@ -161,6 +171,7 @@ const today = localDay(Date.now()); $("#reportStartDate").value = today; $("#rep
 $("#reportStartDate").onchange = () => { if ($("#reportEndDate").value < $("#reportStartDate").value) $("#reportEndDate").value = $("#reportStartDate").value; render(); };
 $("#reportEndDate").onchange = () => { if ($("#reportStartDate").value > $("#reportEndDate").value) $("#reportStartDate").value = $("#reportEndDate").value; render(); };
 $("#cartStatusFilter").onchange = render;
+$("#cartSort").onchange = render;
 $("#remainingCarts").onchange = event => { const checkbox = event.target.closest("[data-cart-key]"); if (!checkbox) return; checkbox.checked ? selectedCartKeys.add(checkbox.dataset.cartKey) : selectedCartKeys.delete(checkbox.dataset.cartKey); renderCartRows(filteredCarts()); };
 $("#selectAllCarts").onchange = event => { filteredCarts().forEach(record => event.target.checked ? selectedCartKeys.add(cartKey(record)) : selectedCartKeys.delete(cartKey(record))); renderCartRows(filteredCarts()); };
 $("#visitorMetrics").onclick = event => { const card = event.target.closest("[data-metric]"); if (card) showDetail(card.dataset.metric); };
