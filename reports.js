@@ -26,6 +26,7 @@ const dateTime = value => { const safeTime = timestamp(value); return safeTime ?
 const displayDate = value => String(value || "").split("-").reverse().join("-");
 const money = value => `${Number(value || 0).toFixed(3)} د.ك`;
 const arabicProductName = product => String(product?.name || product?.nameAr || product?.nameEn || "").trim();
+const latinDigits = value => String(value ?? "").replace(/[٠-٩]/g, digit => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(digit)]);
 
 function range() { return { start: $("#reportStartDate").value, end: $("#reportEndDate").value }; }
 function inRange(value) { const day = localDay(value); const { start, end } = range(); return Boolean(day && (!start || day >= start) && (!end || day <= end)); }
@@ -81,7 +82,15 @@ function cartRecords() {
 
 function filteredCarts() {
   const filter = $("#cartStatusFilter").value;
-  const records = cartRecords().filter(record => filter === "all" || (filter === "completed" ? record.completed : !record.completed));
+  const query = latinDigits($("#cartSearch")?.value).trim().toLowerCase();
+  const records = cartRecords().filter(record => {
+    if (record.total < 5) return false;
+    if (filter !== "all" && (filter === "completed" ? !record.completed : record.completed)) return false;
+    if (!query) return true;
+    const name = String(record.latest.customerName || record.latest.customer?.name || record.created.customerName || record.created.customer?.name || "").toLowerCase();
+    const phone = latinDigits(record.latest.phone || record.latest.customer?.phone || record.created.phone || record.created.customer?.phone || "");
+    return name.includes(query) || phone.includes(query);
+  });
   const sort = $("#cartSort").value;
   const value = record => sort.startsWith("value") ? record.total : (sort.startsWith("created") ? eventTime(record.created) : eventTime(record.latest));
   return records.sort((a, b) => sort.endsWith("asc") ? value(a) - value(b) : value(b) - value(a));
@@ -144,9 +153,24 @@ function showPerson(index) {
   $("#detailList").innerHTML = `<section class="person-page"><div><span>رقم الهاتف</span><b dir="ltr">${escapeHtml(row.phone || "لا يوجد")}</b></div><div><span>التاريخ والوقت</span><b>${dateTime(eventTime(row))}</b></div><div><span>رقم الفاتورة</span><b dir="ltr">${escapeHtml(row.orderId || "—")}</b></div>${products ? `<section><h3>المنتجات</h3><ul>${products}</ul></section>` : ""}</section>`;
 }
 
-function cartReportHtml(records) {
-  const rows = records.map((record, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(record.latest.customerName || record.created.customerName || "زائر غير مسجل")}</td><td dir="ltr">${escapeHtml(record.latest.phone || record.created.phone || "—")}</td><td>${dateTime(eventTime(record.created))}</td><td>${dateTime(eventTime(record.latest))}</td><td>${escapeHtml(record.items.map(item => `${item.name} × ${item.quantity}`).join("، "))}</td><td>${money(record.total)}</td><td>${record.completed ? "تم الشراء" : "لم يتم الشراء"}</td></tr>`).join("");
-  return `<section class="cart-pdf" dir="rtl"><header><span style="display:grid;place-items:center;width:72px;height:72px;border-radius:18px;background:#173d2d;color:#fff;font-size:38px;font-weight:900">ز</span><div><small>مخبز التين والزيتون</small><h1>تقرير السلات</h1><p>${escapeHtml(rangeLabel())}</p></div></header><div class="cart-pdf-summary"><span>عدد السلات: <b>${records.length}</b></span><span>إجمالي القيمة: <b>${money(records.reduce((sum, record) => sum + record.total, 0))}</b></span><span>تاريخ التقرير: <b>${dateTime(Date.now())}</b></span></div><table><thead><tr><th>#</th><th>العميل</th><th>الهاتف</th><th>وقت الإنشاء</th><th>آخر حركة</th><th>المنتجات</th><th>القيمة</th><th>الحالة</th></tr></thead><tbody>${rows}</tbody></table><footer>هذا التقرير يعرض فقط السلات ذات المنتجات المقروءة في النظام.</footer></section>`;
+function cartReportTitle() {
+  const filter = $("#cartStatusFilter").value;
+  return filter === "pending" ? "تقرير السلات غير المباعة" : filter === "completed" ? "تقرير السلات المباعة" : "تقرير السلات";
+}
+
+function cartReportPages(records) {
+  const perPage = 18;
+  return records.flatMap((record, index) => Array.from({ length: Math.max(1, Math.ceil(record.items.length / perPage)) }, (_, part) => ({ record, index, part, items: record.items.slice(part * perPage, (part + 1) * perPage) })));
+}
+
+function cartReportPageHtml(page, pageNumber, totalPages) {
+  const { record, index, part, items } = page;
+  const customer = record.latest.customerName || record.latest.customer?.name || record.created.customerName || record.created.customer?.name || "زائر غير مسجل";
+  const phone = record.latest.phone || record.latest.customer?.phone || record.created.phone || record.created.customer?.phone || "—";
+  const status = record.completed ? "✓" : "×";
+  const products = items.map(item => `<li><span>${escapeHtml(item.name)}</span><b>× ${Number(item.quantity)}</b></li>`).join("");
+  const continued = part ? `<small class="cart-pdf-continued">متابعة منتجات السلة رقم ${index + 1}</small>` : "";
+  return `<section class="cart-pdf-page" dir="rtl"><header><div><small>مخبز التين والزيتون</small><h1>${escapeHtml(cartReportTitle())}</h1><p>من ${displayDate(range().start)} إلى ${displayDate(range().end)}</p></div><span class="cart-pdf-mark">ز</span></header><div class="cart-pdf-rule"></div><div class="cart-pdf-meta"><span><b>رقم السلة</b>${index + 1}</span><span><b>العميل</b>${escapeHtml(customer)}</span><span><b>الهاتف</b><i dir="ltr">${escapeHtml(latinDigits(phone))}</i></span><span class="cart-pdf-status ${record.completed ? "is-completed" : "is-pending"}"><b>حالة الشراء</b><strong>${status}</strong></span></div><div class="cart-pdf-times"><span>وقت الإنشاء: <b>${dateTime(eventTime(record.created))}</b></span><span>آخر حركة: <b>${dateTime(eventTime(record.latest))}</b></span></div>${continued}<section class="cart-pdf-products"><h2>المنتجات</h2><ul>${products}</ul></section><div class="cart-pdf-total"><span>إجمالي قيمة السلة</span><b>${money(record.total)}</b></div><footer><span>${escapeHtml(cartReportTitle())}</span><b>صفحة ${pageNumber} من ${totalPages}</b></footer></section>`;
 }
 
 async function downloadCartReport() {
@@ -155,14 +179,17 @@ async function downloadCartReport() {
   const button = $("#downloadCartReport");
   if (!window.html2canvas || !window.jspdf?.jsPDF) return alert("تعذر تحميل أدوات إنشاء PDF.");
   button.disabled = true; button.textContent = "جارٍ تجهيز التقرير…";
-  const host = document.createElement("div"); host.className = "cart-pdf-host"; host.innerHTML = cartReportHtml(records); document.body.append(host);
+  const pages = cartReportPages(records);
+  const host = document.createElement("div"); host.className = "cart-pdf-host"; document.body.append(host);
   try {
-    const canvas = await html2canvas(host.firstElementChild, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
-    const { jsPDF } = window.jspdf, pdf = new jsPDF("l", "mm", "a4"); const width = 277, page = 190;
-    const height = canvas.height * width / canvas.width, image = canvas.toDataURL("image/jpeg", 0.96); let remaining = height, y = 10;
-    pdf.addImage(image, "JPEG", 10, y, width, height, undefined, "FAST"); remaining -= page;
-    while (remaining > .5) { pdf.addPage(); y = 10 - (height - remaining); pdf.addImage(image, "JPEG", 10, y, width, height, undefined, "FAST"); remaining -= page; }
-    pdf.save(`تقرير السلات ${displayDate(range().start)}.pdf`);
+    const { jsPDF } = window.jspdf, pdf = new jsPDF("p", "mm", "a4");
+    for (let index = 0; index < pages.length; index++) {
+      host.innerHTML = cartReportPageHtml(pages[index], index + 1, pages.length);
+      const canvas = await html2canvas(host.firstElementChild, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+      if (index) pdf.addPage();
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 10, 10, 190, 277, undefined, "FAST");
+    }
+    pdf.save(`${cartReportTitle()} من ${displayDate(range().start)} إلى ${displayDate(range().end)}.pdf`);
   } catch (error) { console.error(error); alert("تعذر إنشاء التقرير. حاول مرة أخرى."); }
   finally { host.remove(); button.disabled = false; button.textContent = "تحميل تقرير السلات المحددة"; }
 }
@@ -172,6 +199,7 @@ $("#reportStartDate").onchange = () => { if ($("#reportEndDate").value < $("#rep
 $("#reportEndDate").onchange = () => { if ($("#reportStartDate").value > $("#reportEndDate").value) $("#reportStartDate").value = $("#reportEndDate").value; render(); };
 $("#cartStatusFilter").onchange = render;
 $("#cartSort").onchange = render;
+$("#cartSearch").oninput = event => { const normalized = latinDigits(event.target.value); if (event.target.value !== normalized) event.target.value = normalized; render(); };
 $("#remainingCarts").onchange = event => { const checkbox = event.target.closest("[data-cart-key]"); if (!checkbox) return; checkbox.checked ? selectedCartKeys.add(checkbox.dataset.cartKey) : selectedCartKeys.delete(checkbox.dataset.cartKey); renderCartRows(filteredCarts()); };
 $("#selectAllCarts").onchange = event => { filteredCarts().forEach(record => event.target.checked ? selectedCartKeys.add(cartKey(record)) : selectedCartKeys.delete(cartKey(record))); renderCartRows(filteredCarts()); };
 $("#visitorMetrics").onclick = event => { const card = event.target.closest("[data-metric]"); if (card) showDetail(card.dataset.metric); };
