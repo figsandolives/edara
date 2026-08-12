@@ -159,7 +159,8 @@ function cartReportTitle() {
 }
 
 function cartReportPages(records) {
-  const perPage = 18;
+  // المنتجـات تُعرض في عمودين، فلا نقسم السلة إلا بعد امتلاء الصفحة فعلاً.
+  const perPage = 30;
   return records.flatMap((record, index) => Array.from({ length: Math.max(1, Math.ceil(record.items.length / perPage)) }, (_, part) => ({ record, index, part, items: record.items.slice(part * perPage, (part + 1) * perPage) })));
 }
 
