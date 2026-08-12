@@ -6,16 +6,23 @@ let events = [], orders = [], catalogById = new Map(), activeDetail = "", detail
 const selectedCartKeys = new Set();
 
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
-const eventTime = event => Number(event?.createdAt || 0);
+const timestamp = value => {
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  const parsed = typeof value === "string" ? Date.parse(value) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+const eventTime = event => timestamp(event?.createdAt);
 // لا نعتمد صيغة المتصفح المختصرة للتاريخ؛ بعض المتصفحات كانت تُرجع اليوم التالي
 // داخل حقل التاريخ، فيظهر التقرير بأصفار رغم وجود بيانات في اليوم الصحيح.
 const localDay = value => {
-  if (!value) return "";
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: KUWAIT_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(Number(value)));
+  const safeTime = timestamp(value);
+  if (!safeTime) return "";
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: KUWAIT_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(safeTime));
   const read = type => parts.find(part => part.type === type)?.value || "";
   return `${read("year")}-${read("month")}-${read("day")}`;
 };
-const dateTime = value => value ? new Date(Number(value)).toLocaleString("ar-KW", { dateStyle: "medium", timeStyle: "short", timeZone: KUWAIT_TZ }) : "—";
+const dateTime = value => { const safeTime = timestamp(value); return safeTime ? new Date(safeTime).toLocaleString("ar-KW", { dateStyle: "medium", timeStyle: "short", timeZone: KUWAIT_TZ }) : "—"; };
 const displayDate = value => String(value || "").split("-").reverse().join("-");
 const money = value => `${Number(value || 0).toFixed(3)} د.ك`;
 const arabicProductName = product => String(product?.name || product?.nameAr || product?.nameEn || "").trim();
