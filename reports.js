@@ -34,9 +34,11 @@ function metric(title, value, key, note) { return `<button class="report-card" d
 function grouped(list, key, label) { const map = new Map(); list.forEach(event => { const name = event[key] || "غير محدد"; map.set(name, (map.get(name) || 0) + 1); }); return [...map].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count], index) => `<div class="rank-row"><i>${index + 1}</i><span><b>${escapeHtml(name)}</b><small>${label}</small></span><strong>${count}</strong></div>`).join("") || '<div class="empty">لا توجد بيانات ضمن الفترة المختارة</div>'; }
 
 function visitorRows() {
-  const visits = events.filter(event => event.type === "visit").sort((a, b) => eventTime(a) - eventTime(b));
-  const firstByVisitor = new Map(); visits.forEach(event => { if (!firstByVisitor.has(event.visitorId)) firstByVisitor.set(event.visitorId, event); });
-  const unique = new Map(); visits.filter(inRange).forEach(event => unique.set(event.visitorId, event));
+  // الزائر يُحسب مرة واحدة خلال الفترة من أي نشاط (زيارة، سلة، أو إتمام طلب).
+  // بعض الزيارات القديمة لم تسجل حدث visit لكن سجلت السلة، لذلك لا نعتمد visit وحده.
+  const activity = events.filter(event => event.visitorId && eventTime(event)).sort((a, b) => eventTime(a) - eventTime(b));
+  const firstByVisitor = new Map(); activity.forEach(event => { if (!firstByVisitor.has(event.visitorId)) firstByVisitor.set(event.visitorId, event); });
+  const unique = new Map(); activity.filter(inRange).forEach(event => unique.set(event.visitorId, event));
   return [...unique.values()].map(event => ({ ...event, isNew: firstByVisitor.get(event.visitorId) === event, registered: Boolean(event.customerName || event.phone) }));
 }
 
@@ -94,12 +96,12 @@ function renderCartRows(records) {
 
 function render() {
   const visitors = visitorRows(), period = events.filter(inRange), carts = cartRecords(), displayed = filteredCarts();
-  const newVisitors = visitors.filter(visitor => visitor.isNew), registered = visitors.filter(visitor => visitor.registered && !visitor.isNew);
+  const newVisitors = visitors.filter(visitor => visitor.isNew), registered = visitors.filter(visitor => visitor.registered);
   const accounts = period.filter(event => event.type === "account_created");
   const invoices = orders.filter(order => inRange(order.paidAt || order.createdAt));
   const unfinished = carts.filter(record => !record.completed);
   $("#reportRange").textContent = rangeLabel();
-  $("#visitorMetrics").innerHTML = [metric("المسجلون مسبقاً", registered.length, "registered", "عرض بيانات العملاء"), metric("الزوار الجدد", newVisitors.length, "new", "أول زيارة مسجلة"), metric("الحسابات الجديدة", accounts.length, "accounts", "عرض بيانات الحسابات")].join("");
+  $("#visitorMetrics").innerHTML = [metric("إجمالي زوار الفترة", visitors.length, "allVisitors", "كل من دخل أو نفذ نشاطاً خلال الفترة"), metric("الزوار الجدد", newVisitors.length, "new", "أول نشاط مسجل لهم"), metric("العملاء المسجلون", registered.length, "registered", "لديهم اسم أو رقم هاتف")].join("");
   $("#purchaseMetrics").innerHTML = [metric("عدد السلات المنشأة", carts.length, "carts", "سلات قابلة للقراءة"), metric("عدد الفواتير", invoices.length, "invoices", "طلبات مدفوعة ومؤكدة"), metric("السلات المتبقية", unfinished.length, "unfinished", "غير مكتملة حتى الآن")].join("");
   renderCartRows(displayed);
   $("#topProducts").innerHTML = grouped(period.filter(event => event.type === "product_click"), "productName", "نقرة");
@@ -108,7 +110,8 @@ function render() {
 
 function detailData(key) {
   const visitors = visitorRows(), carts = cartRecords();
-  if (key === "registered") return { title: "المسجلون مسبقاً", rows: visitors.filter(item => item.registered && !item.isNew) };
+  if (key === "allVisitors") return { title: "إجمالي زوار الفترة", rows: visitors };
+  if (key === "registered") return { title: "العملاء المسجلون", rows: visitors.filter(item => item.registered) };
   if (key === "new") return { title: "الزوار الجدد", rows: visitors.filter(item => item.isNew) };
   if (key === "accounts") return { title: "الحسابات الجديدة", rows: events.filter(event => event.type === "account_created" && inRange(event)) };
   if (key === "carts") return { title: "السلات المنشأة", rows: carts.map(record => record.latest) };
