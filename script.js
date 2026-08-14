@@ -40,6 +40,8 @@ let catalogRef = null;
 let customersRef = null;
 let visitorPresenceRef = null;
 let visitorPresence = [];
+let availabilityNotifications = {};
+let availabilityNotificationsRef = null;
 let assignTargetCategoryId = "";
 let pendingDeleteCategoryId = "";
 let currentView = "catalog";
@@ -429,6 +431,8 @@ async function loadData() {
   });
   loadCustomers();
   loadVisitorPresence();
+  availabilityNotificationsRef = firebaseServices.database.ref("orderingPlatform/availabilityNotifications");
+  availabilityNotificationsRef.on("value", snapshot => { availabilityNotifications = snapshot.val() || {}; renderAvailabilityNotifications(); });
 }
 
 function renderLiveVisitors() {
@@ -1423,18 +1427,32 @@ function openCustomerDetails(uid) {
 }
 
 function showAdminView(view) {
-  currentView = view === "customers" ? "customers" : "catalog";
+  currentView = ["customers", "availability"].includes(view) ? view : "catalog";
   $$("[data-admin-view='catalog']").forEach(element => element.classList.toggle("hidden", currentView !== "catalog"));
   $("#customersView").classList.toggle("hidden", currentView !== "customers");
+  $("#availabilityNotificationsView").classList.toggle("hidden", currentView !== "availability");
   $("#deliveryAreasView").classList.add("hidden");
   $("#liveVisitorsView").classList.add("hidden");
   $("#customersPage").classList.toggle("active", currentView === "customers");
+  $("#availabilityNotificationsPage").classList.toggle("active", currentView === "availability");
   $("#deliveryAreasPage").classList.remove("active");
   $("#liveVisitorsPage").classList.remove("active");
   $("#addProduct").classList.toggle("hidden", currentView === "customers");
   $("#addCategory").classList.toggle("hidden", currentView === "customers");
   if (currentView === "customers") renderCustomers();
+  if (currentView === "availability") renderAvailabilityNotifications();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderAvailabilityNotifications() {
+  const list = $("#availabilityNotificationsList"); if (!list) return;
+  const rows = Object.entries(availabilityNotifications).flatMap(([productId, entries]) => Object.entries(entries || {}).map(([uid, entry]) => ({ productId, uid, ...entry })));
+  $("#availabilityWaitingCount").textContent = rows.length;
+  const grouped = rows.reduce((map, row) => { (map[row.productId] ||= []).push(row); return map; }, {});
+  list.innerHTML = Object.entries(grouped).length ? Object.entries(grouped).map(([productId, entries]) => {
+    const product = products.find(item => String(item.id) === String(productId));
+    return `<article class="customer-card"><div class="customer-summary"><div><strong>${escapeHtml(product?.name || productId)}</strong><small>${entries.length} في انتظار التبليغ</small></div></div><div class="customer-order-items">${entries.map(entry => `<span><b>${escapeHtml(entry.name || "عميل")}</b><small dir="ltr">${escapeHtml(entry.phone || "")}</small></span>`).join("")}</div></article>`;
+  }).join("") : `<div class="empty">لا يوجد عملاء بانتظار التبليغ حالياً</div>`;
 }
 
 function clearDropLines() {
@@ -1634,6 +1652,9 @@ $("#restaurantEnabled").addEventListener("change", event => { restaurantEnabled 
 $("#productSearch").addEventListener("input", event => { productSearch = event.target.value; render(); });
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
+$("#availabilityNotificationsPage").addEventListener("click", () => showAdminView("availability"));
+$("#backFromAvailabilityNotifications").addEventListener("click", () => showAdminView("catalog"));
+$("#downloadAvailabilityNotifications").addEventListener("click", () => { showAdminView("availability"); setTimeout(() => window.print(), 50); });
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
 $("#liveVisitorsPage").addEventListener("click", showLiveVisitorsView);
 $("#backFromLiveVisitors").addEventListener("click", () => showAdminView("catalog"));
