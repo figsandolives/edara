@@ -504,7 +504,8 @@ function toggleButton(kind, id, active) {
 
 function availabilityButtons(product) {
   const status = product.availability?.status || "available";
-  return `<span class="availability-actions"><button type="button" class="${status === "sold_out" ? "active" : ""}" data-availability="sold_out" data-product-id="${escapeHtml(product.id)}">نفذت الكمية</button><button type="button" class="${status === "unavailable" ? "active" : ""}" data-availability="unavailable" data-product-id="${escapeHtml(product.id)}">غير متوفر</button></span>`;
+  const enabled = status !== "available";
+  return `<span class="availability-actions">${enabled ? `<select data-availability-select="${escapeHtml(product.id)}" aria-label="حالة النفاد"><option value="sold_out" ${status === "sold_out" ? "selected" : ""}>نفذت الكمية</option><option value="unavailable" ${status === "unavailable" ? "selected" : ""}>غير متوفر</option></select>` : ""}<button type="button" class="status-toggle ${enabled ? "active" : ""}" data-toggle-availability="${escapeHtml(product.id)}" aria-pressed="${enabled}" title="تفعيل أو إيقاف حالة نفاد المنتج"><i></i><span>نفاد الكمية</span></button></span>`;
 }
 
 function imageSource(product) {
@@ -1346,13 +1347,13 @@ function toggleProductActive(productId) {
   toast(product.active ? "تم تفعيل المنتج" : "تم إخفاء المنتج من منصة البيع");
 }
 
-function setProductAvailability(productId, status) {
+function setProductAvailability(productId, status, enabled = true) {
   const product = products.find(item => item.id === productId);
   if (!product) return;
-  const next = product.availability?.status === status ? "available" : status;
-  product.availability = { status: next, cycleId: next === "available" ? String(product.availability?.cycleId || Date.now()) : String(Date.now()) };
+  const next = enabled ? status : "available";
+  product.availability = { status: next, cycleId: next === "available" ? String(product.availability?.cycleId || Date.now()) : String(product.availability?.status === "available" ? Date.now() : (product.availability?.cycleId || Date.now())) };
   markDirty(); render();
-  toast(next === "available" ? "المنتج متوفر الآن — سيبدأ إرسال التنبيهات" : (next === "sold_out" ? "تم وضع المنتج: نفذت الكمية" : "تم وضع المنتج: غير متوفر"));
+  toast(next === "available" ? "المنتج متوفر الآن — سيبدأ إرسال التنبيهات" : (next === "sold_out" ? "تم تفعيل حالة: نفذت الكمية" : "تم تفعيل حالة: غير متوفر"));
 }
 
 function adminDate(value) {
@@ -1896,8 +1897,8 @@ $("#categoryList").addEventListener("click", (event) => {
   const editProductButton = event.target.closest("[data-edit-product]");
   const deleteProductButton = event.target.closest("[data-delete-product]");
   const toggleProductButton = event.target.closest("[data-toggle-product]");
-  const availabilityButton = event.target.closest("[data-availability]");
-  if (availabilityButton) return setProductAvailability(availabilityButton.dataset.productId, availabilityButton.dataset.availability);
+  const availabilityButton = event.target.closest("[data-toggle-availability]");
+  if (availabilityButton) { const product = products.find(item => item.id === availabilityButton.dataset.toggleAvailability); return setProductAvailability(product?.id, product?.availability?.status === "unavailable" ? "unavailable" : "sold_out", product?.availability?.status === "available"); }
   const removeProductButton = event.target.closest("[data-remove-product-category]");
   if (moveHeadingButton) { const heading = headings.find(item => item.id === moveHeadingButton.dataset.moveHeading); const list = [...scopedCategories().map(item => ({ type: "category", item })), ...headings.filter(item => catalogTypeOf(item) === activeCatalogType).map(item => ({ type: "heading", item }))].sort((a, b) => Number(a.item.order) - Number(b.item.order) || (a.type === "heading" ? -1 : 1)); const index = list.findIndex(item => item.type === "heading" && item.item.id === heading?.id); const next = index + (moveHeadingButton.dataset.direction === "up" ? -1 : 1); if (heading && next >= 0 && next < list.length) { const target = list[next]; heading.order = target.type === "category" ? Number(target.item.order) + (moveHeadingButton.dataset.direction === "up" ? -0.5 : 0.5) : target.item.order; markDirty(); render(); } return; }
   if (linkHeadingButton) { const heading = headings.find(item => item.id === linkHeadingButton.dataset.linkHeading); if (!heading) return; editingHeadingId = heading.id; editingSubheadings = Array.isArray(heading.subheadings) ? JSON.parse(JSON.stringify(heading.subheadings)) : []; $("#headingLinkTitle").textContent = heading.nameAr; $("#enableSubheadings").checked = editingSubheadings.length > 0; $("#subheadingEditor").classList.toggle("hidden", !editingSubheadings.length); $("#directHeadingLink").classList.toggle("hidden", Boolean(editingSubheadings.length)); $("#headingCategoryChoices").classList.add("hidden"); $("#headingCategoryChoices").innerHTML = scopedCategories().map(category => `<label class="heading-category-choice"><input type="checkbox" value="${escapeHtml(category.id)}" ${(heading.categoryIds || []).includes(category.id) ? "checked" : ""}><span>${escapeHtml(category.nameAr)} <small>${escapeHtml(category.nameEn)}</small></span></label>`).join(""); renderSubheadingColumns(); $("#headingLinkDialog").showModal(); return; }
@@ -1917,6 +1918,12 @@ $("#categoryList").addEventListener("click", (event) => {
   const id = header.closest(".category-card").dataset.categoryId;
   openCategories.has(id) ? openCategories.delete(id) : openCategories.add(id);
   header.closest(".category-card").classList.toggle("open", openCategories.has(id));
+});
+
+$("#categoryList").addEventListener("change", event => {
+  const select = event.target.closest("[data-availability-select]");
+  if (!select) return;
+  setProductAvailability(select.dataset.availabilitySelect, select.value, true);
 });
 
 $("#categoryList").addEventListener("dragstart", (event) => {
