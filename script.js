@@ -1485,11 +1485,22 @@ function renderAdvertisementEditor() {
   $("#advertisementSize").value = value.size;
   $("#advertisementTargetType").value = value.targetType;
   $("#advertisementLink").value = value.link;
-  $("#advertisementProduct").innerHTML = `<option value="">اختر المنتج</option>${products.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === value.productId ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}`;
+  $("#advertisementProduct").value = value.productId;
+  const selectedProduct = products.find(item => item.id === value.productId);
+  $("#advertisementProductSearch").value = selectedProduct?.name || "";
+  renderAdvertisementProductResults($("#advertisementProductSearch").value);
   $("#advertisementPreview").src = value.image || "";
   $("#advertisementPreview").classList.toggle("hidden", !value.image);
   $("#advertisementProductWrap").classList.toggle("hidden", value.targetType !== "product");
   $("#advertisementLinkWrap").classList.toggle("hidden", value.targetType !== "link");
+}
+
+function renderAdvertisementProductResults(query = "") {
+  const normalized = clean(query).toLocaleLowerCase();
+  const result = $("#advertisementProductResults");
+  if (!normalized) { result.innerHTML = ""; return; }
+  const matches = products.filter(item => [item.name, item.nameEn].join(" ").toLocaleLowerCase().includes(normalized)).slice(0, 12);
+  result.innerHTML = matches.length ? matches.map(item => `<button type="button" data-advertisement-product-choice="${escapeHtml(item.id)}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:right;border:1px solid #dfe8e2;background:white;border-radius:12px;padding:8px;margin-top:6px"><img src="${escapeHtml(imageSource(item))}" alt="" style="width:46px;height:46px;border-radius:9px;object-fit:cover"><span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.nameEn)}</small></span></button>`).join("") : `<small>لا توجد نتائج مطابقة</small>`;
 }
 
 function renderAvailabilityNotifications() {
@@ -1715,6 +1726,8 @@ $("#availabilityNotificationsPage").addEventListener("click", () => showAdminVie
 $("#advertisementPage").addEventListener("click", () => showAdminView("advertisement"));
 $("#backFromAdvertisement").addEventListener("click", () => showAdminView("catalog"));
 $("#advertisementTargetType").addEventListener("change", renderAdvertisementEditor);
+$("#advertisementProductSearch").addEventListener("input", event => { $("#advertisementProduct").value = ""; renderAdvertisementProductResults(event.target.value); });
+$("#advertisementProductResults").addEventListener("click", event => { const choice = event.target.closest("[data-advertisement-product-choice]"); if (!choice) return; const product = products.find(item => item.id === choice.dataset.advertisementProductChoice); $("#advertisementProduct").value = product?.id || ""; $("#advertisementProductSearch").value = product?.name || ""; $("#advertisementProductResults").innerHTML = product ? `<div style="display:flex;align-items:center;gap:10px;padding:8px"><img src="${escapeHtml(imageSource(product))}" alt="" style="width:46px;height:46px;border-radius:9px;object-fit:cover"><b>${escapeHtml(product.name)}</b></div>` : ""; });
 $("#advertisementImage").addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; try { advertisement.image = await optimizeImage(file, "advertisement"); renderAdvertisementEditor(); toast("تم رفع صورة الإعلان"); } catch (error) { toast(error.message || "تعذر رفع الصورة"); } });
 $("#advertisementForm").addEventListener("submit", event => { event.preventDefault(); advertisement = { ...normalizeAdvertisement(advertisement), enabled: $("#advertisementEnabled").checked, size: $("#advertisementSize").value, targetType: $("#advertisementTargetType").value, productId: $("#advertisementProduct").value, link: clean($("#advertisementLink").value) }; if (advertisement.enabled && !advertisement.image) return toast("أضف صورة الإعلان أولاً"); if (advertisement.enabled && advertisement.targetType === "product" && !advertisement.productId) return toast("اختر المنتج المطلوب"); if (advertisement.enabled && advertisement.targetType === "link" && !advertisement.link) return toast("أدخل الرابط المطلوب"); markDirty("جارٍ حفظ الإعلان…"); toast("تم حفظ الإعلان"); });
 $("#backFromAvailabilityNotifications").addEventListener("click", () => showAdminView("catalog"));
