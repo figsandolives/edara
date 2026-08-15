@@ -23,6 +23,7 @@
       <button class="nav-button" id="customersPage">العملاء</button>
       <button class="nav-button" id="deliveryAreasPage">مناطق التوصيل</button>
       <button class="nav-button" id="availabilityNotificationsPage">التبليغات</button>
+      <button class="nav-button" id="advertisementPage">صفحة الإعلان</button>
       <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
       <button class="secondary" id="addCategory">＋ إضافة قسم جديد</button>
       <button class="secondary" id="addHeading">＋ إضافة عنوان</button>
@@ -167,6 +168,7 @@
       <section class="live-visitor-list hidden" id="liveVisitorList"><header><div><h2>المتصفحون الآن</h2><p>تظهر بيانات العميل للمسجل فقط.</p></div><button class="secondary" id="closeLiveVisitorList" type="button">إخفاء القائمة</button></header><div id="liveVisitorListItems"></div></section>
     </section>
     <section id="availabilityNotificationsView" class="customers-view hidden" aria-live="polite"><div class="customers-head"><div><span class="eyebrow">تنبيهات توفر المنتجات</span><h1>في انتظار التبليغ</h1><p>تُزال بيانات العميل تلقائياً بعد إرسال رسالة واتساب له.</p></div><div class="stats"><div><strong id="availabilityWaitingCount">0</strong><span>عميل بانتظار التبليغ</span></div></div></div><div class="customers-toolbar"><button class="secondary" id="backFromAvailabilityNotifications">العودة للمنتجات والأقسام</button><button class="primary" id="downloadAvailabilityNotifications">تحميل التقرير PDF</button></div><div id="availabilityNotificationsList" class="customer-list"></div></section>
+    <section id="advertisementView" class="customers-view hidden"><div class="customers-head"><div><span class="eyebrow">إعلان المنصة</span><h1>صفحة الإعلان</h1><p>يظهر الإعلان في منتصف المنصة عند دخول العميل، ويمكنه الضغط على الصورة للانتقال للرابط أو المنتج.</p></div></div><form id="advertisementForm" class="dialog-card"><label class="options-enable"><input id="advertisementEnabled" type="checkbox"> <span>تفعيل الإعلان</span></label><label>صورة الإعلان<input id="advertisementImage" type="file" accept="image/*"></label><img id="advertisementPreview" alt="معاينة الإعلان" style="max-width:260px;max-height:260px;border-radius:16px"><label>مقاس الإعلان<select id="advertisementSize"><option value="square">مربع</option><option value="portrait">عمودي</option><option value="landscape">أفقي</option></select></label><label>التوجيه<select id="advertisementTargetType"><option value="product">منتج من المنصة</option><option value="link">رابط مباشر</option></select></label><label id="advertisementProductWrap">المنتج<select id="advertisementProduct"></select></label><label id="advertisementLinkWrap">الرابط<input id="advertisementLink" type="url" dir="ltr" placeholder="https://"></label><footer><button type="button" class="secondary" id="backFromAdvertisement">العودة</button><button class="primary" type="submit">حفظ الإعلان</button></footer></form></section>
   </main>
 
   <dialog id="categoryDialog">
@@ -187,7 +189,8 @@
       <input id="productId" type="hidden">
       <div class="form-grid">
         <label>القسم<select id="productCategory"></select></label>
-        <label>سعر البيع د.ك<input id="productPrice" type="number" min="0" step="0.001" required dir="ltr"></label>
+        <label>السعر الأصلي د.ك<input id="productPrice" type="number" min="0" step="0.001" required dir="ltr"></label>
+        <label>سعر العرض د.ك <small>اختياري — اتركه فارغاً دون عرض</small><input id="productSalePrice" type="number" min="0" step="0.001" dir="ltr"></label>
         <label>اسم المنتج بالعربي<input id="productNameAr" required maxlength="160"></label>
         <label>اسم المنتج بالإنجليزي<input id="productNameEn" required maxlength="160" dir="ltr"></label>
         <label>عبارة مميزة بالعربي<input id="productBadgeAr" maxlength="80" placeholder="مثال: الأكثر طلباً"></label>
@@ -195,6 +198,10 @@
         <label>الوصف العربي<textarea id="productDescriptionAr" rows="4" maxlength="800"></textarea></label>
         <label>الوصف الإنجليزي<textarea id="productDescriptionEn" rows="4" maxlength="800" dir="ltr"></textarea></label>
       </div>
+      <section class="inventory-editor">
+        <label class="options-enable"><input id="productInventoryEnabled" type="checkbox"> <span>تمكين كمية</span></label>
+        <div class="minimum-order-fields hidden" id="productInventoryBody"><label>الكمية المتوفرة<input id="productInventoryQuantity" type="number" min="0" step="1" value="0" inputmode="numeric" dir="ltr"></label><small>عند وصولها إلى صفر يتحول المنتج تلقائياً إلى «نفذت الكمية».</small></div>
+      </section>
       <section class="preparation-editor">
         <div class="section-title"><div><h3>وقت التحضير</h3><p>سيظهر للعميل فوق صورة المنتج.</p></div></div>
         <div class="preparation-grid">
