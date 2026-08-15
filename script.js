@@ -1555,6 +1555,20 @@ function reorderHeading(sourceId, targetId, position) {
   ordered.forEach((item, index) => item.order = index + 1);
 }
 
+function reorderCatalogEntry(sourceKind, sourceId, targetKind, targetId, position) {
+  const entries = [
+    ...scopedCategories().map(item => ({ kind: "category", item })),
+    ...headings.filter(item => catalogTypeOf(item) === activeCatalogType).map(item => ({ kind: "heading", item }))
+  ].sort((a, b) => Number(a.item.order) - Number(b.item.order) || (a.kind === "heading" ? -1 : 1));
+  const sourceIndex = entries.findIndex(entry => entry.kind === sourceKind && entry.item.id === sourceId);
+  if (sourceIndex < 0) return;
+  const [source] = entries.splice(sourceIndex, 1);
+  const targetIndex = entries.findIndex(entry => entry.kind === targetKind && entry.item.id === targetId);
+  if (targetIndex < 0) return;
+  entries.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, source);
+  entries.forEach((entry, index) => entry.item.order = index + 1);
+}
+
 async function importJson(files) {
   if (!files.length) return;
   try {
@@ -2019,9 +2033,9 @@ $("#categoryList").addEventListener("dragstart", (event) => {
 
 $("#categoryList").addEventListener("dragover", (event) => {
   if (!dragState) return;
-  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : dragState.kind === "heading" ? event.target.closest(".heading-card") : event.target.closest(".category-card:not(.heading-card)");
+  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : event.target.closest(".category-card");
   if (!target) return;
-  const targetId = dragState.kind === "category" ? target.dataset.categoryId : dragState.kind === "heading" ? target.dataset.headingId : target.dataset.productId;
+  const targetId = dragState.kind === "product" ? target.dataset.productId : target.dataset.headingId || target.dataset.categoryId;
   if (targetId === dragState.id) return;
   event.preventDefault();
   clearDropLines();
@@ -2030,12 +2044,11 @@ $("#categoryList").addEventListener("dragover", (event) => {
 
 $("#categoryList").addEventListener("drop", (event) => {
   if (!dragState) return;
-  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : dragState.kind === "heading" ? event.target.closest(".heading-card") : event.target.closest(".category-card:not(.heading-card)");
+  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : event.target.closest(".category-card");
   if (!target) return;
   event.preventDefault();
   const position = target.classList.contains("drop-after") ? "after" : "before";
-  if (dragState.kind === "category") reorderCategory(dragState.id, target.dataset.categoryId, position);
-  else if (dragState.kind === "heading") reorderHeading(dragState.id, target.dataset.headingId, position);
+  if (dragState.kind === "category" || dragState.kind === "heading") reorderCatalogEntry(dragState.kind, dragState.id, target.classList.contains("heading-card") ? "heading" : "category", target.dataset.headingId || target.dataset.categoryId, position);
   else reorderProduct(dragState.id, target.dataset.productId, dragState.categoryId, position);
   dragState = null;
   clearDropLines();
