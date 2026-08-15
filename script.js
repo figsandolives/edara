@@ -41,6 +41,7 @@ let customersRef = null;
 let visitorPresenceRef = null;
 let visitorPresence = [];
 let availabilityNotifications = {};
+let advertisement = { enabled: false, image: "", size: "square", targetType: "product", productId: "", link: "" };
 let availabilityNotificationsRef = null;
 let assignTargetCategoryId = "";
 let pendingDeleteCategoryId = "";
@@ -227,6 +228,11 @@ function catalogAppearancePayload() {
   };
 }
 
+function normalizeAdvertisement(value = {}) {
+  const targetType = value.targetType === "link" ? "link" : "product";
+  return { enabled: value.enabled === true, image: clean(value.image), size: ["square", "portrait", "landscape"].includes(value.size) ? value.size : "square", targetType, productId: clean(value.productId), link: clean(value.link) };
+}
+
 function setCloudStatus(message, type = "") {
   const status = $("#cloudStatus");
   if (!status) return;
@@ -265,6 +271,8 @@ function normalizeData() {
       active: product.active !== false,
       availability: { status: ["sold_out", "unavailable"].includes(product.availability?.status) ? product.availability.status : "available", cycleId: String(product.availability?.cycleId || "") },
       price: Number(product.price) || 0,
+      originalPrice: Number(product.originalPrice) > 0 ? Number(product.originalPrice) : 0,
+      inventory: { enabled: product.inventory?.enabled === true, quantity: Math.max(0, Math.floor(Number(product.inventory?.quantity) || 0)) },
       images,
       image: images[0] || "",
       options: normalizeProductOptions(product.options),
@@ -369,6 +377,7 @@ function applyRemoteCatalog(catalog) {
   $("#restaurantEnabledLabel").textContent = restaurantEnabled ? "مفعّل" : "مغلق";
   deliveryAreas = normalizeDeliveryAreas(catalog?.deliveryAreas);
   catalogAppearances = normalizeCatalogAppearances(catalog?.appearance);
+  advertisement = normalizeAdvertisement(catalog?.advertisement);
   appearance = catalogAppearances[activeCatalogType];
   siteProducts = clone(products);
   siteCategories = clone(categories);
@@ -528,7 +537,7 @@ function render() {
   $("#categoryCount").textContent = currentCategories.length;
   $("#productCount").textContent = products.filter(product => catalogTypeOf(product) === activeCatalogType && currentCategoryIds.has(product.category)).length;
   const hasSearch = Boolean(productSearch.trim());
-  const headingMarkup = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order)).map(item => `<article class="category-card heading-card" style="order:${Number(item.order) || 0}"><div class="category-head"><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${(item.categoryIds || []).length} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div></div></article>`).join("");
+  const headingMarkup = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order)).map(item => `<article class="category-card heading-card" data-heading-id="${escapeHtml(item.id)}" style="order:${Number(item.order) || 0}"><div class="category-head"><span class="drag-handle" draggable="true" data-drag-kind="heading" data-drag-id="${escapeHtml(item.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${(item.categoryIds || []).length} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div></div></article>`).join("");
   const categoryMarkup = headingMarkup + currentCategories.map((category) => {
     const list = categoryProducts(category.id).filter(productMatchesSearch);
     if (hasSearch && list.length) openCategories.add(category.id);
@@ -563,6 +572,7 @@ function render() {
                 </div>
               </div>
               <span class="price">${Number(product.price).toFixed(3)} د.ك</span>
+              ${product.inventory?.enabled ? `<span class="count-badge">المخزون: ${Number(product.inventory.quantity || 0)}</span>` : ""}
               <div class="product-actions">
                 ${toggleButton("product", product.id, product.active)}
                 ${availabilityButtons(product)}
@@ -695,7 +705,7 @@ function markDirty(message = "جارٍ حفظ التعديلات في Firebase�
 async function saveToFirebase() {
   if (!catalogRef || !currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
   normalizeData();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, appearance: catalogAppearancePayload(), savedAt: new Date().toISOString() }));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, appearance: catalogAppearancePayload(), advertisement, savedAt: new Date().toISOString() }));
   clearTimeout(syncTimer);
   ignoreRemoteUntil = Date.now() + 1200;
   $("#saveState").textContent = "جارٍ الحفظ في Firebase…";
@@ -707,6 +717,7 @@ async function saveToFirebase() {
       products: downloadableProducts(),
       deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
       appearance: catalogAppearancePayload(),
+      advertisement: normalizeAdvertisement(advertisement),
       ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
       ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
@@ -958,6 +969,8 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productId").value = product?.id || "";
   fillCategorySelect(product?.category || categoryId || categories[0]?.id || "");
   $("#productPrice").value = product ? Number(product.price).toFixed(3) : "0.000";
+  $("#productSalePrice").value = product?.originalPrice > Number(product?.price || 0) ? Number(product.price).toFixed(3) : "";
+  if (product?.originalPrice > Number(product?.price || 0)) $("#productPrice").value = Number(product.originalPrice).toFixed(3);
   $("#productNameAr").value = product?.name || "";
   $("#productNameEn").value = product?.nameEn || "";
   $("#productBadgeAr").value = product?.badgeAr || "";
@@ -977,6 +990,9 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productMinimumOrderQuantity").value = minimumOrder?.quantity || 1;
   $("#productMinimumOrderUnit").value = minimumOrder?.unit || "dozen";
   renderMinimumOrderFields();
+  $("#productInventoryEnabled").checked = product?.inventory?.enabled === true;
+  $("#productInventoryQuantity").value = Math.max(0, Math.floor(Number(product?.inventory?.quantity) || 0));
+  renderInventoryFields();
   editingSelectionFlow = product?.options?.selectionFlow?.enabled === true ? clone(product.options.selectionFlow) : null;
   $("#productOptionsEnabled").checked = Boolean(options || editingSelectionFlow);
   $("#productOptionsRequired").checked = options?.required === true;
@@ -1064,10 +1080,12 @@ function renderProductOptions() {
   $("#productOptionsBody").classList.toggle("hidden", !enabled);
   $("#productOptionsMultipleSettings").classList.toggle("hidden", !enabled || !$("#productOptionsMultiple").checked || nestedEnabled);
   $("#productPrice").disabled = enabled && priceBased;
+  $("#productSalePrice").disabled = enabled && priceBased;
   if (enabled && priceBased) $("#productPrice").value = "0.000";
   const container = $("#productOptionItems");
   if (editingSelectionFlow) {
     $("#productPrice").disabled = true;
+    $("#productSalePrice").disabled = true;
     container.innerHTML = `<div class="notice"><div>✓</div><p>هذا المنتج مُعدّ بتسلسل: نوع العجينة ثم الحجم والكمية ثم الحشوات. سيتم الاحتفاظ بهذه الإعدادات عند حفظ المنتج.</p></div>`;
     return;
   }
@@ -1125,6 +1143,15 @@ function readProductOptions() {
 
 function renderMinimumOrderFields() {
   $("#productMinimumOrderBody").classList.toggle("hidden", !$("#productMinimumOrderEnabled").checked);
+}
+
+function renderInventoryFields() {
+  $("#productInventoryBody").classList.toggle("hidden", !$("#productInventoryEnabled").checked);
+}
+
+function readInventory() {
+  if (!$("#productInventoryEnabled").checked) return { enabled: false, quantity: 0 };
+  return { enabled: true, quantity: Math.max(0, Math.floor(Number(normalizeEnglishDigits($("#productInventoryQuantity").value)) || 0)) };
 }
 
 function readMinimumOrder() {
@@ -1228,12 +1255,15 @@ function saveProduct(event) {
   const categoryId = $("#productCategory").value;
   const name = clean($("#productNameAr").value);
   const nameEn = clean($("#productNameEn").value);
-  const price = Number($("#productPrice").value);
+  const originalPrice = Number($("#productPrice").value);
+  const salePriceText = $("#productSalePrice").value.trim();
+  const salePrice = salePriceText === "" ? null : Number(salePriceText);
+  const price = salePrice === null ? originalPrice : salePrice;
   const options = readProductOptions();
   if (options === undefined) return;
   const preparation = readPreparation();
   if (preparation === undefined) return;
-  if (!name || !nameEn || (!options?.priceBased && (!Number.isFinite(price) || price < 0))) {
+  if (!name || !nameEn || (!options?.priceBased && (!Number.isFinite(price) || price < 0 || !Number.isFinite(originalPrice) || originalPrice < 0 || (salePrice !== null && salePrice >= originalPrice)))) {
     return toast("أكمل الاسم العربي والإنجليزي والسعر");
   }
   const payload = {
@@ -1244,11 +1274,12 @@ function saveProduct(event) {
     badgeAr: clean($("#productBadgeAr").value),
     badgeEn: clean($("#productBadgeEn").value),
     price: options?.priceBased ? 0 : Number(price.toFixed(3)),
+    originalPrice: options?.priceBased || salePrice === null ? 0 : Number(originalPrice.toFixed(3)),
     description: clean($("#productDescriptionAr").value),
     descriptionEn: clean($("#productDescriptionEn").value),
     images: [...editingImages],
     image: editingImages[0] || ""
-    ,options, preparation, minimumOrder: readMinimumOrder()
+    ,options, preparation, minimumOrder: readMinimumOrder(), inventory: readInventory()
   };
   if (existingId) {
     const product = products.find((item) => item.id === existingId);
@@ -1428,21 +1459,37 @@ function openCustomerDetails(uid) {
 }
 
 function showAdminView(view) {
-  currentView = ["customers", "availability"].includes(view) ? view : "catalog";
+  currentView = ["customers", "availability", "advertisement"].includes(view) ? view : "catalog";
   $$("[data-admin-view='catalog']").forEach(element => element.classList.toggle("hidden", currentView !== "catalog"));
   $("#customersView").classList.toggle("hidden", currentView !== "customers");
   $("#availabilityNotificationsView").classList.toggle("hidden", currentView !== "availability");
+  $("#advertisementView").classList.toggle("hidden", currentView !== "advertisement");
   $("#deliveryAreasView").classList.add("hidden");
   $("#liveVisitorsView").classList.add("hidden");
   $("#customersPage").classList.toggle("active", currentView === "customers");
   $("#availabilityNotificationsPage").classList.toggle("active", currentView === "availability");
+  $("#advertisementPage").classList.toggle("active", currentView === "advertisement");
   $("#deliveryAreasPage").classList.remove("active");
   $("#liveVisitorsPage").classList.remove("active");
   $("#addProduct").classList.toggle("hidden", currentView === "customers");
   $("#addCategory").classList.toggle("hidden", currentView === "customers");
   if (currentView === "customers") renderCustomers();
   if (currentView === "availability") renderAvailabilityNotifications();
+  if (currentView === "advertisement") renderAdvertisementEditor();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderAdvertisementEditor() {
+  const value = normalizeAdvertisement(advertisement);
+  $("#advertisementEnabled").checked = value.enabled;
+  $("#advertisementSize").value = value.size;
+  $("#advertisementTargetType").value = value.targetType;
+  $("#advertisementLink").value = value.link;
+  $("#advertisementProduct").innerHTML = `<option value="">اختر المنتج</option>${products.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === value.productId ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}`;
+  $("#advertisementPreview").src = value.image || "";
+  $("#advertisementPreview").classList.toggle("hidden", !value.image);
+  $("#advertisementProductWrap").classList.toggle("hidden", value.targetType !== "product");
+  $("#advertisementLinkWrap").classList.toggle("hidden", value.targetType !== "link");
 }
 
 function renderAvailabilityNotifications() {
@@ -1484,6 +1531,17 @@ function reorderProduct(sourceId, targetId, categoryId, position) {
   targetIndex = ordered.findIndex((product) => product.id === targetId);
   ordered.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, source);
   ordered.forEach((product, index) => product.order = index + 1);
+}
+
+function reorderHeading(sourceId, targetId, position) {
+  const ordered = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order));
+  const sourceIndex = ordered.findIndex(item => item.id === sourceId);
+  if (sourceIndex < 0 || sourceId === targetId) return;
+  const [source] = ordered.splice(sourceIndex, 1);
+  const targetIndex = ordered.findIndex(item => item.id === targetId);
+  if (targetIndex < 0) return;
+  ordered.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, source);
+  ordered.forEach((item, index) => item.order = index + 1);
 }
 
 async function importJson(files) {
@@ -1654,6 +1712,11 @@ $("#productSearch").addEventListener("input", event => { productSearch = event.t
 $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
 $("#availabilityNotificationsPage").addEventListener("click", () => showAdminView("availability"));
+$("#advertisementPage").addEventListener("click", () => showAdminView("advertisement"));
+$("#backFromAdvertisement").addEventListener("click", () => showAdminView("catalog"));
+$("#advertisementTargetType").addEventListener("change", renderAdvertisementEditor);
+$("#advertisementImage").addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; try { advertisement.image = await optimizeImage(file, "advertisement"); renderAdvertisementEditor(); toast("تم رفع صورة الإعلان"); } catch (error) { toast(error.message || "تعذر رفع الصورة"); } });
+$("#advertisementForm").addEventListener("submit", event => { event.preventDefault(); advertisement = { ...normalizeAdvertisement(advertisement), enabled: $("#advertisementEnabled").checked, size: $("#advertisementSize").value, targetType: $("#advertisementTargetType").value, productId: $("#advertisementProduct").value, link: clean($("#advertisementLink").value) }; if (advertisement.enabled && !advertisement.image) return toast("أضف صورة الإعلان أولاً"); if (advertisement.enabled && advertisement.targetType === "product" && !advertisement.productId) return toast("اختر المنتج المطلوب"); if (advertisement.enabled && advertisement.targetType === "link" && !advertisement.link) return toast("أدخل الرابط المطلوب"); markDirty("جارٍ حفظ الإعلان…"); toast("تم حفظ الإعلان"); });
 $("#backFromAvailabilityNotifications").addEventListener("click", () => showAdminView("catalog"));
 $("#downloadAvailabilityNotifications").addEventListener("click", () => { showAdminView("availability"); setTimeout(() => window.print(), 50); });
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
@@ -1693,6 +1756,7 @@ $("#customerList").addEventListener("click", event => {
 });
 $("#categoryForm").addEventListener("submit", saveCategory);
 $("#productForm").addEventListener("submit", saveProduct);
+$("#productInventoryEnabled").addEventListener("change", renderInventoryFields);
 $("#assignProductsForm").addEventListener("submit", assignProductsToCategory);
 $("#assignProductSearch").addEventListener("input", renderUnassignedProducts);
 $("#unassignedProductList").addEventListener("change", event => {
@@ -1936,19 +2000,15 @@ $("#categoryList").addEventListener("dragstart", (event) => {
   };
   event.dataTransfer.effectAllowed = "move";
   event.dataTransfer.setData("text/plain", dragState.id);
-  const source = dragState.kind === "category"
-    ? handle.closest(".category-card")
-    : handle.closest(".product-row");
+  const source = dragState.kind === "product" ? handle.closest(".product-row") : handle.closest(".category-card");
   setTimeout(() => source?.classList.add("dragging"), 0);
 });
 
 $("#categoryList").addEventListener("dragover", (event) => {
   if (!dragState) return;
-  const target = dragState.kind === "category"
-    ? event.target.closest(".category-card")
-    : event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`);
+  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : dragState.kind === "heading" ? event.target.closest(".heading-card") : event.target.closest(".category-card:not(.heading-card)");
   if (!target) return;
-  const targetId = dragState.kind === "category" ? target.dataset.categoryId : target.dataset.productId;
+  const targetId = dragState.kind === "category" ? target.dataset.categoryId : dragState.kind === "heading" ? target.dataset.headingId : target.dataset.productId;
   if (targetId === dragState.id) return;
   event.preventDefault();
   clearDropLines();
@@ -1957,13 +2017,12 @@ $("#categoryList").addEventListener("dragover", (event) => {
 
 $("#categoryList").addEventListener("drop", (event) => {
   if (!dragState) return;
-  const target = dragState.kind === "category"
-    ? event.target.closest(".category-card")
-    : event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`);
+  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : dragState.kind === "heading" ? event.target.closest(".heading-card") : event.target.closest(".category-card:not(.heading-card)");
   if (!target) return;
   event.preventDefault();
   const position = target.classList.contains("drop-after") ? "after" : "before";
   if (dragState.kind === "category") reorderCategory(dragState.id, target.dataset.categoryId, position);
+  else if (dragState.kind === "heading") reorderHeading(dragState.id, target.dataset.headingId, position);
   else reorderProduct(dragState.id, target.dataset.productId, dragState.categoryId, position);
   dragState = null;
   clearDropLines();
