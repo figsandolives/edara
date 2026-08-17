@@ -233,6 +233,30 @@ function normalizeAdvertisement(value = {}) {
   return { enabled: value.enabled === true, image: clean(value.image), size: ["square", "portrait", "landscape"].includes(value.size) ? value.size : "square", targetType, productId: clean(value.productId), link: clean(value.link) };
 }
 
+// إيقاف الإعلان إجراء فوري؛ لا ننتظر زر الحفظ كي لا يعود الإعلان عند تحديث الصفحة.
+async function disableAdvertisementImmediately() {
+  advertisement = { ...normalizeAdvertisement(advertisement), enabled: false };
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, appearance: catalogAppearancePayload(), advertisement, savedAt: new Date().toISOString() }));
+  clearTimeout(syncTimer);
+  ignoreRemoteUntil = Date.now() + 1200;
+  if (!catalogRef || !currentAdmin) return markDirty("جارٍ حفظ إيقاف الإعلان…");
+  $("#saveState").textContent = "جارٍ إيقاف الإعلان…";
+  setCloudStatus("جارٍ الحفظ…");
+  try {
+    await catalogRef.update({
+      advertisement: normalizeAdvertisement(advertisement),
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      updatedBy: currentAdmin.email || currentAdmin.uid
+    });
+    $("#saveState").textContent = "تم إيقاف الإعلان وحفظه";
+    setCloudStatus("متصل ومحفوظ", "connected");
+  } catch (error) {
+    $("#saveState").textContent = "تعذر حفظ إيقاف الإعلان";
+    setCloudStatus("فشل الحفظ", "error");
+    toast(error.message || "تعذر حفظ إيقاف الإعلان");
+  }
+}
+
 function setCloudStatus(message, type = "") {
   const status = $("#cloudStatus");
   if (!status) return;
@@ -1740,6 +1764,12 @@ $("#availabilityNotificationsPage").addEventListener("click", () => showAdminVie
 $("#advertisementPage").addEventListener("click", () => showAdminView("advertisement"));
 $("#backFromAdvertisement").addEventListener("click", () => showAdminView("catalog"));
 $("#advertisementTargetType").addEventListener("change", renderAdvertisementEditor);
+$("#advertisementEnabled").addEventListener("change", event => {
+  if (!event.target.checked) {
+    disableAdvertisementImmediately();
+    toast("تم إيقاف الإعلان وحفظه فوراً");
+  }
+});
 $("#advertisementProductSearch").addEventListener("input", event => { $("#advertisementProduct").value = ""; renderAdvertisementProductResults(event.target.value); });
 $("#advertisementProductResults").addEventListener("click", event => { const choice = event.target.closest("[data-advertisement-product-choice]"); if (!choice) return; const product = products.find(item => item.id === choice.dataset.advertisementProductChoice); $("#advertisementProduct").value = product?.id || ""; $("#advertisementProductSearch").value = product?.name || ""; $("#advertisementProductResults").innerHTML = product ? `<div style="display:flex;align-items:center;gap:10px;padding:8px"><img src="${escapeHtml(imageSource(product))}" alt="" style="width:46px;height:46px;border-radius:9px;object-fit:cover"><b>${escapeHtml(product.name)}</b></div>` : ""; });
 $("#advertisementImage").addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; try { advertisement.image = await optimizeImage(file, "advertisement"); renderAdvertisementEditor(); toast("تم رفع صورة الإعلان"); } catch (error) { toast(error.message || "تعذر رفع الصورة"); } });
