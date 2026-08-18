@@ -7,6 +7,7 @@ button,.file-button{border:0;border-radius:12px;padding:11px 16px;cursor:pointer
 button:hover,.file-button:hover{transform:translateY(-1px);filter:brightness(.98)}
 .primary{background:var(--green)!important;color:#fff!important}
 .hidden{display:none!important}
+.category-section-image-preview{display:block;width:min(100%,460px);max-height:250px;object-fit:contain;border:1px solid var(--line);border-radius:16px;background:#f5f6f2;padding:6px}
 .cloud-status{display:inline-flex;align-items:center;gap:8px;padding:8px 11px;border-radius:999px;background:#eef2f0;color:var(--muted);font-size:11px;font-weight:800}.cloud-status i{width:8px;height:8px;border-radius:50%;background:#d39b2b;box-shadow:0 0 0 4px rgba(211,155,43,.12)}.cloud-status.connected{background:#e4f2e9;color:#256243}.cloud-status.connected i{background:#32a260}.cloud-status.error{background:#fff0f0;color:var(--danger)}.cloud-status.error i{background:var(--danger)}
 .sign-out{padding:8px 11px;background:#fff0f0;color:var(--danger)}
 .secondary{background:#dce9e2!important;color:var(--green)!important}
