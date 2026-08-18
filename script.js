@@ -568,7 +568,7 @@ function render() {
     if (hasSearch && list.length) openCategories.add(category.id);
     if (hasSearch && !list.length) return "";
     return `
-      <article class="category-card ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}" style="order:${Number(category.order) || 0}">
+      <article class="category-card ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}" style="order:${category.active ? (Number(category.order) || 0) : 100000 + (Number(category.order) || 0)}">
         <div class="category-head">
           <span class="drag-handle" draggable="true" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span>
           <div class="category-copy">
