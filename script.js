@@ -2106,8 +2106,10 @@ $("#categoryList").addEventListener("click", (event) => {
   }
   const header = event.target.closest(".category-head");
   if (!header) return;
-  if (header.closest(".heading-card")) return;
-  const id = header.closest(".category-card").dataset.categoryId;
+  const categoryCard = header.closest(".category-card");
+  if (categoryCard?.classList.contains("heading-card")) return;
+  const id = categoryCard?.dataset.categoryId;
+  if (!id) return;
   openCategories.has(id) ? openCategories.delete(id) : openCategories.add(id);
   header.closest(".category-card").classList.toggle("open", openCategories.has(id));
 });
