@@ -274,6 +274,7 @@ function normalizeData() {
       nameEn: clean(category.nameEn || category.id) || "New category",
       catalogType: catalogTypeOf(category),
       active: category.active !== false,
+      sectionImage: clean(category.sectionImage),
       order: Number(category.order) || index + 1
     }))
     .sort((a, b) => Number(a.order) - Number(b.order))
@@ -850,27 +851,69 @@ function openCategoryDialog(category = null) {
   $("#categoryId").value = category?.id || "";
   $("#categoryNameAr").value = category?.nameAr || "";
   $("#categoryNameEn").value = category?.nameEn || "";
+  $("#categorySectionImageUrl").value = category?.sectionImage || "";
+  $("#categorySectionImage").value = "";
+  renderCategorySectionImagePreview(category?.sectionImage || "");
   $("#categoryDialog").showModal();
   setTimeout(() => $("#categoryNameAr").focus(), 30);
 }
 
-function saveCategory(event) {
+function renderCategorySectionImagePreview(url) {
+  const preview = $("#categorySectionImagePreview");
+  const remove = $("#removeCategorySectionImage");
+  preview.src = url || "";
+  preview.classList.toggle("hidden", !url);
+  remove.classList.toggle("hidden", !url);
+}
+
+async function optimizeAndUploadCategorySectionImage(file, categoryId) {
+  if (!file?.type?.startsWith("image/")) throw new Error("اختر صورة PNG أو صورة صالحة");
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / bitmap.width, 900 / bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .86));
+  if (!blob) throw new Error("تعذر تجهيز الصورة التوضيحية");
+  const safeId = String(categoryId || "new-category").replace(/[^a-zA-Z0-9_-]/g, "-");
+  const reference = firebaseServices.storage.ref(`orderingPlatform/catalog/categories/${safeId}/section-${Date.now()}.webp`);
+  const upload = await reference.put(blob, { contentType: "image/webp", cacheControl: "public,max-age=31536000,immutable" });
+  return upload.ref.getDownloadURL();
+}
+
+async function saveCategory(event) {
   event.preventDefault();
   const existingId = $("#categoryId").value;
   const nameAr = clean($("#categoryNameAr").value);
   const nameEn = clean($("#categoryNameEn").value);
   if (!nameAr || !nameEn) return toast("اكتب اسم القسم باللغتين");
+  const id = existingId || `category-${Date.now().toString(36)}`;
+  const storedImage = existingId ? clean(categories.find(item => item.id === existingId)?.sectionImage) : "";
+  const previousImage = clean($("#categorySectionImageUrl").value);
+  const imageFile = $("#categorySectionImage").files?.[0];
+  let sectionImage = previousImage;
+  if (imageFile) {
+    try {
+      $("#saveState").textContent = "جارٍ تجهيز ورفع الصورة التوضيحية…";
+      sectionImage = await optimizeAndUploadCategorySectionImage(imageFile, id);
+    } catch (error) {
+      toast(error.message || "تعذر رفع الصورة التوضيحية");
+      return;
+    }
+  }
   if (existingId) {
     const category = categories.find((item) => item.id === existingId);
-    if (category) Object.assign(category, { nameAr, nameEn });
+    if (category) Object.assign(category, { nameAr, nameEn, sectionImage });
   } else {
-    const id = `category-${Date.now().toString(36)}`;
-    categories.push({ id, nameAr, nameEn, catalogType: activeCatalogType, active: true, order: scopedCategories().length + 1 });
+    categories.push({ id, nameAr, nameEn, sectionImage, catalogType: activeCatalogType, active: true, order: scopedCategories().length + 1 });
     openCategories.add(id);
   }
   $("#categoryDialog").close();
   markDirty();
   render();
+  if (storedImage && storedImage !== sectionImage) deleteStoredAppearanceImage(storedImage);
   toast(existingId ? "تم تعديل القسم" : "تمت إضافة القسم");
 }
 
@@ -1812,6 +1855,16 @@ $("#customerList").addEventListener("click", event => {
   if (button) openCustomerDetails(button.dataset.viewCustomer);
 });
 $("#categoryForm").addEventListener("submit", saveCategory);
+$("#categorySectionImage").addEventListener("change", event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  renderCategorySectionImagePreview(URL.createObjectURL(file));
+});
+$("#removeCategorySectionImage").addEventListener("click", () => {
+  $("#categorySectionImageUrl").value = "";
+  $("#categorySectionImage").value = "";
+  renderCategorySectionImagePreview("");
+});
 $("#productForm").addEventListener("submit", saveProduct);
 $("#productInventoryEnabled").addEventListener("change", renderInventoryFields);
 $("#assignProductsForm").addEventListener("submit", assignProductsToCategory);
