@@ -566,6 +566,11 @@ function render() {
   const hasSearch = Boolean(productSearch.trim());
   const currentHeadings = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order));
   const linkedCategoryIds = new Set(currentHeadings.flatMap(item => [...(item.categoryIds || []), ...(item.subheadings || []).flatMap(group => group.categoryIds || [])]));
+  const treeCategoryRow = (category, controls = "") => {
+    const expanded = openCategories.has(category.id);
+    const list = categoryProducts(category.id).filter(productMatchesSearch);
+    return `<section class="tree-category-entry ${expanded ? "open" : ""}"><div class="tree-category-row" data-tree-category-toggle="${escapeHtml(category.id)}"><span class="tree-chevron">⌄</span><div><strong>${escapeHtml(category.nameAr)}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${list.length} منتج</span><div class="tree-actions">${controls}<button type="button" data-edit-category="${escapeHtml(category.id)}">تعديل</button></div></div>${expanded ? `<div class="tree-products">${list.map(product => `<div class="tree-product-row ${product.active ? "" : "inactive"}"><img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy"><div><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || "")}</small></div><span class="price">${Number(product.price).toFixed(3)} د.ك</span>${toggleButton("product", product.id, product.active)}<button type="button" data-edit-product="${escapeHtml(product.id)}">تعديل</button></div>`).join("") || `<div class="empty">لا توجد منتجات في هذا القسم</div>`}</div>` : ""}</section>`;
+  };
   const headingMarkup = currentHeadings.map(item => {
     const subheadings = Array.isArray(item.subheadings) ? item.subheadings : [];
     const nestedCount = subheadings.reduce((total, group) => total + (group.categoryIds || []).length, 0) + (item.categoryIds || []).length;
@@ -574,10 +579,10 @@ function render() {
       const key = `${item.id}:${group.id || index}`;
       const groupExpanded = openSubheadings.has(key);
       const linked = (group.categoryIds || []).map(id => currentCategories.find(category => category.id === id)).filter(Boolean);
-      return `<section class="tree-subheading ${groupExpanded ? "open" : ""}"><div class="tree-subheading-head" data-subheading-toggle="${escapeHtml(key)}"><span class="tree-chevron">⌄</span><div><strong>${escapeHtml(group.nameAr || "عنوان فرعي")}</strong><small>${escapeHtml(group.nameEn || "")}</small></div><span class="count-badge">${linked.length} قسم</span><div class="tree-actions"><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="up">↑</button><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="down">↓</button></div></div>${groupExpanded ? `<div class="tree-category-list">${linked.map((category, categoryIndex) => `<div class="tree-category-row"><div><strong>${escapeHtml(category.nameAr)}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${categoryProducts(category.id).length} منتج</span><div class="tree-actions"><button type="button" data-move-tree-category="${escapeHtml(item.id)}" data-tree-group-index="${index}" data-tree-category-index="${categoryIndex}" data-direction="up">↑</button><button type="button" data-move-tree-category="${escapeHtml(item.id)}" data-tree-group-index="${index}" data-tree-category-index="${categoryIndex}" data-direction="down">↓</button><button type="button" data-edit-category="${escapeHtml(category.id)}">تعديل</button></div></div>`).join("") || `<div class="empty">لا توجد أقسام داخل هذا العنوان</div>`}</div>` : ""}</section>`;
+      return `<section class="tree-subheading ${groupExpanded ? "open" : ""}"><div class="tree-subheading-head" data-subheading-toggle="${escapeHtml(key)}"><span class="tree-chevron">⌄</span><div><strong>${escapeHtml(group.nameAr || "عنوان فرعي")}</strong><small>${escapeHtml(group.nameEn || "")}</small></div><span class="count-badge">${linked.length} قسم</span><div class="tree-actions"><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="up">↑</button><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="down">↓</button></div></div>${groupExpanded ? `<div class="tree-category-list">${linked.map((category, categoryIndex) => treeCategoryRow(category, `<button type="button" data-move-tree-category="${escapeHtml(item.id)}" data-tree-group-index="${index}" data-tree-category-index="${categoryIndex}" data-direction="up">↑</button><button type="button" data-move-tree-category="${escapeHtml(item.id)}" data-tree-group-index="${index}" data-tree-category-index="${categoryIndex}" data-direction="down">↓</button>`)).join("") || `<div class="empty">لا توجد أقسام داخل هذا العنوان</div>`}</div>` : ""}</section>`;
     }).join("");
     const directLinked = (item.categoryIds || []).map(id => currentCategories.find(category => category.id === id)).filter(Boolean);
-    const directMarkup = directLinked.length ? `<div class="tree-category-list">${directLinked.map(category => `<div class="tree-category-row"><div><strong>${escapeHtml(category.nameAr)}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${categoryProducts(category.id).length} منتج</span><button type="button" data-edit-category="${escapeHtml(category.id)}">تعديل</button></div>`).join("")}</div>` : "";
+    const directMarkup = directLinked.length ? `<div class="tree-category-list">${directLinked.map(category => treeCategoryRow(category)).join("")}</div>` : "";
     return `<article class="category-card heading-card ${expanded ? "open" : ""}" data-heading-id="${escapeHtml(item.id)}" style="order:${Number(item.order) || 0}"><div class="category-head" data-heading-toggle="${escapeHtml(item.id)}"><span class="drag-handle" draggable="true" data-drag-kind="heading" data-drag-id="${escapeHtml(item.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${nestedCount} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div><span class="chevron">⌄</span></div>${expanded ? `<div class="heading-tree">${nestedMarkup}${directMarkup}</div>` : ""}</article>`;
   }).join("");
   const categoryMarkup = headingMarkup + currentCategories.filter(category => !linkedCategoryIds.has(category.id)).map((category) => {
@@ -2091,6 +2096,7 @@ $("#categoryList").addEventListener("click", (event) => {
   const availabilityButton = event.target.closest("[data-toggle-availability]");
   const moveTreeSubheadingButton = event.target.closest("[data-move-tree-subheading]");
   const moveTreeCategoryButton = event.target.closest("[data-move-tree-category]");
+  const treeCategoryToggle = event.target.closest("[data-tree-category-toggle]");
   if (availabilityButton) { const product = products.find(item => item.id === availabilityButton.dataset.toggleAvailability); return setProductAvailability(product?.id, product?.availability?.status === "unavailable" ? "unavailable" : "sold_out", product?.availability?.status === "available"); }
   const removeProductButton = event.target.closest("[data-remove-product-category]");
   if (moveTreeSubheadingButton) {
@@ -2123,6 +2129,12 @@ $("#categoryList").addEventListener("click", (event) => {
   if (toggleProductButton) return toggleProductActive(toggleProductButton.dataset.toggleProduct);
   if (removeProductButton) return removeProductFromCategory(removeProductButton.dataset.removeProductCategory);
   if (event.target.closest("button,.drag-handle")) return;
+  if (treeCategoryToggle) {
+    const id = treeCategoryToggle.dataset.treeCategoryToggle;
+    openCategories.has(id) ? openCategories.delete(id) : openCategories.add(id);
+    render();
+    return;
+  }
   const headingToggle = event.target.closest("[data-heading-toggle]");
   if (headingToggle) {
     const id = headingToggle.dataset.headingToggle;
