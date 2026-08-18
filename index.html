@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260818-category-image-v1">
+  <link rel="stylesheet" href="style.css?v=20260818-product-form-layout-v1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -195,16 +195,10 @@
     <form method="dialog" id="productForm" class="dialog-card product-dialog">
       <header><div><span class="eyebrow">المنتج</span><h2 id="productDialogTitle">إضافة منتج جديد</h2></div><button type="button" class="icon-btn" data-close-dialog="productDialog" aria-label="إغلاق">×</button></header>
       <input id="productId" type="hidden">
-      <div class="form-grid">
-        <label>القسم<select id="productCategory"></select></label>
-        <label>السعر الأصلي د.ك<input id="productPrice" type="number" min="0" step="0.001" required dir="ltr"></label>
-        <label>سعر العرض د.ك <small>اختياري — اتركه فارغاً دون عرض</small><input id="productSalePrice" type="number" min="0" step="0.001" dir="ltr"></label>
-        <label>اسم المنتج بالعربي<input id="productNameAr" required maxlength="160"></label>
-        <label>اسم المنتج بالإنجليزي<input id="productNameEn" required maxlength="160" dir="ltr"></label>
-        <label>عبارة مميزة بالعربي<input id="productBadgeAr" maxlength="80" placeholder="مثال: الأكثر طلباً"></label>
-        <label>عبارة مميزة بالإنجليزي<input id="productBadgeEn" maxlength="80" dir="ltr" placeholder="e.g. Best seller"></label>
-        <label>الوصف العربي<textarea id="productDescriptionAr" rows="4" maxlength="800"></textarea></label>
-        <label>الوصف الإنجليزي<textarea id="productDescriptionEn" rows="4" maxlength="800" dir="ltr"></textarea></label>
+      <div class="product-basic-groups">
+        <section class="product-form-group"><h3>بيانات البيع</h3><div class="form-grid product-sales-grid"><label class="field-full">القسم<select id="productCategory"></select></label><label>السعر الأصلي د.ك<input id="productPrice" type="number" min="0" step="0.001" required dir="ltr"></label><label>سعر العرض د.ك <small>اختياري — اتركه فارغاً دون عرض</small><input id="productSalePrice" type="number" min="0" step="0.001" dir="ltr"></label></div></section>
+        <section class="product-form-group"><h3>اسم المنتج</h3><div class="form-grid"><label>اسم المنتج بالعربي<input id="productNameAr" required maxlength="160"></label><label>اسم المنتج بالإنجليزي<input id="productNameEn" required maxlength="160" dir="ltr"></label></div></section>
+        <section class="product-form-group"><h3>النصوص الظاهرة للعميل</h3><div class="form-grid"><label>عبارة مميزة بالعربي<input id="productBadgeAr" maxlength="80" placeholder="مثال: الأكثر طلباً"></label><label>عبارة مميزة بالإنجليزي<input id="productBadgeEn" maxlength="80" dir="ltr" placeholder="e.g. Best seller"></label><label>الوصف العربي<textarea id="productDescriptionAr" rows="4" maxlength="800"></textarea></label><label>الوصف الإنجليزي<textarea id="productDescriptionEn" rows="4" maxlength="800" dir="ltr"></textarea></label></div></section>
       </div>
       <section class="inventory-editor">
         <label class="options-enable"><input id="productInventoryEnabled" type="checkbox"> <span>تمكين كمية</span></label>
