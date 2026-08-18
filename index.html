@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260803-5">
+  <link rel="stylesheet" href="style.css?v=20260818-category-image-v1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -178,6 +178,13 @@
       <input id="categoryId" type="hidden">
       <label>اسم القسم بالعربي<input id="categoryNameAr" required maxlength="100"></label>
       <label>اسم القسم بالإنجليزي<input id="categoryNameEn" required maxlength="100" dir="ltr"></label>
+      <input id="categorySectionImageUrl" type="hidden">
+      <label>الصورة التوضيحية للقسم (PNG أو صورة أخرى)
+        <input id="categorySectionImage" type="file" accept="image/png,image/jpeg,image/webp">
+        <small>تظهر تحت اسم القسم مباشرة وقبل المنتجات، بعرض بطاقتين تقريباً في الهاتف.</small>
+      </label>
+      <img id="categorySectionImagePreview" class="category-section-image-preview hidden" alt="معاينة الصورة التوضيحية">
+      <button type="button" class="secondary hidden" id="removeCategorySectionImage">حذف الصورة التوضيحية</button>
       <footer><button type="button" data-close-dialog="categoryDialog">إلغاء</button><button type="submit" value="default" class="primary">حفظ القسم</button></footer>
     </form>
   </dialog>
@@ -312,6 +319,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260817-advertisement-disable-save-v1"></script>
+  <script src="script.js?v=20260818-category-image-v1"></script>
 </body>
 </html>
