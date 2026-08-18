@@ -1070,18 +1070,20 @@ const cloneOptions = value => JSON.parse(JSON.stringify(value));
 let pastedOptionSequence = 0;
 function cloneOptionsForProduct(value) {
   const copied = cloneOptions(value);
-  // A paste must never retain option identifiers from the source product.
-  // This keeps each product's options isolated even after subsequent edits.
-  if (!Array.isArray(copied?.items)) return copied;
+  // لا يجوز أن تحتفظ النسخة بمعرّفات المنتج المصدر، حتى عند نسخ المنتج
+  // كاملاً أو نسخ تسلسل الخيارات؛ كل منتج يملك بنية مستقلة تماماً.
+  if (!copied || typeof copied !== "object") return copied;
   const stamp = `${Date.now().toString(36)}-${++pastedOptionSequence}`;
-  copied.items = copied.items.map((item, index) => ({
-    ...item,
-    id: `option-${stamp}-${index + 1}`,
-    subOptions: (Array.isArray(item.subOptions) ? item.subOptions : []).map((subOption, subIndex) => ({
-      ...subOption,
-      id: `sub-option-${stamp}-${index + 1}-${subIndex + 1}`
-    }))
-  }));
+  if (Array.isArray(copied.items)) {
+    copied.items = copied.items.map((item, index) => ({
+      ...item,
+      id: `option-${stamp}-${index + 1}`,
+      subOptions: (Array.isArray(item.subOptions) ? item.subOptions : []).map((subOption, subIndex) => ({
+        ...subOption,
+        id: `sub-option-${stamp}-${index + 1}-${subIndex + 1}`
+      }))
+    }));
+  }
   return copied;
 }
 function updateOptionsClipboardButton() {
@@ -1357,6 +1359,7 @@ function duplicateProduct(productId) {
   });
   const copy = clone(source);
   copy.id = `P${Date.now()}`;
+  copy.options = cloneOptionsForProduct(source.options);
   copy.order = insertOrder;
   copy.name = `${source.name} (نسخة)`;
   copy.nameEn = `${source.nameEn || source.name} (Copy)`;
@@ -1382,6 +1385,7 @@ function duplicateCategory(categoryId) {
   sourceProducts.forEach((product, index) => {
     const copy = clone(product);
     copy.id = `P${Date.now().toString(36)}${index}`;
+    copy.options = cloneOptionsForProduct(product.options);
     copy.category = copyId;
     copy.order = Number(product.order) || index + 1;
     products.push(copy);
