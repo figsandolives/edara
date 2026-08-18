@@ -566,10 +566,13 @@ function render() {
   const hasSearch = Boolean(productSearch.trim());
   const currentHeadings = headings.filter(item => catalogTypeOf(item) === activeCatalogType).sort((a, b) => Number(a.order) - Number(b.order));
   const linkedCategoryIds = new Set(currentHeadings.flatMap(item => [...(item.categoryIds || []), ...(item.subheadings || []).flatMap(group => group.categoryIds || [])]));
-  const treeCategoryRow = (category, controls = "") => {
-    const expanded = openCategories.has(category.id);
+  const categoryCardMarkup = (category, treeContext = null) => {
     const list = categoryProducts(category.id).filter(productMatchesSearch);
-    return `<section class="tree-category-entry ${expanded ? "open" : ""}"><div class="tree-category-row" data-tree-category-toggle="${escapeHtml(category.id)}"><span class="tree-chevron">⌄</span><div><strong>${escapeHtml(category.nameAr)}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${list.length} منتج</span><div class="tree-actions">${controls}<button type="button" data-edit-category="${escapeHtml(category.id)}">تعديل</button></div></div>${expanded ? `<div class="tree-products">${list.map(product => `<div class="tree-product-row ${product.active ? "" : "inactive"}"><img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy"><div><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || "")}</small></div><span class="price">${Number(product.price).toFixed(3)} د.ك</span>${toggleButton("product", product.id, product.active)}<button type="button" data-edit-product="${escapeHtml(product.id)}">تعديل</button></div>`).join("") || `<div class="empty">لا توجد منتجات في هذا القسم</div>`}</div>` : ""}</section>`;
+    if (hasSearch && list.length) openCategories.add(category.id);
+    if (hasSearch && !list.length) return "";
+    const treeData = treeContext ? ` data-tree-heading-id="${escapeHtml(treeContext.headingId)}" data-tree-group-index="${treeContext.groupIndex}"` : "";
+    const order = treeContext ? "" : ` style="order:${category.active ? (Number(category.order) || 0) : 100000 + (Number(category.order) || 0)}"`;
+    return `<article class="category-card ${treeContext ? "nested-category-card" : ""} ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}"${treeData}${order}><div class="category-head"><span class="drag-handle" draggable="true" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(category.nameAr)}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${list.length} منتج</span><div class="category-actions">${toggleButton("category", category.id, category.active)}<button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button><button data-duplicate-category="${escapeHtml(category.id)}">نسخ</button><button data-edit-category="${escapeHtml(category.id)}">تعديل</button><button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button></div><span class="chevron">⌄</span></div><div class="products">${list.length ? list.map(product => `<div class="product-row ${product.active ? "" : "inactive"}" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}"><span class="drag-handle" draggable="true" data-drag-kind="product" data-drag-id="${escapeHtml(product.id)}" data-drag-category="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="product-main"><img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy"><div class="product-copy"><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || "No English name")}</small></div></div><span class="price">${Number(product.price).toFixed(3)} د.ك</span>${product.inventory?.enabled ? `<span class="count-badge">المخزون: ${Number(product.inventory.quantity || 0)}</span>` : ""}<div class="product-actions">${toggleButton("product", product.id, product.active)}${availabilityButtons(product)}<button data-duplicate-product="${escapeHtml(product.id)}">تكرار</button><button data-edit-product="${escapeHtml(product.id)}">تعديل</button><button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button><button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button></div></div>`).join("") : `<div class="empty">لا توجد منتجات في هذا القسم</div>`}</div></article>`;
   };
   const headingMarkup = currentHeadings.map(item => {
     const subheadings = Array.isArray(item.subheadings) ? item.subheadings : [];
@@ -579,61 +582,13 @@ function render() {
       const key = `${item.id}:${group.id || index}`;
       const groupExpanded = openSubheadings.has(key);
       const linked = (group.categoryIds || []).map(id => currentCategories.find(category => category.id === id)).filter(Boolean);
-      return `<section class="tree-subheading ${groupExpanded ? "open" : ""}"><div class="tree-subheading-head" data-subheading-toggle="${escapeHtml(key)}"><span class="tree-chevron">⌄</span><div><strong>${escapeHtml(group.nameAr || "عنوان فرعي")}</strong><small>${escapeHtml(group.nameEn || "")}</small></div><span class="count-badge">${linked.length} قسم</span><div class="tree-actions"><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="up">↑</button><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="down">↓</button></div></div>${groupExpanded ? `<div class="tree-category-list">${linked.map((category, categoryIndex) => treeCategoryRow(category, `<button type="button" data-move-tree-category="${escapeHtml(item.id)}" data-tree-group-index="${index}" data-tree-category-index="${categoryIndex}" data-direction="up">↑</button><button type="button" data-move-tree-category="${escapeHtml(item.id)}" data-tree-group-index="${index}" data-tree-category-index="${categoryIndex}" data-direction="down">↓</button>`)).join("") || `<div class="empty">لا توجد أقسام داخل هذا العنوان</div>`}</div>` : ""}</section>`;
+      return `<section class="tree-subheading ${groupExpanded ? "open" : ""}"><div class="tree-subheading-head" data-subheading-toggle="${escapeHtml(key)}"><span class="tree-chevron">⌄</span><div><strong>${escapeHtml(group.nameAr || "عنوان فرعي")}</strong><small>${escapeHtml(group.nameEn || "")}</small></div><span class="count-badge">${linked.length} قسم</span><div class="tree-actions"><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="up">↑</button><button type="button" data-move-tree-subheading="${escapeHtml(item.id)}" data-tree-subheading-index="${index}" data-direction="down">↓</button></div></div>${groupExpanded ? `<div class="tree-category-list">${linked.map(category => categoryCardMarkup(category, { headingId: item.id, groupIndex: index })).join("") || `<div class="empty">لا توجد أقسام داخل هذا العنوان</div>`}</div>` : ""}</section>`;
     }).join("");
     const directLinked = (item.categoryIds || []).map(id => currentCategories.find(category => category.id === id)).filter(Boolean);
-    const directMarkup = directLinked.length ? `<div class="tree-category-list">${directLinked.map(category => treeCategoryRow(category)).join("")}</div>` : "";
+    const directMarkup = directLinked.length ? `<div class="tree-category-list">${directLinked.map(category => categoryCardMarkup(category, { headingId: item.id, groupIndex: "direct" })).join("")}</div>` : "";
     return `<article class="category-card heading-card ${expanded ? "open" : ""}" data-heading-id="${escapeHtml(item.id)}" style="order:${Number(item.order) || 0}"><div class="category-head" data-heading-toggle="${escapeHtml(item.id)}"><span class="drag-handle" draggable="true" data-drag-kind="heading" data-drag-id="${escapeHtml(item.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${nestedCount} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div><span class="chevron">⌄</span></div>${expanded ? `<div class="heading-tree">${nestedMarkup}${directMarkup}</div>` : ""}</article>`;
   }).join("");
-  const categoryMarkup = headingMarkup + currentCategories.filter(category => !linkedCategoryIds.has(category.id)).map((category) => {
-    const list = categoryProducts(category.id).filter(productMatchesSearch);
-    if (hasSearch && list.length) openCategories.add(category.id);
-    if (hasSearch && !list.length) return "";
-    return `
-      <article class="category-card ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}" style="order:${category.active ? (Number(category.order) || 0) : 100000 + (Number(category.order) || 0)}">
-        <div class="category-head">
-          <span class="drag-handle" draggable="true" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span>
-          <div class="category-copy">
-            <strong>${escapeHtml(category.nameAr)}</strong>
-            <small>${escapeHtml(category.nameEn)}</small>
-          </div>
-          <span class="count-badge">${list.length} منتج</span>
-          <div class="category-actions">
-            ${toggleButton("category", category.id, category.active)}
-            <button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button>
-            <button data-duplicate-category="${escapeHtml(category.id)}">نسخ</button>
-            <button data-edit-category="${escapeHtml(category.id)}">تعديل</button>
-            <button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button>
-          </div>
-          <span class="chevron">⌄</span>
-        </div>
-        <div class="products">
-          ${list.length ? list.map((product) => `
-            <div class="product-row ${product.active ? "" : "inactive"}" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}">
-              <span class="drag-handle" draggable="true" data-drag-kind="product" data-drag-id="${escapeHtml(product.id)}" data-drag-category="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span>
-              <div class="product-main">
-                <img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy">
-                <div class="product-copy">
-                  <strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong>
-                  <small>${escapeHtml(product.nameEn || "No English name")}</small>
-                </div>
-              </div>
-              <span class="price">${Number(product.price).toFixed(3)} د.ك</span>
-              ${product.inventory?.enabled ? `<span class="count-badge">المخزون: ${Number(product.inventory.quantity || 0)}</span>` : ""}
-              <div class="product-actions">
-                ${toggleButton("product", product.id, product.active)}
-                ${availabilityButtons(product)}
-                <button data-duplicate-product="${escapeHtml(product.id)}">تكرار</button>
-                <button data-edit-product="${escapeHtml(product.id)}">تعديل</button>
-                <button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button>
-                <button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button>
-              </div>
-            </div>
-          `).join("") : `<div class="empty">لا توجد منتجات في هذا القسم</div>`}
-        </div>
-      </article>
-    `;
-  }).join("");
+  const categoryMarkup = headingMarkup + currentCategories.filter(category => !linkedCategoryIds.has(category.id)).map(category => categoryCardMarkup(category)).join("");
   $("#categoryList").innerHTML = categoryMarkup || (hasSearch ? `<div class="empty">لا توجد منتجات تطابق «${escapeHtml(productSearch)}»</div>` : `<div class="empty">لا توجد أقسام بعد</div>`);
 
   hydrateRenderedImages();
@@ -2166,20 +2121,27 @@ $("#categoryList").addEventListener("change", event => {
 $("#categoryList").addEventListener("dragstart", (event) => {
   const handle = event.target.closest("[data-drag-kind]");
   if (!handle) return;
+  const kind = handle.dataset.dragKind;
+  const source = kind === "product" ? handle.closest(".product-row") : handle.closest(".category-card");
   dragState = {
-    kind: handle.dataset.dragKind,
+    kind,
     id: handle.dataset.dragId,
-    categoryId: handle.dataset.dragCategory || ""
+    categoryId: handle.dataset.dragCategory || "",
+    treeHeadingId: source?.dataset.treeHeadingId || "",
+    treeGroupIndex: source?.dataset.treeGroupIndex || ""
   };
   event.dataTransfer.effectAllowed = "move";
   event.dataTransfer.setData("text/plain", dragState.id);
-  const source = dragState.kind === "product" ? handle.closest(".product-row") : handle.closest(".category-card");
   setTimeout(() => source?.classList.add("dragging"), 0);
 });
 
 $("#categoryList").addEventListener("dragover", (event) => {
   if (!dragState) return;
-  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : event.target.closest(".category-card");
+  const target = dragState.kind === "product"
+    ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`)
+    : dragState.kind === "category" && dragState.treeHeadingId
+      ? event.target.closest(`.category-card[data-tree-heading-id="${CSS.escape(dragState.treeHeadingId)}"][data-tree-group-index="${CSS.escape(dragState.treeGroupIndex)}"]`)
+      : event.target.closest(".category-card");
   if (!target) return;
   const targetId = dragState.kind === "product" ? target.dataset.productId : target.dataset.headingId || target.dataset.categoryId;
   if (targetId === dragState.id) return;
@@ -2190,12 +2152,31 @@ $("#categoryList").addEventListener("dragover", (event) => {
 
 $("#categoryList").addEventListener("drop", (event) => {
   if (!dragState) return;
-  const target = dragState.kind === "product" ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`) : event.target.closest(".category-card");
+  const target = dragState.kind === "product"
+    ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`)
+    : dragState.kind === "category" && dragState.treeHeadingId
+      ? event.target.closest(`.category-card[data-tree-heading-id="${CSS.escape(dragState.treeHeadingId)}"][data-tree-group-index="${CSS.escape(dragState.treeGroupIndex)}"]`)
+      : event.target.closest(".category-card");
   if (!target) return;
   event.preventDefault();
   const position = target.classList.contains("drop-after") ? "after" : "before";
-  if (dragState.kind === "category" || dragState.kind === "heading") reorderCatalogEntry(dragState.kind, dragState.id, target.classList.contains("heading-card") ? "heading" : "category", target.dataset.headingId || target.dataset.categoryId, position);
-  else reorderProduct(dragState.id, target.dataset.productId, dragState.categoryId, position);
+  if (dragState.kind === "category" && dragState.treeHeadingId) {
+    const heading = headings.find(item => item.id === dragState.treeHeadingId);
+    const ids = dragState.treeGroupIndex === "direct"
+      ? heading?.categoryIds
+      : heading?.subheadings?.[Number(dragState.treeGroupIndex)]?.categoryIds;
+    const sourceIndex = ids?.indexOf(dragState.id);
+    const targetIndex = ids?.indexOf(target.dataset.categoryId);
+    if (sourceIndex >= 0 && targetIndex >= 0) {
+      ids.splice(sourceIndex, 1);
+      const insertAt = ids.indexOf(target.dataset.categoryId) + (position === "after" ? 1 : 0);
+      ids.splice(insertAt, 0, dragState.id);
+    }
+  } else if (dragState.kind === "category" || dragState.kind === "heading") {
+    reorderCatalogEntry(dragState.kind, dragState.id, target.classList.contains("heading-card") ? "heading" : "category", target.dataset.headingId || target.dataset.categoryId, position);
+  } else {
+    reorderProduct(dragState.id, target.dataset.productId, dragState.categoryId, position);
+  }
   dragState = null;
   clearDropLines();
   markDirty();
