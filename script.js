@@ -1540,7 +1540,12 @@ function filterProductSteps(product) {
     // حشوات الفطاير تتلقى تعديلات برمجية في واجهة الطلب؛ نعرض النسخة ذاتها هنا.
     if (/فطاير|فطائر|fatayer/i.test(`${product.name || ""} ${product.nameEn || ""}`) && /fillings|حشوات/i.test(`${step.id || ""} ${step.titleAr || ""} ${step.titleEn || ""}`)) {
       items = items.filter(option => !/mushroom|مشروم/i.test(`${option.id || ""} ${option.nameAr || ""} ${option.nameEn || ""}`));
-      if (!items.some(option => /عكاوي.*بابريكا|akkawi.*paprika/i.test(`${option.id || ""} ${option.nameAr || ""} ${option.nameEn || ""}`))) items = [...items, { id: "akkawi-cheese-paprika", nameAr: "جبن عكاوي بالبابريكا", nameEn: "Akkawi cheese with paprika", groupAr: "الحشوات الغنية", groupEn: "Rich fillings" }];
+      [
+        { id: "akkawi-cheese-paprika", nameAr: "جبن عكاوي بالبابريكا", nameEn: "Akkawi cheese with paprika" },
+        { id: "cheddar-cheese", nameAr: "جبن الشيدر", nameEn: "Cheddar cheese" }
+      ].forEach(extra => {
+        if (!items.some(option => String(option?.id) === extra.id || `${option?.nameAr || ""} ${option?.nameEn || ""}`.toLowerCase() === `${extra.nameAr} ${extra.nameEn}`.toLowerCase())) items = [...items, { ...extra, groupAr: "الحشوات الغنية", groupEn: "Rich fillings" }];
+      });
     }
     return { id: String(step.id || `step-${index + 1}`), titleAr: step.titleAr || "الخيارات", items };
   });
