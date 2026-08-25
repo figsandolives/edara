@@ -1532,10 +1532,11 @@ const FILTER_STUFFED_BREAD_STEPS = [
   { id: "fillings", titleAr: "اختر الحشوات", items: [["eggplant","باذنجان"],["indian-chilli-potatoes","بطاط هندية حارة"],["potatoes-carrots","بطاط وجزر وبازلاء"],["sprouted-fava-beans","فول مبرعم"],["spinach","سبانخ"],["mushroom","مشروم"],["yellow-squash","قرع أصفر"],["sprouted-falafel","فلافل مبرعمة"],["fermented-muhammara","محمرة مخمرة"],["purslane","بربير"],["organic-plain-eggs","بيض عضوي سادة"],["organic-eggs-cheese","بيض عضوي مع الجبن"],["organic-eggs-spinach","بيض عضوي مع السبانخ"]].map(([id,nameAr]) => ({id,nameAr})) }
 ];
 function filterProductSteps(product) {
+  if (!product || typeof product !== "object") return [];
   if (String(product?.id) === "9227") return clone(FILTER_STUFFED_BREAD_STEPS);
   const flow = product?.options?.selectionFlow;
   if (flow?.enabled && Array.isArray(flow.steps)) return flow.steps.filter(step => Array.isArray(step.items) && step.items.length).map((step, index) => {
-    let items = step.items;
+    let items = step.items.filter(Boolean);
     // حشوات الفطاير تتلقى تعديلات برمجية في واجهة الطلب؛ نعرض النسخة ذاتها هنا.
     if (/فطاير|فطائر|fatayer/i.test(`${product.name || ""} ${product.nameEn || ""}`) && /fillings|حشوات/i.test(`${step.id || ""} ${step.titleAr || ""} ${step.titleEn || ""}`)) {
       items = items.filter(option => !/mushroom|مشروم/i.test(`${option.id || ""} ${option.nameAr || ""} ${option.nameEn || ""}`));
@@ -1545,9 +1546,11 @@ function filterProductSteps(product) {
   });
   const options = product?.options;
   if (!options?.enabled || !Array.isArray(options.items) || !options.items.length) return [];
-  const first = { id: "options", titleAr: options.titleAr || "الخيارات الأساسية", items: options.items };
+  const items = options.items.filter(Boolean);
+  if (!items.length) return [];
+  const first = { id: "options", titleAr: options.titleAr || "الخيارات الأساسية", items };
   if (!options.nestedEnabled) return [first];
-  const subOptions = options.items.flatMap(option => (option.subOptions || []).map(sub => ({ ...sub, id: `${option.id}::${sub.id}`, parentId: String(option.id) })));
+  const subOptions = items.flatMap(option => (option.subOptions || []).filter(Boolean).map(sub => ({ ...sub, id: `${option.id}::${sub.id}`, parentId: String(option.id) })));
   return subOptions.length ? [first, { id: "subOptions", titleAr: "الخيارات المرتبطة", items: subOptions }] : [first];
 }
 
@@ -1581,7 +1584,7 @@ function renderProductFilterDetail() {
 function renderFilterProductsDialog() {
   const host = $("#filterProductsGrid");
   const query = clean(filterProductSearch).toLowerCase();
-  const list = products.filter(product => !query || `${product.name} ${product.nameEn}`.toLowerCase().includes(query));
+  const list = products.filter(Boolean).filter(product => !query || `${product.name || ""} ${product.nameEn || ""}`.toLowerCase().includes(query));
   $("#filterProductsSelectionCount").textContent = `${pendingFilterSelections.size} منتج محدد`;
   host.innerHTML = list.map(product => {
     const selection = pendingFilterSelections.get(String(product.id));
