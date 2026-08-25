@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260818-heading-tree-nested-collapse-v1">
+  <link rel="stylesheet" href="style.css?v=20260825-product-filters-v1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -25,6 +25,7 @@
       <button class="nav-button" id="deliveryAreasPage">مناطق التوصيل</button>
       <button class="nav-button" id="availabilityNotificationsPage">التبليغات</button>
       <button class="nav-button" id="advertisementPage">صفحة الإعلان</button>
+      <button class="nav-button" id="productFiltersPage">فلترة المنتجات</button>
       <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
       <button class="secondary" id="addCategory">＋ إضافة قسم جديد</button>
       <button class="secondary" id="addHeading">＋ إضافة عنوان</button>
@@ -170,6 +171,16 @@
     </section>
     <section id="availabilityNotificationsView" class="customers-view hidden" aria-live="polite"><div class="customers-head"><div><span class="eyebrow">تنبيهات توفر المنتجات</span><h1>في انتظار التبليغ</h1><p>تُزال بيانات العميل تلقائياً بعد إرسال رسالة واتساب له.</p></div><div class="stats"><div><strong id="availabilityWaitingCount">0</strong><span>عميل بانتظار التبليغ</span></div></div></div><div class="customers-toolbar"><button class="secondary" id="backFromAvailabilityNotifications">العودة للمنتجات والأقسام</button><button class="primary" id="downloadAvailabilityNotifications">تحميل التقرير PDF</button></div><div id="availabilityNotificationsList" class="customer-list"></div></section>
     <section id="advertisementView" class="customers-view hidden"><div class="customers-head"><div><span class="eyebrow">إعلان المنصة</span><h1>صفحة الإعلان</h1><p>يظهر الإعلان في منتصف المنصة عند دخول العميل، ويمكنه الضغط على الصورة للانتقال للرابط أو المنتج.</p></div></div><form id="advertisementForm" class="dialog-card"><label class="options-enable"><input id="advertisementEnabled" type="checkbox"> <span>تفعيل الإعلان</span></label><label>صورة الإعلان<input id="advertisementImage" type="file" accept="image/*"></label><img id="advertisementPreview" alt="معاينة الإعلان" style="max-width:260px;max-height:260px;border-radius:16px"><label>مقاس الإعلان<select id="advertisementSize"><option value="square">مربع</option><option value="portrait">عمودي</option><option value="landscape">أفقي</option></select></label><label>التوجيه<select id="advertisementTargetType"><option value="product">منتج من المنصة</option><option value="link">رابط مباشر</option></select></label><section id="advertisementProductWrap"><label>ابحث عن المنتج<input id="advertisementProductSearch" type="search" autocomplete="off" placeholder="اكتب اسم المنتج بالعربي أو الإنجليزي"></label><input id="advertisementProduct" type="hidden"><div id="advertisementProductResults" class="customer-order-items"></div></section><label id="advertisementLinkWrap">الرابط<input id="advertisementLink" type="url" dir="ltr" placeholder="https://"></label><footer><button type="button" class="secondary" id="backFromAdvertisement">العودة</button><button class="primary" type="submit">حفظ الإعلان</button></footer></form></section>
+    <section id="productFiltersView" class="customers-view hidden" aria-live="polite">
+      <div class="customers-head"><div><span class="eyebrow">تصفية عرض المنتجات</span><h1>فلترة المنتجات</h1><p>أنشئ فلترات مخصصة، ثم اختر المنتجات والخيارات الثابتة التي ستظهر للعميل.</p></div><button class="primary" id="addProductFilter">＋ إضافة فلتر جديد</button></div>
+      <div id="productFiltersList" class="product-filters-list"></div>
+      <button class="secondary" id="backFromProductFilters">العودة للمنتجات والأقسام</button>
+    </section>
+    <section id="productFilterDetailView" class="customers-view hidden" aria-live="polite">
+      <div class="customers-head"><div><span class="eyebrow">تفاصيل الفلتر</span><h1 id="productFilterDetailTitle">الفلتر</h1><p id="productFilterDetailHint"></p></div><div class="filter-detail-actions"><button class="secondary" id="editProductFilter">تعديل الاسم</button><button class="primary" id="addProductsToFilter">＋ إضافة منتجات</button></div></div>
+      <div class="filter-selected-count" id="filterSelectedCount">0 منتج محدد</div><div id="productFilterSelectedList" class="filter-selected-list"></div>
+      <button class="secondary" id="backFromProductFilterDetail">العودة إلى الفلاتر</button>
+    </section>
   </main>
 
   <dialog id="categoryDialog">
@@ -189,6 +200,9 @@
     </form>
   </dialog>
   <dialog id="headingDialog"><form method="dialog" id="headingForm" class="dialog-card"><header><div><span class="eyebrow">عنوان رئيسي</span><h2>إضافة عنوان</h2></div><button type="button" class="icon-btn" data-close-dialog="headingDialog">×</button></header><label>اسم العنوان بالعربي<input id="headingNameAr" required maxlength="100"></label><label>اسم العنوان بالإنجليزي<input id="headingNameEn" required maxlength="100" dir="ltr"></label><footer><button type="button" data-close-dialog="headingDialog">إلغاء</button><button class="primary" type="submit">إضافة العنوان</button></footer></form></dialog>
+  <dialog id="productFilterDialog"><form method="dialog" id="productFilterForm" class="dialog-card"><header><div><span class="eyebrow">فلترة المنتجات</span><h2 id="productFilterDialogTitle">إضافة فلتر جديد</h2></div><button type="button" class="icon-btn" data-close-dialog="productFilterDialog">×</button></header><input id="productFilterId" type="hidden"><label>اسم الفلتر بالعربي<input id="productFilterNameAr" required maxlength="80"></label><label>اسم الفلتر بالإنجليزي<input id="productFilterNameEn" required maxlength="80" dir="ltr"></label><footer><button type="button" data-close-dialog="productFilterDialog">إلغاء</button><button class="primary" type="submit">حفظ الفلتر</button></footer></form></dialog>
+  <dialog id="filterProductsDialog"><div class="dialog-card filter-products-dialog"><header><div><span class="eyebrow">إضافة منتجات</span><h2>اختر منتجات الفلتر</h2><p>يبقى التحديد محفوظاً أثناء البحث.</p></div><button type="button" class="icon-btn" data-close-dialog="filterProductsDialog">×</button></header><label>بحث عن منتج<input id="filterProductSearch" type="search" placeholder="الاسم العربي أو الإنجليزي"></label><div id="filterProductsSelectionCount" class="filter-selected-count"></div><div id="filterProductsGrid" class="filter-products-grid"></div><footer><button type="button" data-close-dialog="filterProductsDialog">إلغاء</button><button class="primary" id="saveFilterProducts" type="button">حفظ المنتجات المحددة</button></footer></div></dialog>
+  <dialog id="filterOptionStepsDialog"><div class="dialog-card filter-option-steps-dialog"><header><div><span class="eyebrow" id="filterStepProgress"></span><h2 id="filterStepProductName"></h2><p id="filterStepTitle"></p></div><button type="button" class="icon-btn" data-close-dialog="filterOptionStepsDialog">×</button></header><div id="filterStepChoices" class="filter-step-choices"></div><footer><button type="button" class="secondary" id="filterStepBack">السابق</button><button type="button" class="primary" id="filterStepNext">التالي</button></footer></div></dialog>
   <dialog id="headingLinkDialog"><form method="dialog" id="headingLinkForm" class="dialog-card"><header><div><span class="eyebrow">ربط الأقسام</span><h2 id="headingLinkTitle">العنوان</h2></div><button type="button" class="icon-btn" data-close-dialog="headingLinkDialog">×</button></header><label class="options-enable"><input id="enableSubheadings" type="checkbox"> <span>تفعيل العناوين الفرعية</span></label><div id="subheadingEditor" class="hidden"><div class="form-grid"><label>عنوان فرعي عربي<input id="subheadingNameAr" maxlength="100"></label><label>عنوان فرعي إنجليزي<input id="subheadingNameEn" maxlength="100" dir="ltr"></label></div><button type="button" id="addSubheading">＋ إضافة عنوان فرعي</button><div id="subheadingColumns" class="subheading-columns"></div></div><div id="directHeadingLink"><button type="button" id="openHeadingSections">＋ إضافة أقسام</button><div id="headingCategoryChoices" class="heading-category-choices hidden"></div></div><footer><button type="button" data-close-dialog="headingLinkDialog">إلغاء</button><button class="primary" type="submit">إتمام الربط</button></footer></form></dialog>
 
   <dialog id="productDialog">
@@ -313,6 +327,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260818-isolated-option-copies-v1"></script>
+  <script src="script.js?v=20260825-product-filters-v1"></script>
 </body>
 </html>

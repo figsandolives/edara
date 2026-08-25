@@ -44,6 +44,12 @@ let visitorPresenceRef = null;
 let visitorPresence = [];
 let availabilityNotifications = {};
 let advertisement = { enabled: false, image: "", size: "square", targetType: "product", productId: "", link: "" };
+let productFilters = [];
+let editingProductFilterId = "";
+let filterProductSearch = "";
+let pendingFilterSelections = new Map();
+let filterStepProductId = "";
+let filterStepIndex = 0;
 let availabilityNotificationsRef = null;
 let assignTargetCategoryId = "";
 let pendingDeleteCategoryId = "";
@@ -238,7 +244,7 @@ function normalizeAdvertisement(value = {}) {
 // إيقاف الإعلان إجراء فوري؛ لا ننتظر زر الحفظ كي لا يعود الإعلان عند تحديث الصفحة.
 async function disableAdvertisementImmediately() {
   advertisement = { ...normalizeAdvertisement(advertisement), enabled: false };
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, appearance: catalogAppearancePayload(), advertisement, savedAt: new Date().toISOString() }));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, productFilters, appearance: catalogAppearancePayload(), advertisement, savedAt: new Date().toISOString() }));
   clearTimeout(syncTimer);
   ignoreRemoteUntil = Date.now() + 1200;
   if (!catalogRef || !currentAdmin) return markDirty("جارٍ حفظ إيقاف الإعلان…");
@@ -309,6 +315,18 @@ function normalizeData() {
   });
   categories.forEach((category) => normalizeProductOrder(category.id));
   normalizeProductOrder("");
+  productFilters = (Array.isArray(productFilters) ? productFilters : []).map((filter, index) => ({
+    id: clean(filter.id) || `filter-${Date.now()}-${index}`,
+    nameAr: clean(filter.nameAr || filter.name) || "فلتر جديد",
+    nameEn: clean(filter.nameEn) || clean(filter.nameAr || filter.name) || "New filter",
+    products: (Array.isArray(filter.products) ? filter.products : []).map(entry => ({
+      productId: String(entry?.productId || entry?.id || entry || ""),
+      firstStepId: clean(entry?.firstStepId),
+      optionIds: [...new Set(Array.isArray(entry?.optionIds) ? entry.optionIds.map(String) : [])],
+      steps: (Array.isArray(entry?.steps) ? entry.steps : []).map(step => ({ stepId: String(step?.stepId || step?.id || ""), optionIds: [...new Set(Array.isArray(step?.optionIds) ? step.optionIds.map(String) : [])] })).filter(step => step.stepId)
+    })).filter(entry => products.some(product => String(product.id) === entry.productId)),
+    order: Number(filter.order) || index + 1
+  })).sort((a, b) => a.order - b.order).map((filter, index) => ({ ...filter, order: index + 1 }));
 }
 
 function normalizeProductOrder(categoryId) {
@@ -405,6 +423,7 @@ function applyRemoteCatalog(catalog) {
   deliveryAreas = normalizeDeliveryAreas(catalog?.deliveryAreas);
   catalogAppearances = normalizeCatalogAppearances(catalog?.appearance);
   advertisement = normalizeAdvertisement(catalog?.advertisement);
+  productFilters = Array.isArray(catalog?.productFilters) ? catalog.productFilters : [];
   appearance = catalogAppearances[activeCatalogType];
   siteProducts = clone(products);
   siteCategories = clone(categories);
@@ -707,7 +726,7 @@ function markDirty(message = "جارٍ حفظ التعديلات في Firebase�
 async function saveToFirebase() {
   if (!catalogRef || !currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
   normalizeData();
-  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, appearance: catalogAppearancePayload(), advertisement, savedAt: new Date().toISOString() }));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ categories, headings, products, deliveryAreas, productFilters, appearance: catalogAppearancePayload(), advertisement, savedAt: new Date().toISOString() }));
   clearTimeout(syncTimer);
   ignoreRemoteUntil = Date.now() + 1200;
   $("#saveState").textContent = "جارٍ الحفظ في Firebase…";
@@ -720,6 +739,7 @@ async function saveToFirebase() {
       deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
       appearance: catalogAppearancePayload(),
       advertisement: normalizeAdvertisement(advertisement),
+      productFilters,
       ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
       ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
@@ -1506,17 +1526,135 @@ function openCustomerDetails(uid) {
   $("#customerDialog").showModal();
 }
 
+const FILTER_STUFFED_BREAD_STEPS = [
+  { id: "dough", titleAr: "اختر نوع العجينة", items: [["dough-wheat","بالقمح الكامل والخميرة الطبيعية"],["dough-rice","بالرز الأبيض الخالي من الجلوتين"],["dough-almond","بطحين اللوز لنظام الكيتو"],["dough-barley","بالشعير الكامل والخميرة الطبيعية"]].map(([id,nameAr]) => ({id,nameAr})) },
+  { id: "size", titleAr: "اختر الحجم والكمية", items: [["regular12","صغير عادي (١٢ خبزة = ٢٤ قطعة)"],["mini12","حجم ميني (١٢ خبزة)"],["bite12","حجم لقمة (١٢ خبزة)"]].map(([id,nameAr]) => ({id,nameAr})) },
+  { id: "fillings", titleAr: "اختر الحشوات", items: [["eggplant","باذنجان"],["indian-chilli-potatoes","بطاط هندية حارة"],["potatoes-carrots","بطاط وجزر وبازلاء"],["sprouted-fava-beans","فول مبرعم"],["spinach","سبانخ"],["mushroom","مشروم"],["yellow-squash","قرع أصفر"],["sprouted-falafel","فلافل مبرعمة"],["fermented-muhammara","محمرة مخمرة"],["purslane","بربير"],["organic-plain-eggs","بيض عضوي سادة"],["organic-eggs-cheese","بيض عضوي مع الجبن"],["organic-eggs-spinach","بيض عضوي مع السبانخ"]].map(([id,nameAr]) => ({id,nameAr})) }
+];
+function filterProductSteps(product) {
+  if (String(product?.id) === "9227") return clone(FILTER_STUFFED_BREAD_STEPS);
+  const flow = product?.options?.selectionFlow;
+  if (flow?.enabled && Array.isArray(flow.steps)) return flow.steps.filter(step => Array.isArray(step.items) && step.items.length).map((step, index) => {
+    let items = step.items;
+    // حشوات الفطاير تتلقى تعديلات برمجية في واجهة الطلب؛ نعرض النسخة ذاتها هنا.
+    if (/فطاير|فطائر|fatayer/i.test(`${product.name || ""} ${product.nameEn || ""}`) && /fillings|حشوات/i.test(`${step.id || ""} ${step.titleAr || ""} ${step.titleEn || ""}`)) {
+      items = items.filter(option => !/mushroom|مشروم/i.test(`${option.id || ""} ${option.nameAr || ""} ${option.nameEn || ""}`));
+      if (!items.some(option => /عكاوي.*بابريكا|akkawi.*paprika/i.test(`${option.id || ""} ${option.nameAr || ""} ${option.nameEn || ""}`))) items = [...items, { id: "akkawi-cheese-paprika", nameAr: "جبن عكاوي بالبابريكا", nameEn: "Akkawi cheese with paprika", groupAr: "الحشوات الغنية", groupEn: "Rich fillings" }];
+    }
+    return { id: String(step.id || `step-${index + 1}`), titleAr: step.titleAr || "الخيارات", items };
+  });
+  const options = product?.options;
+  if (!options?.enabled || !Array.isArray(options.items) || !options.items.length) return [];
+  const first = { id: "options", titleAr: options.titleAr || "الخيارات الأساسية", items: options.items };
+  if (!options.nestedEnabled) return [first];
+  const subOptions = options.items.flatMap(option => (option.subOptions || []).map(sub => ({ ...sub, id: `${option.id}::${sub.id}`, parentId: String(option.id) })));
+  return subOptions.length ? [first, { id: "subOptions", titleAr: "الخيارات المرتبطة", items: subOptions }] : [first];
+}
+
+function productFilterById(id = editingProductFilterId) { return productFilters.find(filter => filter.id === id) || null; }
+
+function renderProductFilters() {
+  const host = $("#productFiltersList");
+  if (!host) return;
+  host.innerHTML = productFilters.length ? productFilters.map(filter => {
+    const count = filter.products.length;
+    return `<article class="product-filter-card"><div><span class="eyebrow">${count} منتج محدد</span><h2>${escapeHtml(filter.nameAr)}</h2><p dir="ltr">${escapeHtml(filter.nameEn)}</p></div><div class="filter-card-actions"><button class="secondary" data-open-product-filter="${escapeHtml(filter.id)}">فتح الفلتر</button><button class="danger" data-delete-product-filter="${escapeHtml(filter.id)}">حذف</button></div></article>`;
+  }).join("") : `<div class="empty">لا توجد فلاتر بعد. اضغط «إضافة فلتر جديد» للبدء.</div>`;
+}
+
+function renderProductFilterDetail() {
+  const filter = productFilterById();
+  if (!filter) return showAdminView("filters");
+  $("#productFilterDetailTitle").textContent = filter.nameAr;
+  $("#productFilterDetailHint").textContent = filter.nameEn;
+  $("#filterSelectedCount").textContent = `${filter.products.length} منتج محدد`;
+  const host = $("#productFilterSelectedList");
+  host.innerHTML = filter.products.length ? filter.products.map(entry => {
+    const item = products.find(product => String(product.id) === entry.productId);
+    if (!item) return "";
+    const steps = filterProductSteps(item);
+    const chosen = steps.map(step => { const selected = entry.steps?.find(value => value.stepId === step.id)?.optionIds || (step.id === entry.firstStepId ? entry.optionIds : []); return selected.length ? `${step.titleAr}: ${step.items.filter(option => selected.includes(String(option.id))).map(option => option.nameAr || option.nameEn).join("، ")}` : ""; }).filter(Boolean).join(" · ") || "بدون خيارات ثابتة";
+    return `<article class="filter-selected-product"><img src="${escapeHtml(imageSource(item))}" alt=""><div><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(chosen || "كل الخيارات")}</p><strong>${Number(item.price || 0).toFixed(3)} د.ك</strong></div><button class="icon-btn" data-remove-filter-product="${escapeHtml(item.id)}" aria-label="حذف">×</button></article>`;
+  }).join("") : `<div class="empty">لم تُحدد منتجات لهذا الفلتر بعد.</div>`;
+}
+
+function renderFilterProductsDialog() {
+  const host = $("#filterProductsGrid");
+  const query = clean(filterProductSearch).toLowerCase();
+  const list = products.filter(product => !query || `${product.name} ${product.nameEn}`.toLowerCase().includes(query));
+  $("#filterProductsSelectionCount").textContent = `${pendingFilterSelections.size} منتج محدد`;
+  host.innerHTML = list.map(product => {
+    const selection = pendingFilterSelections.get(String(product.id));
+    const checked = Boolean(selection);
+    const steps = filterProductSteps(product);
+    return `<article class="filter-product-picker ${checked ? "selected" : ""}"><label class="filter-product-main"><input type="checkbox" data-filter-product="${escapeHtml(product.id)}" ${checked ? "checked" : ""}><img src="${escapeHtml(imageSource(product))}" alt=""><span><b>${escapeHtml(product.name)}</b><small dir="ltr">${escapeHtml(product.nameEn)}</small><strong>${Number(product.price || 0).toFixed(3)} د.ك</strong></span></label>${checked && steps.length ? `<button type="button" class="secondary filter-product-options-button" data-edit-filter-product-options="${escapeHtml(product.id)}">تحديد الخيارات (${steps.length} ${steps.length === 1 ? "صفحة" : "صفحات"})</button>` : ""}</article>`;
+  }).join("") || `<div class="empty">لا توجد نتائج مطابقة.</div>`;
+}
+
+function filterStepSelection(entry, stepId) {
+  return entry?.steps?.find(step => step.stepId === stepId)?.optionIds || (entry?.firstStepId === stepId ? entry.optionIds || [] : []);
+}
+
+function filterStepItems(product, step, entry) {
+  if (step.id !== "subOptions") return step.items;
+  const primaryIds = filterStepSelection(entry, "options");
+  return step.items.filter(option => primaryIds.includes(String(option.parentId)));
+}
+
+function openFilterOptionSteps(productId) {
+  const item = products.find(product => String(product.id) === String(productId));
+  const steps = filterProductSteps(item);
+  if (!item || !steps.length) return;
+  const id = String(item.id);
+  const entry = pendingFilterSelections.get(id) || { productId: id, firstStepId: "", optionIds: [], steps: [] };
+  entry.steps = steps.map(step => ({ stepId: step.id, optionIds: filterStepSelection(entry, step.id) }));
+  entry.firstStepId = steps[0]?.id || "";
+  entry.optionIds = filterStepSelection(entry, entry.firstStepId);
+  pendingFilterSelections.set(id, entry);
+  filterStepProductId = id;
+  filterStepIndex = 0;
+  renderFilterOptionStep();
+  $("#filterOptionStepsDialog").showModal();
+}
+
+function renderFilterOptionStep() {
+  const item = products.find(product => String(product.id) === filterStepProductId);
+  const steps = filterProductSteps(item);
+  const entry = pendingFilterSelections.get(filterStepProductId);
+  const step = steps[filterStepIndex];
+  if (!item || !entry || !step) return $("#filterOptionStepsDialog").close();
+  const choices = filterStepItems(item, step, entry);
+  const selected = new Set(filterStepSelection(entry, step.id));
+  $("#filterStepProgress").textContent = `الخطوة ${filterStepIndex + 1} من ${steps.length}`;
+  $("#filterStepProductName").textContent = item.name;
+  $("#filterStepTitle").textContent = step.titleAr || "اختر الخيارات التي تريد إظهارها";
+  $("#filterStepChoices").innerHTML = choices.length ? choices.map(option => `<label class="filter-step-choice"><input type="checkbox" data-filter-step-option value="${escapeHtml(option.id)}" ${selected.has(String(option.id)) ? "checked" : ""}><span><b>${escapeHtml(option.nameAr || option.name || option.id)}</b>${option.nameEn ? `<small>${escapeHtml(option.nameEn)}</small>` : ""}</span></label>`).join("") : `<div class="empty">لا توجد خيارات مرتبطة بالاختيارات السابقة في هذه الصفحة.</div>`;
+  $("#filterStepBack").classList.toggle("hidden", filterStepIndex === 0);
+  $("#filterStepNext").textContent = filterStepIndex === steps.length - 1 ? "تم" : "التالي";
+}
+
+function openProductFilterDialog(filter = null) {
+  $("#productFilterDialogTitle").textContent = filter ? "تعديل الفلتر" : "إضافة فلتر جديد";
+  $("#productFilterId").value = filter?.id || "";
+  $("#productFilterNameAr").value = filter?.nameAr || "";
+  $("#productFilterNameEn").value = filter?.nameEn || "";
+  $("#productFilterDialog").showModal();
+}
+
 function showAdminView(view) {
-  currentView = ["customers", "availability", "advertisement"].includes(view) ? view : "catalog";
+  currentView = ["customers", "availability", "advertisement", "filters", "filterDetail"].includes(view) ? view : "catalog";
   $$("[data-admin-view='catalog']").forEach(element => element.classList.toggle("hidden", currentView !== "catalog"));
   $("#customersView").classList.toggle("hidden", currentView !== "customers");
   $("#availabilityNotificationsView").classList.toggle("hidden", currentView !== "availability");
   $("#advertisementView").classList.toggle("hidden", currentView !== "advertisement");
+  $("#productFiltersView").classList.toggle("hidden", currentView !== "filters");
+  $("#productFilterDetailView").classList.toggle("hidden", currentView !== "filterDetail");
   $("#deliveryAreasView").classList.add("hidden");
   $("#liveVisitorsView").classList.add("hidden");
   $("#customersPage").classList.toggle("active", currentView === "customers");
   $("#availabilityNotificationsPage").classList.toggle("active", currentView === "availability");
   $("#advertisementPage").classList.toggle("active", currentView === "advertisement");
+  $("#productFiltersPage").classList.toggle("active", currentView === "filters" || currentView === "filterDetail");
   $("#deliveryAreasPage").classList.remove("active");
   $("#liveVisitorsPage").classList.remove("active");
   $("#addProduct").classList.toggle("hidden", currentView === "customers");
@@ -1524,6 +1662,8 @@ function showAdminView(view) {
   if (currentView === "customers") renderCustomers();
   if (currentView === "availability") renderAvailabilityNotifications();
   if (currentView === "advertisement") renderAdvertisementEditor();
+  if (currentView === "filters") renderProductFilters();
+  if (currentView === "filterDetail") renderProductFilterDetail();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1786,6 +1926,107 @@ $("#addProduct").addEventListener("click", () => openProductDialog());
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
 $("#availabilityNotificationsPage").addEventListener("click", () => showAdminView("availability"));
 $("#advertisementPage").addEventListener("click", () => showAdminView("advertisement"));
+$("#productFiltersPage").addEventListener("click", () => showAdminView("filters"));
+$("#backFromProductFilters").addEventListener("click", () => showAdminView("catalog"));
+$("#backFromProductFilterDetail").addEventListener("click", () => showAdminView("filters"));
+$("#addProductFilter").addEventListener("click", () => openProductFilterDialog());
+$("#editProductFilter").addEventListener("click", () => openProductFilterDialog(productFilterById()));
+$("#productFilterForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const id = clean($("#productFilterId").value);
+  const nameAr = clean($("#productFilterNameAr").value), nameEn = clean($("#productFilterNameEn").value);
+  if (!nameAr || !nameEn) return toast("اكتب اسم الفلتر باللغتين");
+  if (id) {
+    const filter = productFilterById(id);
+    if (filter) Object.assign(filter, { nameAr, nameEn });
+  } else {
+    const filter = { id: `filter-${Date.now().toString(36)}`, nameAr, nameEn, products: [], order: productFilters.length + 1 };
+    productFilters.push(filter);
+    editingProductFilterId = filter.id;
+  }
+  $("#productFilterDialog").close(); markDirty();
+  showAdminView(editingProductFilterId ? "filterDetail" : "filters");
+});
+$("#productFiltersList").addEventListener("click", event => {
+  const open = event.target.closest("[data-open-product-filter]");
+  if (open) { editingProductFilterId = open.dataset.openProductFilter; return showAdminView("filterDetail"); }
+  const remove = event.target.closest("[data-delete-product-filter]");
+  if (!remove || !confirm("حذف هذا الفلتر فقط؟ لن تتغير المنتجات.")) return;
+  productFilters = productFilters.filter(filter => filter.id !== remove.dataset.deleteProductFilter); markDirty(); renderProductFilters();
+});
+$("#addProductsToFilter").addEventListener("click", () => {
+  const filter = productFilterById(); if (!filter) return;
+  filterProductSearch = ""; $("#filterProductSearch").value = "";
+  pendingFilterSelections = new Map(filter.products.map(entry => [entry.productId, clone(entry)]));
+  renderFilterProductsDialog(); $("#filterProductsDialog").showModal();
+});
+$("#filterProductSearch").addEventListener("input", event => { filterProductSearch = event.target.value; renderFilterProductsDialog(); });
+$("#filterProductsGrid").addEventListener("change", event => {
+  const productInput = event.target.closest("[data-filter-product]");
+  if (productInput) {
+    const item = products.find(product => String(product.id) === productInput.dataset.filterProduct);
+    if (!item) return;
+    const steps = filterProductSteps(item);
+    if (productInput.checked) {
+      pendingFilterSelections.set(String(item.id), { productId: String(item.id), firstStepId: steps[0]?.id || "", optionIds: [], steps: steps.map(step => ({ stepId: step.id, optionIds: [] })) });
+      renderFilterProductsDialog();
+      if (steps.length) openFilterOptionSteps(item.id);
+      return;
+    }
+    else pendingFilterSelections.delete(productInput.dataset.filterProduct);
+    return renderFilterProductsDialog();
+  }
+});
+$("#filterProductsGrid").addEventListener("click", event => {
+  const button = event.target.closest("[data-edit-filter-product-options]");
+  if (button) openFilterOptionSteps(button.dataset.editFilterProductOptions);
+});
+$("#filterStepChoices").addEventListener("change", event => {
+  const input = event.target.closest("[data-filter-step-option]");
+  if (!input) return;
+  const entry = pendingFilterSelections.get(filterStepProductId);
+  const item = products.find(product => String(product.id) === filterStepProductId);
+  const step = filterProductSteps(item)[filterStepIndex];
+  if (!entry || !step) return;
+  const current = new Set(filterStepSelection(entry, step.id));
+  input.checked ? current.add(input.value) : current.delete(input.value);
+  const saved = entry.steps.find(value => value.stepId === step.id);
+  if (saved) saved.optionIds = [...current];
+  if (step.id === "options") {
+    const linked = entry.steps.find(value => value.stepId === "subOptions");
+    if (linked) linked.optionIds = linked.optionIds.filter(value => current.has(String(value).split("::")[0]));
+  }
+  entry.optionIds = filterStepSelection(entry, entry.firstStepId);
+  pendingFilterSelections.set(entry.productId, entry);
+  renderFilterOptionStep();
+});
+$("#filterStepBack").addEventListener("click", () => { if (filterStepIndex > 0) { filterStepIndex--; renderFilterOptionStep(); } });
+$("#filterStepNext").addEventListener("click", () => {
+  const item = products.find(product => String(product.id) === filterStepProductId);
+  const steps = filterProductSteps(item);
+  const entry = pendingFilterSelections.get(filterStepProductId);
+  const step = steps[filterStepIndex];
+  const choices = filterStepItems(item, step, entry);
+  if (choices.length && !filterStepSelection(entry, step.id).length) return toast(`حدد خياراً واحداً على الأقل في «${step.titleAr || "هذه الصفحة"}»`);
+  if (filterStepIndex < steps.length - 1) { filterStepIndex++; return renderFilterOptionStep(); }
+  $("#filterOptionStepsDialog").close();
+  renderFilterProductsDialog();
+});
+$("#saveFilterProducts").addEventListener("click", () => {
+  const filter = productFilterById(); if (!filter) return;
+  for (const entry of pendingFilterSelections.values()) {
+    const product = products.find(item => String(item.id) === entry.productId);
+    for (const step of filterProductSteps(product)) {
+      if (filterStepItems(product, step, entry).length && !filterStepSelection(entry, step.id).length) return toast(`أكمل خيارات المنتج «${product.name}» قبل الحفظ`);
+    }
+  }
+  filter.products = [...pendingFilterSelections.values()]; $("#filterProductsDialog").close(); markDirty(); renderProductFilterDetail();
+});
+$("#productFilterSelectedList").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-filter-product]"); if (!button) return;
+  const filter = productFilterById(); if (!filter) return;
+  filter.products = filter.products.filter(entry => entry.productId !== button.dataset.removeFilterProduct); markDirty(); renderProductFilterDetail();
+});
 $("#backFromAdvertisement").addEventListener("click", () => showAdminView("catalog"));
 $("#advertisementTargetType").addEventListener("change", renderAdvertisementEditor);
 $("#advertisementEnabled").addEventListener("change", event => {
