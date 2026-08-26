@@ -1179,8 +1179,10 @@ function syncEditingProductOptions() {
     });
   });
 }
-function renderProductOptions() {
-  syncEditingProductOptions();
+function renderProductOptions(syncFromForm = true) {
+  // بعد الحذف أو اللصق تتغير فهارس المصفوفة، بينما عناصر الشاشة القديمة
+  // ما زالت تحمل الفهارس السابقة؛ لذلك لا نقرأها مرة أخرى في تلك اللحظة.
+  if (syncFromForm) syncEditingProductOptions();
   const enabled = $("#productOptionsEnabled").checked;
   const priceBased = $("#productOptionsPriceBased").checked;
   const preparationEnabled = $("#productOptionsPreparationEnabled").checked;
@@ -2314,18 +2316,20 @@ $("#productOptionItems").addEventListener("click", event => {
   const removeSubButton = event.target.closest("[data-remove-sub-option]");
   const removeThirdButton = event.target.closest("[data-remove-third-option]");
   if (addThirdButton) {
+    syncEditingProductOptions();
     const [optionIndex, subIndex] = addThirdButton.dataset.addThirdOption.split("-").map(Number);
     const subOption = editingProductOptions[optionIndex]?.subOptions?.[subIndex];
     if (!subOption) return;
     subOption.subOptions = Array.isArray(subOption.subOptions) ? subOption.subOptions : [];
     subOption.subOptions.push({ id: `third-option-${Date.now()}-${subOption.subOptions.length}`, nameAr: "", nameEn: "", price: 0 });
-    return renderProductOptions();
+    return renderProductOptions(false);
   }
   if (addSubButton) {
+    syncEditingProductOptions();
     const option = editingProductOptions[Number(addSubButton.dataset.addSubOption)];
     option.subOptions = Array.isArray(option.subOptions) ? option.subOptions : [];
     option.subOptions.push({ id: `sub-option-${Date.now()}-${option.subOptions.length}`, nameAr: "", nameEn: "", price: 0, subOptions: [] });
-    return renderProductOptions();
+    return renderProductOptions(false);
   }
   if (copySubButton) {
     syncEditingProductOptions();
@@ -2333,7 +2337,7 @@ $("#productOptionItems").addEventListener("click", event => {
     if (!option?.subOptions?.length) return toast("أضف خياراً فرعياً واحداً على الأقل لنسخها");
     copiedSubOptions = cloneOptions(option.subOptions);
     localStorage.setItem(subOptionsClipboardKey, JSON.stringify(copiedSubOptions));
-    renderProductOptions();
+    renderProductOptions(false);
     return toast("تم نسخ الخيارات الفرعية بكل إعداداتها");
   }
   if (pasteSubButton) {
@@ -2344,23 +2348,26 @@ $("#productOptionItems").addEventListener("click", event => {
     if (!option) return;
     option.subOptions = Array.isArray(option.subOptions) ? option.subOptions : [];
     option.subOptions.push(...cloneSubOptionsForParent(copiedSubOptions, optionIndex));
-    renderProductOptions();
+    renderProductOptions(false);
     return toast("تم لصق الخيارات الفرعية داخل الخيار المرتبط");
   }
   if (removeSubButton) {
+    syncEditingProductOptions();
     const [optionIndex, subIndex] = removeSubButton.dataset.removeSubOption.split("-").map(Number);
     editingProductOptions[optionIndex]?.subOptions?.splice(subIndex, 1);
-    return renderProductOptions();
+    return renderProductOptions(false);
   }
   if (removeThirdButton) {
+    syncEditingProductOptions();
     const [optionIndex, subIndex, thirdIndex] = removeThirdButton.dataset.removeThirdOption.split("-").map(Number);
     editingProductOptions[optionIndex]?.subOptions?.[subIndex]?.subOptions?.splice(thirdIndex, 1);
-    return renderProductOptions();
+    return renderProductOptions(false);
   }
   const button = event.target.closest("[data-remove-option]");
   if (!button) return;
+  syncEditingProductOptions();
   editingProductOptions.splice(Number(button.dataset.removeOption), 1);
-  renderProductOptions();
+  renderProductOptions(false);
 });
 $("#productOptionItems").addEventListener("change", async event => {
   const input = event.target.closest("[data-option-image-file]");
