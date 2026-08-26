@@ -248,8 +248,13 @@
             <label><input id="productOptionsPreparationEnabled" type="checkbox"> وقت التحضير حسب الاختيار</label>
             <label><input id="productOptionsImagesEnabled" type="checkbox"> صور للخيارات</label>
             <label><input id="productOptionsNestedEnabled" type="checkbox"> خيار داخل خيار</label>
+            <label id="productOptionsThirdLevelSetting" class="hidden"><input id="productOptionsThirdLevelEnabled" type="checkbox"> خيار داخل خيار أيضاً <small>(المرحلة الثالثة)</small></label>
             <label><input id="productOptionsMinimumEnabled" type="checkbox"> تفعيل أقل كمية لكل خيار</label>
             <label><input id="productOptionsQuantityEnabled" type="checkbox"> تفعيل تحديد الكمية لكل خيار</label>
+          </div>
+          <div class="multiple-options-settings hidden" id="productOptionsStageSettings">
+            <label id="productOptionsMultipleStageWrap" class="hidden">تطبيق السماح بأكثر من خيار في المرحلة<select id="productOptionsMultipleStep"></select></label>
+            <label id="productOptionsQuantityStageWrap" class="hidden">تطبيق تحديد الكمية في المرحلة<select id="productOptionsQuantityStep"></select></label>
           </div>
           <div class="multiple-options-settings hidden" id="productOptionsMultipleSettings">
             <label>عنوان الخيارات بالعربي<input id="productOptionsTitleAr" maxlength="80" placeholder="مثال: اختر الإضافات"></label>
@@ -327,6 +332,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260825-product-filters-v1"></script>
+  <script src="script.js?v=20260826-third-option-stage-v1"></script>
 </body>
 </html>

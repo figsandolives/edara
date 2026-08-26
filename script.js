@@ -149,6 +149,7 @@ function normalizeProductOptions(value) {
     return { enabled: true, selectionFlow: clone(value.selectionFlow) };
   }
   const nestedEnabled = value.nestedEnabled === true;
+  const thirdLevelEnabled = nestedEnabled && value.thirdLevelEnabled === true;
   const priceBased = value.priceBased === true || nestedEnabled;
   const items = (Array.isArray(value.items) ? value.items : []).map((item, index) => ({
     id: clean(item.id) || `option-${index + 1}`,
@@ -162,11 +163,20 @@ function normalizeProductOptions(value) {
       id: clean(subOption.id) || `sub-option-${index + 1}-${subIndex + 1}`,
       nameAr: clean(subOption.nameAr || subOption.name),
       nameEn: clean(subOption.nameEn || subOption.nameAr || subOption.name),
-      price: Math.max(0, Number(subOption.price) || 0)
+      price: Math.max(0, Number(subOption.price) || 0),
+      subOptions: (Array.isArray(subOption.subOptions) ? subOption.subOptions : []).map((thirdOption, thirdIndex) => ({
+        id: clean(thirdOption.id) || `third-option-${index + 1}-${subIndex + 1}-${thirdIndex + 1}`,
+        nameAr: clean(thirdOption.nameAr || thirdOption.name),
+        nameEn: clean(thirdOption.nameEn || thirdOption.nameAr || thirdOption.name),
+        price: Math.max(0, Number(thirdOption.price) || 0)
+      })).filter(thirdOption => thirdOption.nameAr && thirdOption.nameEn)
     })).filter(subOption => subOption.nameAr && subOption.nameEn)
   })).filter(item => item.nameAr && item.nameEn);
-  const multiple = nestedEnabled ? false : value.multiple === true;
-  return value.enabled !== false && items.length ? { enabled: true, required: nestedEnabled || value.required === true, multiple, maxSelections: multiple ? Math.max(1, Number(value.maxSelections) || items.length) : 1, titleAr: clean(value.titleAr), titleEn: clean(value.titleEn), priceBased, preparationEnabled: value.preparationEnabled === true, imagesEnabled: value.imagesEnabled === true, nestedEnabled, minimumPerOptionEnabled: value.minimumPerOptionEnabled === true, optionQuantityEnabled: value.optionQuantityEnabled === true, items } : null;
+  const multiple = value.multiple === true;
+  const stages = thirdLevelEnabled ? 3 : nestedEnabled ? 2 : 1;
+  const multipleStep = Math.min(stages, Math.max(1, Number(value.multipleStep) || 1));
+  const quantityStep = Math.min(stages, Math.max(1, Number(value.quantityStep) || 1));
+  return value.enabled !== false && items.length ? { enabled: true, required: nestedEnabled || value.required === true, multiple, multipleStep, maxSelections: multiple ? Math.max(1, Number(value.maxSelections) || items.length) : 1, titleAr: clean(value.titleAr), titleEn: clean(value.titleEn), priceBased, preparationEnabled: value.preparationEnabled === true, imagesEnabled: value.imagesEnabled === true, nestedEnabled, thirdLevelEnabled, minimumPerOptionEnabled: value.minimumPerOptionEnabled === true, optionQuantityEnabled: value.optionQuantityEnabled === true, quantityStep, items } : null;
 }
 
 const minimumOrderUnits = new Set(["dozen", "piece", "bowl", "bag", "kilo", "bottle"]);
@@ -1065,11 +1075,14 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productOptionsPreparationEnabled").checked = options?.preparationEnabled === true;
   $("#productOptionsImagesEnabled").checked = options?.imagesEnabled === true;
   $("#productOptionsNestedEnabled").checked = options?.nestedEnabled === true;
+  $("#productOptionsThirdLevelEnabled").checked = options?.thirdLevelEnabled === true;
   $("#productOptionsMinimumEnabled").checked = options?.minimumPerOptionEnabled === true;
   $("#productOptionsQuantityEnabled").checked = options?.optionQuantityEnabled === true;
   $("#productOptionsTitleAr").value = options?.titleAr || "";
   $("#productOptionsTitleEn").value = options?.titleEn || "";
   $("#productOptionsMaxSelections").value = options?.maxSelections || 2;
+  $("#productOptionsMultipleStep").value = options?.multipleStep || 1;
+  $("#productOptionsQuantityStep").value = options?.quantityStep || 1;
   editingProductOptions = options?.items ? clone(options.items) : [];
   renderProductOptions();
   editingImages = [...(product?.images || [product?.image].filter(Boolean))];
@@ -1100,7 +1113,11 @@ function cloneOptionsForProduct(value) {
       id: `option-${stamp}-${index + 1}`,
       subOptions: (Array.isArray(item.subOptions) ? item.subOptions : []).map((subOption, subIndex) => ({
         ...subOption,
-        id: `sub-option-${stamp}-${index + 1}-${subIndex + 1}`
+        id: `sub-option-${stamp}-${index + 1}-${subIndex + 1}`,
+        subOptions: (Array.isArray(subOption.subOptions) ? subOption.subOptions : []).map((thirdOption, thirdIndex) => ({
+          ...thirdOption,
+          id: `third-option-${stamp}-${index + 1}-${subIndex + 1}-${thirdIndex + 1}`
+        }))
       }))
     }));
   }
@@ -1132,6 +1149,15 @@ function syncEditingProductOptions() {
       if (subNameAr) subOption.nameAr = subNameAr.value;
       if (subNameEn) subOption.nameEn = subNameEn.value;
       if (subPrice) subOption.price = Math.max(0, Number(subPrice.value) || 0);
+      subOption.subOptions = Array.isArray(subOption.subOptions) ? subOption.subOptions : [];
+      subOption.subOptions.forEach((thirdOption, thirdIndex) => {
+        const thirdNameAr = $(`[data-third-option-ar="${index}-${subIndex}-${thirdIndex}"]`);
+        const thirdNameEn = $(`[data-third-option-en="${index}-${subIndex}-${thirdIndex}"]`);
+        const thirdPrice = $(`[data-third-option-price="${index}-${subIndex}-${thirdIndex}"]`);
+        if (thirdNameAr) thirdOption.nameAr = thirdNameAr.value;
+        if (thirdNameEn) thirdOption.nameEn = thirdNameEn.value;
+        if (thirdPrice) thirdOption.price = Math.max(0, Number(thirdPrice.value) || 0);
+      });
     });
   });
 }
@@ -1142,7 +1168,19 @@ function renderProductOptions() {
   const preparationEnabled = $("#productOptionsPreparationEnabled").checked;
   const imagesEnabled = $("#productOptionsImagesEnabled").checked;
   const nestedEnabled = $("#productOptionsNestedEnabled").checked;
+  const thirdLevelEnabled = nestedEnabled && $("#productOptionsThirdLevelEnabled").checked;
   const minimumPerOptionEnabled = $("#productOptionsMinimumEnabled").checked;
+  const stages = thirdLevelEnabled ? 3 : nestedEnabled ? 2 : 1;
+  const stageChoices = Array.from({ length: stages }, (_, index) => `<option value="${index + 1}">المرحلة ${index + 1}</option>`).join("");
+  $("#productOptionsThirdLevelSetting").classList.toggle("hidden", !enabled || !nestedEnabled);
+  $("#productOptionsStageSettings").classList.toggle("hidden", !enabled || stages === 1 || (!$("#productOptionsMultiple").checked && !$("#productOptionsQuantityEnabled").checked));
+  $("#productOptionsMultipleStageWrap").classList.toggle("hidden", !enabled || stages === 1 || !$("#productOptionsMultiple").checked);
+  $("#productOptionsQuantityStageWrap").classList.toggle("hidden", !enabled || stages === 1 || !$("#productOptionsQuantityEnabled").checked);
+  [$("#productOptionsMultipleStep"), $("#productOptionsQuantityStep")].forEach(select => {
+    const wanted = Math.min(stages, Math.max(1, Number(select.value) || 1));
+    select.innerHTML = stageChoices;
+    select.value = String(wanted);
+  });
   $("#productOptionsBody").classList.toggle("hidden", !enabled);
   $("#productOptionsMultipleSettings").classList.toggle("hidden", !enabled || !$("#productOptionsMultiple").checked || nestedEnabled);
   $("#productPrice").disabled = enabled && priceBased;
@@ -1164,7 +1202,7 @@ function renderProductOptions() {
       ${imagesEnabled ? `<label class="option-image">صورة الخيار${option.image ? `<img src="${escapeHtml(option.image)}" alt="صورة الخيار">` : ""}<span class="file-button">اختيار صورة من الجهاز<input data-option-image-file="${index}" type="file" accept="image/*"></span></label>` : ""}
       ${minimumPerOptionEnabled ? `<label class="option-minimum">أقل كمية للخيار<input data-option-minimum-quantity="${index}" type="number" min="1" max="99" step="1" value="${Number(option.minimumOrder?.quantity || 1)}" inputmode="numeric" dir="ltr"><select data-option-minimum-unit="${index}"><option value="dozen" ${option.minimumOrder?.unit === "dozen" ? "selected" : ""}>درزن</option><option value="piece" ${option.minimumOrder?.unit === "piece" ? "selected" : ""}>حبة</option><option value="bowl" ${option.minimumOrder?.unit === "bowl" ? "selected" : ""}>ماعون</option><option value="bag" ${option.minimumOrder?.unit === "bag" ? "selected" : ""}>كيس</option><option value="kilo" ${option.minimumOrder?.unit === "kilo" ? "selected" : ""}>كيلو</option><option value="bottle" ${option.minimumOrder?.unit === "bottle" ? "selected" : ""}>بطل</option></select></label>` : ""}
       <button type="button" data-remove-option="${index}" aria-label="حذف الخيار">×</button>
-      ${nestedEnabled ? `<section class="sub-options" data-sub-options="${index}"><div class="sub-options-head"><strong>خيارات مرتبطة بـ «${escapeHtml(option.nameAr || "هذا الخيار") }»</strong><div><button type="button" data-add-sub-option="${index}">＋ إضافة خيار</button><button type="button" data-paste-sub-options="${index}" ${copiedProductOptions?.items?.length ? "" : "disabled"}>لصق الخيارات</button></div></div>${(option.subOptions || []).length ? option.subOptions.map((subOption, subIndex) => `<div class="sub-option-item"><label>اسم الخيار بالعربي<input data-sub-option-ar="${index}-${subIndex}" value="${escapeHtml(subOption.nameAr || "")}" maxlength="80"></label><label>اسم الخيار بالإنجليزي<input data-sub-option-en="${index}-${subIndex}" value="${escapeHtml(subOption.nameEn || "")}" maxlength="80" dir="ltr"></label><label>السعر د.ك<input data-sub-option-price="${index}-${subIndex}" type="number" min="0" step="0.001" value="${Number(subOption.price || 0).toFixed(3)}" dir="ltr"></label><button type="button" data-remove-sub-option="${index}-${subIndex}" aria-label="حذف الخيار الفرعي">×</button></div>`).join("") : `<p class="sub-options-empty">أضف خياراً فرعياً واحداً على الأقل لهذا الخيار.</p>`}</section>` : ""}
+      ${nestedEnabled ? `<section class="sub-options" data-sub-options="${index}"><div class="sub-options-head"><strong>خيارات مرتبطة بـ «${escapeHtml(option.nameAr || "هذا الخيار") }»</strong><div><button type="button" data-add-sub-option="${index}">＋ إضافة خيار</button><button type="button" data-paste-sub-options="${index}" ${copiedProductOptions?.items?.length ? "" : "disabled"}>لصق الخيارات</button></div></div>${(option.subOptions || []).length ? option.subOptions.map((subOption, subIndex) => `<div class="sub-option-item"><label>اسم الخيار بالعربي<input data-sub-option-ar="${index}-${subIndex}" value="${escapeHtml(subOption.nameAr || "")}" maxlength="80"></label><label>اسم الخيار بالإنجليزي<input data-sub-option-en="${index}-${subIndex}" value="${escapeHtml(subOption.nameEn || "")}" maxlength="80" dir="ltr"></label><label>السعر د.ك<input data-sub-option-price="${index}-${subIndex}" type="number" min="0" step="0.001" value="${Number(subOption.price || 0).toFixed(3)}" dir="ltr"></label><button type="button" data-remove-sub-option="${index}-${subIndex}" aria-label="حذف الخيار الفرعي">×</button>${thirdLevelEnabled ? `<section class="third-options"><div class="sub-options-head"><strong>خيارات مرتبطة بـ «${escapeHtml(subOption.nameAr || "هذا الخيار") }»</strong><button type="button" data-add-third-option="${index}-${subIndex}">＋ إضافة خيار</button></div>${(subOption.subOptions || []).length ? subOption.subOptions.map((thirdOption, thirdIndex) => `<div class="sub-option-item"><label>اسم الخيار بالعربي<input data-third-option-ar="${index}-${subIndex}-${thirdIndex}" value="${escapeHtml(thirdOption.nameAr || "")}" maxlength="80"></label><label>اسم الخيار بالإنجليزي<input data-third-option-en="${index}-${subIndex}-${thirdIndex}" value="${escapeHtml(thirdOption.nameEn || "")}" maxlength="80" dir="ltr"></label><label>السعر د.ك<input data-third-option-price="${index}-${subIndex}-${thirdIndex}" type="number" min="0" step="0.001" value="${Number(thirdOption.price || 0).toFixed(3)}" dir="ltr"></label><button type="button" data-remove-third-option="${index}-${subIndex}-${thirdIndex}" aria-label="حذف الخيار من المرحلة الثالثة">×</button></div>`).join("") : `<p class="sub-options-empty">أضف خياراً واحداً للمرحلة الثالثة.</p>`}</section>` : ""}</div>`).join("") : `<p class="sub-options-empty">أضف خياراً فرعياً واحداً على الأقل لهذا الخيار.</p>`}</section>` : ""}
     </div>`).join("") : `<div class="empty">أضف خياراً واحداً على الأقل</div>`;
   updateOptionsClipboardButton();
 }
@@ -1185,7 +1223,13 @@ function readProductOptions() {
       id: subOption.id || `sub-option-${Date.now()}-${index}-${subIndex}`,
       nameAr: clean($(`[data-sub-option-ar="${index}-${subIndex}"]`)?.value ?? subOption.nameAr),
       nameEn: clean($(`[data-sub-option-en="${index}-${subIndex}"]`)?.value ?? subOption.nameEn),
-      price: Math.max(0, Number($(`[data-sub-option-price="${index}-${subIndex}"]`)?.value ?? subOption.price) || 0)
+      price: Math.max(0, Number($(`[data-sub-option-price="${index}-${subIndex}"]`)?.value ?? subOption.price) || 0),
+      subOptions: (subOption.subOptions || []).map((thirdOption, thirdIndex) => ({
+        id: thirdOption.id || `third-option-${Date.now()}-${index}-${subIndex}-${thirdIndex}`,
+        nameAr: clean($(`[data-third-option-ar="${index}-${subIndex}-${thirdIndex}"]`)?.value ?? thirdOption.nameAr),
+        nameEn: clean($(`[data-third-option-en="${index}-${subIndex}-${thirdIndex}"]`)?.value ?? thirdOption.nameEn),
+        price: Math.max(0, Number($(`[data-third-option-price="${index}-${subIndex}-${thirdIndex}"]`)?.value ?? thirdOption.price) || 0)
+      }))
     }))
   })).filter(option => option.nameAr || option.nameEn);
   if (!items.length || items.some(option => !option.nameAr || !option.nameEn)) {
@@ -1194,17 +1238,25 @@ function readProductOptions() {
   }
   const priceBased = $("#productOptionsPriceBased").checked;
   const nestedEnabled = $("#productOptionsNestedEnabled").checked;
+  const thirdLevelEnabled = nestedEnabled && $("#productOptionsThirdLevelEnabled").checked;
   if (nestedEnabled && items.some(option => !option.subOptions.length || option.subOptions.some(subOption => !subOption.nameAr || !subOption.nameEn))) {
     toast("أضف اسماً عربياً وإنجليزياً لخيار فرعي واحد على الأقل تحت كل خيار رئيسي");
     return undefined;
   }
-  const multiple = !nestedEnabled && $("#productOptionsMultiple").checked;
-  const maxSelections = Math.min(items.length, Math.max(1, Number(normalizeEnglishDigits($("#productOptionsMaxSelections").value)) || items.length));
+  if (thirdLevelEnabled && items.some(option => option.subOptions.some(subOption => !subOption.subOptions.length || subOption.subOptions.some(thirdOption => !thirdOption.nameAr || !thirdOption.nameEn)))) {
+    toast("أضف اسماً عربياً وإنجليزياً لخيار واحد على الأقل في المرحلة الثالثة");
+    return undefined;
+  }
+  const multiple = $("#productOptionsMultiple").checked;
+  const stages = thirdLevelEnabled ? 3 : nestedEnabled ? 2 : 1;
+  const multipleStep = Math.min(stages, Math.max(1, Number($("#productOptionsMultipleStep").value) || 1));
+  const quantityStep = Math.min(stages, Math.max(1, Number($("#productOptionsQuantityStep").value) || 1));
+  const maxSelections = Math.max(1, Math.min(99, Number(normalizeEnglishDigits($("#productOptionsMaxSelections").value)) || items.length));
   if (multiple && (!clean($("#productOptionsTitleAr").value) || !clean($("#productOptionsTitleEn").value))) {
     toast("اكتب عنوان الخيارات بالعربي والإنجليزي");
     return undefined;
   }
-  return { enabled: true, required: nestedEnabled || $("#productOptionsRequired").checked, multiple, maxSelections, titleAr: multiple ? clean($("#productOptionsTitleAr").value) : "", titleEn: multiple ? clean($("#productOptionsTitleEn").value) : "", priceBased: nestedEnabled || priceBased, preparationEnabled: $("#productOptionsPreparationEnabled").checked, imagesEnabled: $("#productOptionsImagesEnabled").checked, nestedEnabled, minimumPerOptionEnabled, optionQuantityEnabled: $("#productOptionsQuantityEnabled").checked, items };
+  return { enabled: true, required: nestedEnabled || $("#productOptionsRequired").checked, multiple, multipleStep, maxSelections, titleAr: multiple ? clean($("#productOptionsTitleAr").value) : "", titleEn: multiple ? clean($("#productOptionsTitleEn").value) : "", priceBased: nestedEnabled || priceBased, preparationEnabled: $("#productOptionsPreparationEnabled").checked, imagesEnabled: $("#productOptionsImagesEnabled").checked, nestedEnabled, thirdLevelEnabled, minimumPerOptionEnabled, optionQuantityEnabled: $("#productOptionsQuantityEnabled").checked, quantityStep, items };
 }
 
 function renderMinimumOrderFields() {
@@ -2184,11 +2236,21 @@ $("#productOptionsNestedEnabled").addEventListener("change", event => {
   }
   renderProductOptions();
 });
+$("#productOptionsThirdLevelEnabled").addEventListener("change", event => {
+  if (event.target.checked) {
+    $("#productOptionsNestedEnabled").checked = true;
+    $("#productOptionsRequired").checked = true;
+    $("#productOptionsPriceBased").checked = true;
+  }
+  renderProductOptions();
+});
 $("#productOptionsMinimumEnabled").addEventListener("change", event => {
   if (event.target.checked) $("#productOptionsQuantityEnabled").checked = true;
   renderProductOptions();
 });
 $("#productOptionsQuantityEnabled").addEventListener("change", renderProductOptions);
+$("#productOptionsMultipleStep").addEventListener("change", renderProductOptions);
+$("#productOptionsQuantityStep").addEventListener("change", renderProductOptions);
 $("#copyProductOptions").addEventListener("click", () => {
   const options = readProductOptions();
   if (!options) return toast("فعّل خيارات المنتج وأضف خياراً واحداً على الأقل لنسخها");
@@ -2208,11 +2270,14 @@ $("#pasteProductOptions").addEventListener("click", () => {
   $("#productOptionsPreparationEnabled").checked = options.preparationEnabled === true;
   $("#productOptionsImagesEnabled").checked = options.imagesEnabled === true;
   $("#productOptionsNestedEnabled").checked = options.nestedEnabled === true;
+  $("#productOptionsThirdLevelEnabled").checked = options.thirdLevelEnabled === true;
   $("#productOptionsMinimumEnabled").checked = options.minimumPerOptionEnabled === true;
   $("#productOptionsQuantityEnabled").checked = options.optionQuantityEnabled === true;
   $("#productOptionsTitleAr").value = options.titleAr || "";
   $("#productOptionsTitleEn").value = options.titleEn || "";
   $("#productOptionsMaxSelections").value = options.maxSelections || 2;
+  $("#productOptionsMultipleStep").value = options.multipleStep || 1;
+  $("#productOptionsQuantityStep").value = options.quantityStep || 1;
   editingSelectionFlow = null;
   editingProductOptions = options.items || [];
   renderProductOptions();
@@ -2225,12 +2290,22 @@ $("#addProductOption").addEventListener("click", () => {
 });
 $("#productOptionItems").addEventListener("click", event => {
   const addSubButton = event.target.closest("[data-add-sub-option]");
+  const addThirdButton = event.target.closest("[data-add-third-option]");
   const pasteSubButton = event.target.closest("[data-paste-sub-options]");
   const removeSubButton = event.target.closest("[data-remove-sub-option]");
+  const removeThirdButton = event.target.closest("[data-remove-third-option]");
+  if (addThirdButton) {
+    const [optionIndex, subIndex] = addThirdButton.dataset.addThirdOption.split("-").map(Number);
+    const subOption = editingProductOptions[optionIndex]?.subOptions?.[subIndex];
+    if (!subOption) return;
+    subOption.subOptions = Array.isArray(subOption.subOptions) ? subOption.subOptions : [];
+    subOption.subOptions.push({ id: `third-option-${Date.now()}-${subOption.subOptions.length}`, nameAr: "", nameEn: "", price: 0 });
+    return renderProductOptions();
+  }
   if (addSubButton) {
     const option = editingProductOptions[Number(addSubButton.dataset.addSubOption)];
     option.subOptions = Array.isArray(option.subOptions) ? option.subOptions : [];
-    option.subOptions.push({ id: `sub-option-${Date.now()}-${option.subOptions.length}`, nameAr: "", nameEn: "", price: 0 });
+    option.subOptions.push({ id: `sub-option-${Date.now()}-${option.subOptions.length}`, nameAr: "", nameEn: "", price: 0, subOptions: [] });
     return renderProductOptions();
   }
   if (pasteSubButton) {
@@ -2243,7 +2318,8 @@ $("#productOptionItems").addEventListener("click", event => {
       id: `sub-option-${Date.now()}-${option.subOptions.length + itemIndex}`,
       nameAr: item.nameAr || "",
       nameEn: item.nameEn || "",
-      price: Math.max(0, Number(item.price) || 0)
+      price: Math.max(0, Number(item.price) || 0),
+      subOptions: cloneOptions(item.subOptions || [])
     }));
     option.subOptions.push(...pasted);
     renderProductOptions();
@@ -2252,6 +2328,11 @@ $("#productOptionItems").addEventListener("click", event => {
   if (removeSubButton) {
     const [optionIndex, subIndex] = removeSubButton.dataset.removeSubOption.split("-").map(Number);
     editingProductOptions[optionIndex]?.subOptions?.splice(subIndex, 1);
+    return renderProductOptions();
+  }
+  if (removeThirdButton) {
+    const [optionIndex, subIndex, thirdIndex] = removeThirdButton.dataset.removeThirdOption.split("-").map(Number);
+    editingProductOptions[optionIndex]?.subOptions?.[subIndex]?.subOptions?.splice(thirdIndex, 1);
     return renderProductOptions();
   }
   const button = event.target.closest("[data-remove-option]");
