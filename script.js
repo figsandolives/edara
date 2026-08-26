@@ -1416,8 +1416,13 @@ function saveProduct(event) {
     description: clean($("#productDescriptionAr").value),
     descriptionEn: clean($("#productDescriptionEn").value),
     images: [...editingImages],
-    image: editingImages[0] || ""
-    ,options, preparation, minimumOrder: readMinimumOrder(), inventory: readInventory()
+    image: editingImages[0] || "",
+    // لا نحتفظ أبداً بمرجع الخيارات المفتوح في نافذة التعديل. كل منتج
+    // يستلم نسخة بيانات مستقلة عند الحفظ، بما فيها الخيارات الفرعية.
+    options: options ? cloneOptions(options) : null,
+    preparation,
+    minimumOrder: readMinimumOrder(),
+    inventory: readInventory()
   };
   if (existingId) {
     const product = products.find((item) => item.id === existingId);
