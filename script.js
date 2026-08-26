@@ -1099,6 +1099,13 @@ const optionsClipboardKey = "figs-and-olives-product-options-clipboard";
 let copiedProductOptions = (() => {
   try { return JSON.parse(localStorage.getItem(optionsClipboardKey) || "null"); } catch { return null; }
 })();
+const subOptionsClipboardKey = "figs-and-olives-sub-options-clipboard";
+let copiedSubOptions = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(subOptionsClipboardKey) || "null");
+    return Array.isArray(saved) ? saved : null;
+  } catch { return null; }
+})();
 const cloneOptions = value => JSON.parse(JSON.stringify(value));
 let pastedOptionSequence = 0;
 function cloneOptionsForProduct(value) {
@@ -1126,6 +1133,17 @@ function cloneOptionsForProduct(value) {
 function updateOptionsClipboardButton() {
   const button = $("#pasteProductOptions");
   if (button) button.disabled = !copiedProductOptions;
+}
+function cloneSubOptionsForParent(value, parentIndex) {
+  const stamp = `${Date.now().toString(36)}-${++pastedOptionSequence}`;
+  return cloneOptions(Array.isArray(value) ? value : []).map((subOption, subIndex) => ({
+    ...subOption,
+    id: `sub-option-${stamp}-${parentIndex + 1}-${subIndex + 1}`,
+    subOptions: (Array.isArray(subOption.subOptions) ? subOption.subOptions : []).map((thirdOption, thirdIndex) => ({
+      ...thirdOption,
+      id: `third-option-${stamp}-${parentIndex + 1}-${subIndex + 1}-${thirdIndex + 1}`
+    }))
+  }));
 }
 function syncEditingProductOptions() {
   editingProductOptions.forEach((option, index) => {
@@ -1202,7 +1220,7 @@ function renderProductOptions() {
       ${imagesEnabled ? `<label class="option-image">صورة الخيار${option.image ? `<img src="${escapeHtml(option.image)}" alt="صورة الخيار">` : ""}<span class="file-button">اختيار صورة من الجهاز<input data-option-image-file="${index}" type="file" accept="image/*"></span></label>` : ""}
       ${minimumPerOptionEnabled ? `<label class="option-minimum">أقل كمية للخيار<input data-option-minimum-quantity="${index}" type="number" min="1" max="99" step="1" value="${Number(option.minimumOrder?.quantity || 1)}" inputmode="numeric" dir="ltr"><select data-option-minimum-unit="${index}"><option value="dozen" ${option.minimumOrder?.unit === "dozen" ? "selected" : ""}>درزن</option><option value="piece" ${option.minimumOrder?.unit === "piece" ? "selected" : ""}>حبة</option><option value="bowl" ${option.minimumOrder?.unit === "bowl" ? "selected" : ""}>ماعون</option><option value="bag" ${option.minimumOrder?.unit === "bag" ? "selected" : ""}>كيس</option><option value="kilo" ${option.minimumOrder?.unit === "kilo" ? "selected" : ""}>كيلو</option><option value="bottle" ${option.minimumOrder?.unit === "bottle" ? "selected" : ""}>بطل</option></select></label>` : ""}
       <button type="button" data-remove-option="${index}" aria-label="حذف الخيار">×</button>
-      ${nestedEnabled ? `<section class="sub-options" data-sub-options="${index}"><div class="sub-options-head"><strong>خيارات مرتبطة بـ «${escapeHtml(option.nameAr || "هذا الخيار") }»</strong><div><button type="button" data-add-sub-option="${index}">＋ إضافة خيار</button><button type="button" data-paste-sub-options="${index}" ${copiedProductOptions?.items?.length ? "" : "disabled"}>لصق الخيارات</button></div></div>${(option.subOptions || []).length ? option.subOptions.map((subOption, subIndex) => `<div class="sub-option-item"><label>اسم الخيار بالعربي<input data-sub-option-ar="${index}-${subIndex}" value="${escapeHtml(subOption.nameAr || "")}" maxlength="80"></label><label>اسم الخيار بالإنجليزي<input data-sub-option-en="${index}-${subIndex}" value="${escapeHtml(subOption.nameEn || "")}" maxlength="80" dir="ltr"></label><label>السعر د.ك<input data-sub-option-price="${index}-${subIndex}" type="number" min="0" step="0.001" value="${Number(subOption.price || 0).toFixed(3)}" dir="ltr"></label><button type="button" data-remove-sub-option="${index}-${subIndex}" aria-label="حذف الخيار الفرعي">×</button>${thirdLevelEnabled ? `<section class="third-options"><div class="sub-options-head"><strong>خيارات مرتبطة بـ «${escapeHtml(subOption.nameAr || "هذا الخيار") }»</strong><button type="button" data-add-third-option="${index}-${subIndex}">＋ إضافة خيار</button></div>${(subOption.subOptions || []).length ? subOption.subOptions.map((thirdOption, thirdIndex) => `<div class="sub-option-item"><label>اسم الخيار بالعربي<input data-third-option-ar="${index}-${subIndex}-${thirdIndex}" value="${escapeHtml(thirdOption.nameAr || "")}" maxlength="80"></label><label>اسم الخيار بالإنجليزي<input data-third-option-en="${index}-${subIndex}-${thirdIndex}" value="${escapeHtml(thirdOption.nameEn || "")}" maxlength="80" dir="ltr"></label><label>السعر د.ك<input data-third-option-price="${index}-${subIndex}-${thirdIndex}" type="number" min="0" step="0.001" value="${Number(thirdOption.price || 0).toFixed(3)}" dir="ltr"></label><button type="button" data-remove-third-option="${index}-${subIndex}-${thirdIndex}" aria-label="حذف الخيار من المرحلة الثالثة">×</button></div>`).join("") : `<p class="sub-options-empty">أضف خياراً واحداً للمرحلة الثالثة.</p>`}</section>` : ""}</div>`).join("") : `<p class="sub-options-empty">أضف خياراً فرعياً واحداً على الأقل لهذا الخيار.</p>`}</section>` : ""}
+      ${nestedEnabled ? `<section class="sub-options" data-sub-options="${index}"><div class="sub-options-head"><strong>خيارات مرتبطة بـ «${escapeHtml(option.nameAr || "هذا الخيار") }»</strong><div><button type="button" data-add-sub-option="${index}">＋ إضافة خيار</button><button type="button" data-copy-sub-options="${index}" ${(option.subOptions || []).length ? "" : "disabled"}>نسخ الخيارات</button><button type="button" data-paste-sub-options="${index}" ${copiedSubOptions?.length ? "" : "disabled"}>لصق الخيارات</button></div></div>${(option.subOptions || []).length ? option.subOptions.map((subOption, subIndex) => `<div class="sub-option-item"><label>اسم الخيار بالعربي<input data-sub-option-ar="${index}-${subIndex}" value="${escapeHtml(subOption.nameAr || "")}" maxlength="80"></label><label>اسم الخيار بالإنجليزي<input data-sub-option-en="${index}-${subIndex}" value="${escapeHtml(subOption.nameEn || "")}" maxlength="80" dir="ltr"></label><label>السعر د.ك<input data-sub-option-price="${index}-${subIndex}" type="number" min="0" step="0.001" value="${Number(subOption.price || 0).toFixed(3)}" dir="ltr"></label><button type="button" data-remove-sub-option="${index}-${subIndex}" aria-label="حذف الخيار الفرعي">×</button>${thirdLevelEnabled ? `<section class="third-options"><div class="sub-options-head"><strong>خيارات مرتبطة بـ «${escapeHtml(subOption.nameAr || "هذا الخيار") }»</strong><button type="button" data-add-third-option="${index}-${subIndex}">＋ إضافة خيار</button></div>${(subOption.subOptions || []).length ? subOption.subOptions.map((thirdOption, thirdIndex) => `<div class="sub-option-item"><label>اسم الخيار بالعربي<input data-third-option-ar="${index}-${subIndex}-${thirdIndex}" value="${escapeHtml(thirdOption.nameAr || "")}" maxlength="80"></label><label>اسم الخيار بالإنجليزي<input data-third-option-en="${index}-${subIndex}-${thirdIndex}" value="${escapeHtml(thirdOption.nameEn || "")}" maxlength="80" dir="ltr"></label><label>السعر د.ك<input data-third-option-price="${index}-${subIndex}-${thirdIndex}" type="number" min="0" step="0.001" value="${Number(thirdOption.price || 0).toFixed(3)}" dir="ltr"></label><button type="button" data-remove-third-option="${index}-${subIndex}-${thirdIndex}" aria-label="حذف الخيار من المرحلة الثالثة">×</button></div>`).join("") : `<p class="sub-options-empty">أضف خياراً واحداً للمرحلة الثالثة.</p>`}</section>` : ""}</div>`).join("") : `<p class="sub-options-empty">أضف خياراً فرعياً واحداً على الأقل لهذا الخيار.</p>`}</section>` : ""}
     </div>`).join("") : `<div class="empty">أضف خياراً واحداً على الأقل</div>`;
   updateOptionsClipboardButton();
 }
@@ -2291,6 +2309,7 @@ $("#addProductOption").addEventListener("click", () => {
 $("#productOptionItems").addEventListener("click", event => {
   const addSubButton = event.target.closest("[data-add-sub-option]");
   const addThirdButton = event.target.closest("[data-add-third-option]");
+  const copySubButton = event.target.closest("[data-copy-sub-options]");
   const pasteSubButton = event.target.closest("[data-paste-sub-options]");
   const removeSubButton = event.target.closest("[data-remove-sub-option]");
   const removeThirdButton = event.target.closest("[data-remove-third-option]");
@@ -2308,22 +2327,25 @@ $("#productOptionItems").addEventListener("click", event => {
     option.subOptions.push({ id: `sub-option-${Date.now()}-${option.subOptions.length}`, nameAr: "", nameEn: "", price: 0, subOptions: [] });
     return renderProductOptions();
   }
-  if (pasteSubButton) {
-    if (!copiedProductOptions?.items?.length) return toast("انسخ الخيارات أولاً ثم الصقها هنا");
+  if (copySubButton) {
     syncEditingProductOptions();
-    const option = editingProductOptions[Number(pasteSubButton.dataset.pasteSubOptions)];
+    const option = editingProductOptions[Number(copySubButton.dataset.copySubOptions)];
+    if (!option?.subOptions?.length) return toast("أضف خياراً فرعياً واحداً على الأقل لنسخها");
+    copiedSubOptions = cloneOptions(option.subOptions);
+    localStorage.setItem(subOptionsClipboardKey, JSON.stringify(copiedSubOptions));
+    renderProductOptions();
+    return toast("تم نسخ الخيارات الفرعية بكل إعداداتها");
+  }
+  if (pasteSubButton) {
+    if (!copiedSubOptions?.length) return toast("انسخ الخيارات الفرعية أولاً ثم الصقها هنا");
+    syncEditingProductOptions();
+    const optionIndex = Number(pasteSubButton.dataset.pasteSubOptions);
+    const option = editingProductOptions[optionIndex];
     if (!option) return;
     option.subOptions = Array.isArray(option.subOptions) ? option.subOptions : [];
-    const pasted = cloneOptions(copiedProductOptions.items).map((item, itemIndex) => ({
-      id: `sub-option-${Date.now()}-${option.subOptions.length + itemIndex}`,
-      nameAr: item.nameAr || "",
-      nameEn: item.nameEn || "",
-      price: Math.max(0, Number(item.price) || 0),
-      subOptions: cloneOptions(item.subOptions || [])
-    }));
-    option.subOptions.push(...pasted);
+    option.subOptions.push(...cloneSubOptionsForParent(copiedSubOptions, optionIndex));
     renderProductOptions();
-    return toast("تم لصق الخيارات داخل الخيار المرتبط");
+    return toast("تم لصق الخيارات الفرعية داخل الخيار المرتبط");
   }
   if (removeSubButton) {
     const [optionIndex, subIndex] = removeSubButton.dataset.removeSubOption.split("-").map(Number);
