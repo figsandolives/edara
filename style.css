@@ -46,6 +46,12 @@ dialog{border:0;padding:0;background:transparent;width:min(760px,calc(100% - 24p
 .tree-category-row{cursor:pointer}.tree-category-entry.open>.tree-category-row>.tree-chevron{transform:rotate(180deg)}.tree-products{display:grid;gap:7px;padding:8px 12px 12px;background:#fff}.tree-product-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto auto auto;align-items:center;gap:9px;padding:8px;border:1px solid #edf0ec;border-radius:10px;background:#fbfcfb}.tree-product-row img{width:42px;height:42px;object-fit:cover;border-radius:8px;background:#eef0ee}.tree-product-row>div{min-width:0}.tree-product-row strong,.tree-product-row small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tree-product-row small{font-size:10px;color:var(--muted)}.tree-product-row .status-toggle{min-height:32px;font-size:10px}.tree-product-row>button{min-height:32px;padding:5px 9px;border:0;border-radius:9px;background:#eef3ef;color:var(--dark);font-weight:900}
 @media(max-width:760px){.unassigned-product .status-toggle{grid-column:1/-1;justify-content:center;width:100%}}
 
+/* Mirrors the storefront's image-only half-width hero. */
+.appearance-grid{grid-template-columns:minmax(0,1fr)}
+.hero-image-preview{justify-items:end;aspect-ratio:2/1;padding:20px;background-size:cover}
+.hero-image-preview:not(.empty)::after{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:50%;background:linear-gradient(135deg,#f8fbf7,#eef5ef)}
+.hero-image-preview:not(.empty) span{position:relative;z-index:1;justify-self:start;align-self:center;width:46%;padding:10px;color:var(--green);font-size:11px;font-weight:800;line-height:1.8;text-align:center}
+
 .appearance-panel{display:grid;gap:18px;margin-bottom:22px;padding:22px;background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 8px 28px rgba(28,54,43,.05)}
 .appearance-heading{display:flex;align-items:end;justify-content:space-between;gap:20px}.appearance-heading h2{margin:6px 0;font-size:clamp(19px,3vw,28px)}.appearance-heading p{margin:0;color:var(--muted);font-size:12px;line-height:1.9}.appearance-heading .primary{width:auto;white-space:nowrap}
 .appearance-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:18px}.hero-image-editor,.appearance-colors{display:grid;gap:12px;padding:14px;border:1px solid var(--line);border-radius:17px;background:#fafbf9}

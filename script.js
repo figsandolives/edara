@@ -630,29 +630,14 @@ function renderAppearanceSettings(preserveTextInput = false) {
   $("#heroPositionY").value = String(appearance.heroPositionY);
   $("#heroPositionXValue").textContent = `${Math.round(appearance.heroPositionX)}%`;
   $("#heroPositionYValue").textContent = `${Math.round(appearance.heroPositionY)}%`;
-  $("#heroTextColor").value = appearance.heroTextColor;
-  $("#badgeBackgroundColor").value = appearance.badgeBackgroundColor;
-  $("#badgeTextColor").value = appearance.badgeTextColor;
-  $("#heroTextColorValue").textContent = appearance.heroTextColor.toUpperCase();
-  $("#badgeBackgroundColorValue").textContent = appearance.badgeBackgroundColor.toUpperCase();
-  $("#badgeTextColorValue").textContent = appearance.badgeTextColor.toUpperCase();
-  if (!preserveTextInput) {
-    $("#heroTitleText").value = appearance.heroTitle;
-    $("#heroBadgeOneText").value = appearance.heroBadges[0];
-    $("#heroBadgeTwoText").value = appearance.heroBadges[1];
-    $("#heroBadgeThreeText").value = appearance.heroBadges[2];
-  }
   preview.classList.toggle("empty", !appearance.heroImage);
   preview.style.backgroundImage = appearance.heroImage
     ? `linear-gradient(rgba(8, 28, 20, .38), rgba(8, 28, 20, .38)), url(${JSON.stringify(appearance.heroImage)})`
     : "";
   preview.style.backgroundPosition = `${appearance.heroPositionX}% ${appearance.heroPositionY}%`;
   preview.innerHTML = appearance.heroImage
-    ? `<strong style="color:${escapeHtml(appearance.heroTextColor)}">${escapeHtml(appearance.heroTitle).replace(/\n/g, "<br>")}</strong>`
+    ? `<span>معاينة الصورة في الجهة اليمنى من الواجهة</span>`
     : `<span>لم تتم إضافة صورة للواجهة</span>`;
-  $("#badgesPreview").style.setProperty("--preview-badge-background", appearance.badgeBackgroundColor);
-  $("#badgesPreview").style.setProperty("--preview-badge-text", appearance.badgeTextColor);
-  $$("#badgesPreview span").forEach((badge, index) => { badge.textContent = appearance.heroBadges[index]; });
 }
 
 async function optimizeAndUploadHero(file) {
@@ -2211,26 +2196,6 @@ $("#removeHeroImage").addEventListener("click", removeHeroImage);
     renderAppearanceSettings();
   });
   $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل موضع صورة الواجهة — جارٍ الحفظ"));
-});
-["heroTextColor", "badgeBackgroundColor", "badgeTextColor"].forEach(id => {
-  $(`#${id}`).addEventListener("input", event => {
-    appearance[id] = validHexColor(event.target.value, DEFAULT_APPEARANCE[id]);
-    renderAppearanceSettings();
-  });
-  $(`#${id}`).addEventListener("change", () => markDirty("تم تعديل الألوان — جارٍ حفظ مظهر الواجهة"));
-});
-["heroTitleText", "heroBadgeOneText", "heroBadgeTwoText", "heroBadgeThreeText"].forEach((id, index) => {
-  $(`#${id}`).addEventListener("input", event => {
-    if (index === 0) appearance.heroTitle = event.target.value.slice(0, 120);
-    else appearance.heroBadges[index - 1] = event.target.value.slice(0, 45);
-    renderAppearanceSettings(true);
-  });
-  $(`#${id}`).addEventListener("change", event => {
-    if (index === 0) appearance.heroTitle = validAppearanceText(event.target.value, DEFAULT_APPEARANCE.heroTitle, 120);
-    else appearance.heroBadges[index - 1] = validAppearanceText(event.target.value, DEFAULT_APPEARANCE.heroBadges[index - 1], 45);
-    renderAppearanceSettings();
-    markDirty("تم تعديل نصوص الواجهة — جارٍ الحفظ");
-  });
 });
 $("#resetData").addEventListener("click", resetDraft);
 $("#exportData").addEventListener("click", exportData);
