@@ -19,14 +19,20 @@
     </div>
     <div class="top-actions">
       <span class="cloud-status" id="cloudStatus"><i></i><span>جاري الاتصال…</span></span>
-      <a class="nav-button reports-link" href="reports.html">متابعة المنصة</a>
-      <button class="nav-button" id="liveVisitorsPage">الزوار الآن</button>
-      <button class="nav-button" id="customersPage">العملاء</button>
-      <button class="nav-button" id="deliveryAreasPage">مناطق التوصيل</button>
-      <button class="nav-button" id="availabilityNotificationsPage">التبليغات</button>
-      <button class="nav-button" id="advertisementPage">صفحة الإعلان</button>
-      <button class="nav-button" id="productFiltersPage">فلترة المنتجات</button>
       <button class="primary" id="addProduct">＋ إضافة منتج جديد</button>
+      <div class="more-actions">
+        <button class="more-actions-trigger" id="moreActionsTrigger" type="button" aria-label="المزيد من الخيارات" aria-haspopup="true" aria-expanded="false" aria-controls="moreActionsMenu">•••</button>
+        <div class="more-actions-menu hidden" id="moreActionsMenu" role="menu">
+          <a class="more-action-item" role="menuitem" href="reports.html">متابعة المنصة</a>
+          <button class="more-action-item" role="menuitem" id="liveVisitorsPage">الزوار الآن</button>
+          <button class="more-action-item" role="menuitem" id="customersPage">العملاء</button>
+          <button class="more-action-item" role="menuitem" id="deliveryAreasPage">مناطق التوصيل</button>
+          <button class="more-action-item" role="menuitem" id="availabilityNotificationsPage">التبليغات</button>
+          <button class="more-action-item" role="menuitem" id="advertisementPage">صفحة الإعلان</button>
+          <button class="more-action-item" role="menuitem" id="productFiltersPage">فلترة المنتجات</button>
+          <button class="more-action-item sales-query-action" role="menuitem" id="productSalesPage">استعلام عن مبيعات منتج</button>
+        </div>
+      </div>
       <button class="secondary" id="addCategory">＋ إضافة قسم جديد</button>
       <button class="secondary" id="addHeading">＋ إضافة عنوان</button>
       <button class="sign-out hidden" id="adminSignOut">تسجيل خروج</button>
@@ -160,6 +166,19 @@
       <div class="filter-selected-count" id="filterSelectedCount">0 منتج محدد</div><div id="productFilterSelectedList" class="filter-selected-list"></div>
       <button class="secondary" id="backFromProductFilterDetail">العودة إلى الفلاتر</button>
     </section>
+    <section id="productSalesView" class="customers-view hidden" aria-live="polite">
+      <div class="customers-head"><div><span class="eyebrow">تقارير المبيعات</span><h1>استعلام عن مبيعات منتج</h1><p>اختر منتجاً وحدد الفترة لعرض كل الفواتير التي تضمّه.</p></div><button class="secondary" id="backFromProductSales" type="button">العودة للمنتجات والأقسام</button></div>
+      <div class="product-sales-filters">
+        <label class="sales-product-search">ابحث عن منتج
+          <input id="productSalesSearch" type="search" autocomplete="off" placeholder="اكتب الاسم بالعربي أو الإنجليزي">
+          <div id="productSalesResults" class="product-sales-results hidden" role="listbox"></div>
+        </label>
+        <label>من<input id="productSalesDateFrom" type="date"></label>
+        <label>إلى<input id="productSalesDateTo" type="date"></label>
+      </div>
+      <div id="productSalesSelected" class="product-sales-selected">اختر منتجاً لعرض مبيعاته.</div>
+      <div class="product-sales-table-wrap"><table class="product-sales-table"><thead><tr><th>رقم الفاتورة</th><th>اسم العميل</th><th>رقم الهاتف</th><th>تاريخ ووقت الطلب</th><th>الكمية</th><th>عرض الفاتورة</th></tr></thead><tbody id="productSalesList"><tr><td colspan="6" class="empty">اختر منتجاً أولاً.</td></tr></tbody></table></div>
+    </section>
   </main>
 
   <dialog id="categoryDialog">
@@ -283,6 +302,14 @@
     </div>
   </dialog>
 
+  <dialog id="salesInvoiceDialog">
+    <div class="dialog-card customer-dialog">
+      <header><div><span class="eyebrow">فاتورة المبيعات</span><h2 id="salesInvoiceTitle">الفاتورة</h2></div><button type="button" class="icon-btn" data-close-dialog="salesInvoiceDialog" aria-label="إغلاق">×</button></header>
+      <div id="salesInvoiceDetails"></div>
+      <footer><button type="button" class="secondary" id="backFromSalesInvoice">رجوع إلى المبيعات</button></footer>
+    </div>
+  </dialog>
+
   <dialog id="deliveryAreaDialog">
     <form method="dialog" id="deliveryAreaForm" class="dialog-card">
       <header><div><span class="eyebrow">منطقة التوصيل</span><h2 id="deliveryAreaDialogTitle">إضافة منطقة</h2></div><button type="button" class="icon-btn" data-close-dialog="deliveryAreaDialog" aria-label="إغلاق">×</button></header>
@@ -311,6 +338,6 @@
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
-  <script src="script.js?v=20260826-options-isolation-v1"></script>
+  <script src="script.js?v=20260907-product-sales-v1"></script>
 </body>
 </html>

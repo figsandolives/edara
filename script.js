@@ -54,6 +54,8 @@ let availabilityNotificationsRef = null;
 let assignTargetCategoryId = "";
 let pendingDeleteCategoryId = "";
 let currentView = "catalog";
+let salesSelectedProductId = "";
+let salesInvoiceRecord = null;
 let ignoreRemoteUntil = 0;
 let productSearch = "";
 let activeCatalogType = "bakery";
@@ -543,6 +545,7 @@ function loadCustomers() {
       cart: customer?.cart && typeof customer.cart === "object" ? customer.cart : {}
     }));
     renderCustomers();
+    renderProductSales();
   }, error => {
     console.error("Customer list load failed", error);
     $("#customerList").innerHTML = `<div class="empty">تعذر تحميل العملاء. تأكد من تحديث قواعد Firebase.</div>`;
@@ -801,6 +804,7 @@ function showDeliveryAreasView() {
   $("#customersView").classList.add("hidden");
   $("#deliveryAreasView").classList.remove("hidden");
   $("#liveVisitorsView").classList.add("hidden");
+  $("#productSalesView").classList.add("hidden");
   $("#customersPage").classList.remove("active");
   $("#deliveryAreasPage").classList.add("active");
   $("#addProduct").classList.add("hidden");
@@ -815,6 +819,7 @@ function showLiveVisitorsView() {
   $("#customersView").classList.add("hidden");
   $("#deliveryAreasView").classList.add("hidden");
   $("#liveVisitorsView").classList.remove("hidden");
+  $("#productSalesView").classList.add("hidden");
   $("#customersPage").classList.remove("active");
   $("#deliveryAreasPage").classList.remove("active");
   $("#liveVisitorsPage").classList.add("active");
@@ -1588,6 +1593,70 @@ function openCustomerDetails(uid) {
   $("#customerDialog").showModal();
 }
 
+function productSaleItems(order) {
+  return Array.isArray(order?.items) ? order.items : Object.values(order?.items || {});
+}
+
+function productMatchesSaleItem(product, item) {
+  if (!product || !item) return false;
+  if (String(item.id || item.productId || "") === String(product.id)) return true;
+  const itemNames = [item.nameAr, item.nameEn, item.name].filter(Boolean).map(value => clean(value).toLocaleLowerCase());
+  return itemNames.some(name => name === clean(product.name).toLocaleLowerCase() || name === clean(product.nameEn).toLocaleLowerCase());
+}
+
+function productSalesRecords(product) {
+  if (!product) return [];
+  return customers.flatMap(customer => (customer.orders || []).flatMap(order => productSaleItems(order)
+    .filter(item => productMatchesSaleItem(product, item))
+    .map(item => ({ customer, order, item })))).sort((a, b) => Number(b.order.createdAt || 0) - Number(a.order.createdAt || 0));
+}
+
+function salesDateRangeIncludes(value) {
+  const timestamp = Number(value || 0);
+  if (!timestamp) return false;
+  const from = $("#productSalesDateFrom")?.value;
+  const to = $("#productSalesDateTo")?.value;
+  if (from && timestamp < new Date(`${from}T00:00:00`).getTime()) return false;
+  if (to && timestamp > new Date(`${to}T23:59:59.999`).getTime()) return false;
+  return true;
+}
+
+function renderProductSalesResults(query = $("#productSalesSearch")?.value || "") {
+  const results = $("#productSalesResults");
+  if (!results) return;
+  const normalizedQuery = clean(query).toLocaleLowerCase();
+  if (!normalizedQuery) { results.classList.add("hidden"); results.innerHTML = ""; return; }
+  const matching = products.filter(product => `${product.name || ""} ${product.nameEn || ""}`.toLocaleLowerCase().includes(normalizedQuery)).slice(0, 20);
+  results.innerHTML = matching.length ? matching.map(product => `<button type="button" class="product-sales-result" role="option" data-product-sales-choice="${escapeHtml(product.id)}"><img src="${escapeHtml(imageSource(product))}" alt=""><span><b>${escapeHtml(product.name || "—")}</b><small>${escapeHtml(product.nameEn || "—")}</small></span></button>`).join("") : `<div class="empty">لا توجد منتجات مطابقة.</div>`;
+  results.classList.remove("hidden");
+}
+
+function renderProductSales() {
+  const selected = products.find(product => String(product.id) === String(salesSelectedProductId));
+  const selection = $("#productSalesSelected");
+  const list = $("#productSalesList");
+  if (!selection || !list) return;
+  if (!selected) {
+    selection.textContent = "اختر منتجاً لعرض مبيعاته.";
+    list.innerHTML = `<tr><td colspan="6" class="empty">اختر منتجاً أولاً.</td></tr>`;
+    return;
+  }
+  selection.innerHTML = `<strong>${escapeHtml(selected.name)}</strong><span dir="ltr"> — ${escapeHtml(selected.nameEn || "")}</span>`;
+  const records = productSalesRecords(selected).filter(record => salesDateRangeIncludes(record.order.createdAt));
+  list.innerHTML = records.length ? records.map((record, index) => `<tr><td><strong>${escapeHtml(record.order.orderId || record.order.id || "—")}</strong></td><td>${escapeHtml(record.customer.name || record.order.customerName || "عميل بدون اسم")}</td><td dir="ltr">${escapeHtml(record.customer.phone || record.order.phone || "—")}</td><td>${escapeHtml(adminDate(record.order.createdAt))}</td><td>${Number(record.item.quantity || 0)}</td><td><button type="button" class="secondary" data-view-sales-invoice="${index}">عرض الفاتورة</button></td></tr>`).join("") : `<tr><td colspan="6" class="empty">لا توجد مبيعات لهذا المنتج ضمن الفترة المحددة.</td></tr>`;
+  list._salesRecords = records;
+}
+
+function openSalesInvoice(record) {
+  if (!record) return;
+  salesInvoiceRecord = record;
+  const { customer, order } = record;
+  const items = productSaleItems(order);
+  $("#salesInvoiceTitle").textContent = `الفاتورة ${order.orderId || order.id || ""}`;
+  $("#salesInvoiceDetails").innerHTML = `<div class="sales-invoice-summary"><span><b>العميل</b><small>${escapeHtml(customer.name || order.customerName || "—")}</small></span><span><b>رقم الهاتف</b><small dir="ltr">${escapeHtml(customer.phone || order.phone || "—")}</small></span><span><b>تاريخ الطلب</b><small>${escapeHtml(adminDate(order.createdAt))}</small></span></div><section class="customer-detail-section"><h3>تفاصيل المنتجات</h3><div class="customer-order-items">${items.length ? items.map(item => `<span><b>${escapeHtml(item.nameAr || item.nameEn || item.id || "منتج")}</b><small>الكمية ${Number(item.quantity || 0)} — ${Number(item.total || 0).toFixed(3)} د.ك</small></span>`).join("") : `<div class="empty">لا توجد منتجات في هذه الفاتورة.</div>`}</div></section><section class="customer-detail-section"><h3>إجمالي الفاتورة</h3><div class="customer-summary"><span><b>${Number(order.subtotal || order.total || 0).toFixed(3)}</b>قيمة المنتجات</span><span><b>${Number(order.deliveryFee || 0).toFixed(3)}</b>التوصيل</span><span><b>${Number(order.total || 0).toFixed(3)}</b>د.ك الإجمالي</span></div></section>`;
+  $("#salesInvoiceDialog").showModal();
+}
+
 const FILTER_STUFFED_BREAD_STEPS = [
   { id: "dough", titleAr: "اختر نوع العجينة", items: [["dough-wheat","بالقمح الكامل والخميرة الطبيعية"],["dough-rice","بالرز الأبيض الخالي من الجلوتين"],["dough-almond","بطحين اللوز لنظام الكيتو"],["dough-barley","بالشعير الكامل والخميرة الطبيعية"]].map(([id,nameAr]) => ({id,nameAr})) },
   { id: "size", titleAr: "اختر الحجم والكمية", items: [["regular12","صغير عادي (١٢ خبزة = ٢٤ قطعة)"],["mini12","حجم ميني (١٢ خبزة)"],["bite12","حجم لقمة (١٢ خبزة)"]].map(([id,nameAr]) => ({id,nameAr})) },
@@ -1712,28 +1781,31 @@ function openProductFilterDialog(filter = null) {
 }
 
 function showAdminView(view) {
-  currentView = ["customers", "availability", "advertisement", "filters", "filterDetail"].includes(view) ? view : "catalog";
+  currentView = ["customers", "availability", "advertisement", "filters", "filterDetail", "productSales"].includes(view) ? view : "catalog";
   $$("[data-admin-view='catalog']").forEach(element => element.classList.toggle("hidden", currentView !== "catalog"));
   $("#customersView").classList.toggle("hidden", currentView !== "customers");
   $("#availabilityNotificationsView").classList.toggle("hidden", currentView !== "availability");
   $("#advertisementView").classList.toggle("hidden", currentView !== "advertisement");
   $("#productFiltersView").classList.toggle("hidden", currentView !== "filters");
   $("#productFilterDetailView").classList.toggle("hidden", currentView !== "filterDetail");
+  $("#productSalesView").classList.toggle("hidden", currentView !== "productSales");
   $("#deliveryAreasView").classList.add("hidden");
   $("#liveVisitorsView").classList.add("hidden");
   $("#customersPage").classList.toggle("active", currentView === "customers");
   $("#availabilityNotificationsPage").classList.toggle("active", currentView === "availability");
   $("#advertisementPage").classList.toggle("active", currentView === "advertisement");
   $("#productFiltersPage").classList.toggle("active", currentView === "filters" || currentView === "filterDetail");
+  $("#productSalesPage").classList.toggle("active", currentView === "productSales");
   $("#deliveryAreasPage").classList.remove("active");
   $("#liveVisitorsPage").classList.remove("active");
-  $("#addProduct").classList.toggle("hidden", currentView === "customers");
-  $("#addCategory").classList.toggle("hidden", currentView === "customers");
+  $("#addProduct").classList.toggle("hidden", currentView !== "catalog");
+  $("#addCategory").classList.toggle("hidden", currentView !== "catalog");
   if (currentView === "customers") renderCustomers();
   if (currentView === "availability") renderAvailabilityNotifications();
   if (currentView === "advertisement") renderAdvertisementEditor();
   if (currentView === "filters") renderProductFilters();
   if (currentView === "filterDetail") renderProductFilterDetail();
+  if (currentView === "productSales") renderProductSales();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -1993,10 +2065,39 @@ $("#catalogScope").addEventListener("change", event => {
 $("#restaurantEnabled").addEventListener("change", event => { restaurantEnabled = event.target.checked; $("#restaurantEnabledLabel").textContent = restaurantEnabled ? "مفعّل" : "مغلق"; markDirty("تم تعديل ظهور زر أصناف المطعم — جارٍ الحفظ"); });
 $("#productSearch").addEventListener("input", event => { productSearch = event.target.value; render(); });
 $("#addProduct").addEventListener("click", () => openProductDialog());
+function setMoreActionsOpen(open) {
+  $("#moreActionsMenu").classList.toggle("hidden", !open);
+  $("#moreActionsTrigger").setAttribute("aria-expanded", String(open));
+}
+$("#moreActionsTrigger").addEventListener("click", event => { event.stopPropagation(); setMoreActionsOpen($("#moreActionsMenu").classList.contains("hidden")); });
+$("#moreActionsMenu").addEventListener("click", () => setMoreActionsOpen(false));
+document.addEventListener("click", event => { if (!event.target.closest(".more-actions")) setMoreActionsOpen(false); });
 $("#customersPage").addEventListener("click", () => showAdminView("customers"));
 $("#availabilityNotificationsPage").addEventListener("click", () => showAdminView("availability"));
 $("#advertisementPage").addEventListener("click", () => showAdminView("advertisement"));
 $("#productFiltersPage").addEventListener("click", () => showAdminView("filters"));
+$("#productSalesPage").addEventListener("click", () => showAdminView("productSales"));
+$("#backFromProductSales").addEventListener("click", () => showAdminView("catalog"));
+$("#productSalesSearch").addEventListener("input", event => renderProductSalesResults(event.target.value));
+$("#productSalesSearch").addEventListener("focus", event => { if (event.target.value) renderProductSalesResults(event.target.value); });
+$("#productSalesResults").addEventListener("click", event => {
+  const choice = event.target.closest("[data-product-sales-choice]");
+  if (!choice) return;
+  const product = products.find(item => String(item.id) === String(choice.dataset.productSalesChoice));
+  if (!product) return;
+  salesSelectedProductId = product.id;
+  $("#productSalesSearch").value = product.name || product.nameEn || "";
+  $("#productSalesResults").classList.add("hidden");
+  renderProductSales();
+});
+$("#productSalesDateFrom").addEventListener("change", renderProductSales);
+$("#productSalesDateTo").addEventListener("change", renderProductSales);
+$("#productSalesList").addEventListener("click", event => {
+  const button = event.target.closest("[data-view-sales-invoice]");
+  if (!button) return;
+  openSalesInvoice($("#productSalesList")._salesRecords?.[Number(button.dataset.viewSalesInvoice)]);
+});
+$("#backFromSalesInvoice").addEventListener("click", () => $("#salesInvoiceDialog").close());
 $("#backFromProductFilters").addEventListener("click", () => showAdminView("catalog"));
 $("#backFromProductFilterDetail").addEventListener("click", () => showAdminView("filters"));
 $("#addProductFilter").addEventListener("click", () => openProductFilterDialog());
