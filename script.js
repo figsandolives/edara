@@ -265,6 +265,8 @@ async function disableAdvertisementImmediately() {
   try {
     await catalogRef.update({
       advertisement: normalizeAdvertisement(advertisement),
+      // واجهة الطلبات تراقب هذا الحقل لتجلب الكتالوج الجديد فوراً.
+      version: firebase.database.ServerValue.TIMESTAMP,
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
       updatedBy: currentAdmin.email || currentAdmin.uid
     });
@@ -740,6 +742,8 @@ async function saveToFirebase() {
       productFilters,
       ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
       ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
+      // غيّر نسخة الكتالوج مع كل حفظ حتى لا تبقى واجهة الطلبات على ذاكرة المتصفح.
+      version: firebase.database.ServerValue.TIMESTAMP,
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
       updatedBy: currentAdmin.email || currentAdmin.uid
     });
