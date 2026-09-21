@@ -61,6 +61,7 @@ let productSearch = "";
 let activeCatalogType = "bakery";
 let toastPreparationMigrationComplete = false;
 let breadSizeOptionsMigrationComplete = false;
+let productOptionIdsIsolationMigrationComplete = false;
 const assetUrls = new Map();
 
 function normalizeDeliveryAreas(value) {
@@ -343,6 +344,35 @@ function normalizeData() {
   })).sort((a, b) => a.order - b.order).map((filter, index) => ({ ...filter, order: index + 1 }));
 }
 
+// Older copied products can have identical option IDs. IDs are used by the
+// storefront's selection state, so they must be unique per product.
+function isolateProductOptionIds() {
+  let changedProducts = 0;
+  products.forEach(product => {
+    const items = product?.options?.items;
+    if (!Array.isArray(items) || !items.length) return;
+    const token = String(product.id).replace(/[^a-zA-Z0-9_-]/g, "-");
+    let changed = false;
+    items.forEach((option, optionIndex) => {
+      if (!option || typeof option !== "object") return;
+      const optionId = `option-${token}-${optionIndex + 1}`;
+      if (option.id !== optionId) { option.id = optionId; changed = true; }
+      (Array.isArray(option.subOptions) ? option.subOptions : []).forEach((subOption, subIndex) => {
+        if (!subOption || typeof subOption !== "object") return;
+        const subOptionId = `sub-option-${token}-${optionIndex + 1}-${subIndex + 1}`;
+        if (subOption.id !== subOptionId) { subOption.id = subOptionId; changed = true; }
+        (Array.isArray(subOption.subOptions) ? subOption.subOptions : []).forEach((thirdOption, thirdIndex) => {
+          if (!thirdOption || typeof thirdOption !== "object") return;
+          const thirdOptionId = `third-option-${token}-${optionIndex + 1}-${subIndex + 1}-${thirdIndex + 1}`;
+          if (thirdOption.id !== thirdOptionId) { thirdOption.id = thirdOptionId; changed = true; }
+        });
+      });
+    });
+    if (changed) changedProducts++;
+  });
+  return changedProducts;
+}
+
 function normalizeProductOrder(categoryId) {
   products
     .filter((product) => product.category === categoryId)
@@ -466,6 +496,13 @@ async function loadData() {
       setBreadSizeOptions();
       breadSizeOptionsMigrationComplete = true;
       render();
+      await saveToFirebase();
+    }
+    productOptionIdsIsolationMigrationComplete = remoteCatalog.productOptionIdsIsolationV1 === true;
+    if (!productOptionIdsIsolationMigrationComplete) {
+      const changedProducts = isolateProductOptionIds();
+      productOptionIdsIsolationMigrationComplete = true;
+      if (changedProducts) render();
       await saveToFirebase();
     }
     if ((remoteCatalog.products || []).some(product => !product.preparation)) {
@@ -742,6 +779,7 @@ async function saveToFirebase() {
       productFilters,
       ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
       ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
+      ...(productOptionIdsIsolationMigrationComplete ? { productOptionIdsIsolationV1: true } : {}),
       // غيّر نسخة الكتالوج مع كل حفظ حتى لا تبقى واجهة الطلبات على ذاكرة المتصفح.
       version: firebase.database.ServerValue.TIMESTAMP,
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
