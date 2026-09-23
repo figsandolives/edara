@@ -1140,24 +1140,29 @@ let copiedSubOptions = (() => {
 })();
 const cloneOptions = value => JSON.parse(JSON.stringify(value));
 let pastedOptionSequence = 0;
-function cloneOptionsForProduct(value) {
+function cloneOptionsForProduct(value, productId = "") {
   const copied = cloneOptions(value);
   // لا يجوز أن تحتفظ النسخة بمعرّفات المنتج المصدر، حتى عند نسخ المنتج
   // كاملاً أو نسخ تسلسل الخيارات؛ كل منتج يملك بنية مستقلة تماماً.
   if (!copied || typeof copied !== "object") return copied;
-  const stamp = `${Date.now().toString(36)}-${++pastedOptionSequence}`;
-  if (Array.isArray(copied.items)) {
-    copied.items = copied.items.map((item, index) => ({
+  // المنتج معروف عند التكرار والحفظ. أما عند اللصق داخل نافذة التعديل
+  // فنستخدم طابعاً مؤقتاً، ثم نستبدله بمعرّفات هذا المنتج عند الحفظ.
+  const owner = String(productId || `${Date.now().toString(36)}-${++pastedOptionSequence}`).replace(/[^a-zA-Z0-9_-]/g, "-");
+  const assignIds = (items, prefix) => (Array.isArray(items) ? items : []).map((item, index) => {
+    const id = `${prefix}-${owner}-${index + 1}`;
+    return {
       ...item,
-      id: `option-${stamp}-${index + 1}`,
-      subOptions: (Array.isArray(item.subOptions) ? item.subOptions : []).map((subOption, subIndex) => ({
-        ...subOption,
-        id: `sub-option-${stamp}-${index + 1}-${subIndex + 1}`,
-        subOptions: (Array.isArray(subOption.subOptions) ? subOption.subOptions : []).map((thirdOption, thirdIndex) => ({
-          ...thirdOption,
-          id: `third-option-${stamp}-${index + 1}-${subIndex + 1}-${thirdIndex + 1}`
-        }))
-      }))
+      id,
+      subOptions: assignIds(item?.subOptions, `${id}-sub-option`)
+    };
+  });
+  copied.items = assignIds(copied.items, "option");
+  // تسلسل الاختيارات له بنية مختلفة عن items، لكنه يحتاج العزل نفسه
+  // عند تكرار منتج مُعدّ بتسلسل.
+  if (Array.isArray(copied.selectionFlow?.steps)) {
+    copied.selectionFlow.steps = copied.selectionFlow.steps.map((step, stepIndex) => ({
+      ...step,
+      items: assignIds(step.items, `flow-option-${stepIndex + 1}`)
     }));
   }
   return copied;
@@ -1422,6 +1427,9 @@ function addImageUrl() {
 function saveProduct(event) {
   event.preventDefault();
   const existingId = $("#productId").value;
+  // أنشئ معرّف المنتج قبل تجهيز خياراته حتى تكون كل معرّفات الخيارات
+  // مرتبطة بهذا المنتج فقط، لا بالمنتج الذي نُسخت منه.
+  const productId = existingId || `P${Date.now()}`;
   const categoryId = $("#productCategory").value;
   const name = clean($("#productNameAr").value);
   const nameEn = clean($("#productNameEn").value);
@@ -1450,8 +1458,8 @@ function saveProduct(event) {
     images: [...editingImages],
     image: editingImages[0] || "",
     // لا نحتفظ أبداً بمرجع الخيارات المفتوح في نافذة التعديل. كل منتج
-    // يستلم نسخة بيانات مستقلة عند الحفظ، بما فيها الخيارات الفرعية.
-    options: options ? cloneOptions(options) : null,
+    // يستلم نسخة بيانات مستقلة ومعرّفات تخصه، بما فيها الخيارات الفرعية.
+    options: options ? cloneOptionsForProduct(options, productId) : null,
     preparation,
     minimumOrder: readMinimumOrder(),
     inventory: readInventory()
@@ -1460,8 +1468,7 @@ function saveProduct(event) {
     const product = products.find((item) => item.id === existingId);
     if (product) Object.assign(product, payload);
   } else {
-    const id = `P${Date.now()}`;
-    products.push({ id, ...payload, active: true, order: categoryProducts(categoryId).length + 1 });
+    products.push({ id: productId, ...payload, active: true, order: categoryProducts(categoryId).length + 1 });
     if (categoryId) openCategories.add(categoryId);
   }
   categories.forEach((category) => normalizeProductOrder(category.id));
@@ -1488,7 +1495,7 @@ function duplicateProduct(productId) {
   });
   const copy = clone(source);
   copy.id = `P${Date.now()}`;
-  copy.options = cloneOptionsForProduct(source.options);
+  copy.options = cloneOptionsForProduct(source.options, copy.id);
   copy.order = insertOrder;
   copy.name = `${source.name} (نسخة)`;
   copy.nameEn = `${source.nameEn || source.name} (Copy)`;
@@ -1514,7 +1521,7 @@ function duplicateCategory(categoryId) {
   sourceProducts.forEach((product, index) => {
     const copy = clone(product);
     copy.id = `P${Date.now().toString(36)}${index}`;
-    copy.options = cloneOptionsForProduct(product.options);
+    copy.options = cloneOptionsForProduct(product.options, copy.id);
     copy.category = copyId;
     copy.order = Number(product.order) || index + 1;
     products.push(copy);
