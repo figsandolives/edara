@@ -1116,7 +1116,10 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productOptionsMultipleStep").value = options?.multipleStep || 1;
   $("#productOptionsQuantityStep").value = options?.quantityStep || 1;
   editingProductOptions = options?.items ? clone(options.items) : [];
-  renderProductOptions();
+  // عناصر نافذة المنتج السابق تبقى في DOM إلى أن نرسم المنتج الجديد.
+  // لا تزامن منها هنا، وإلا تُنسخ أسعار/خيارات المنتج السابق فوق المنتج
+  // الذي فُتح الآن. التزامن مطلوب فقط أثناء تعديل المنتج نفسه.
+  renderProductOptions(false);
   editingImages = [...(product?.images || [product?.image].filter(Boolean))];
   pendingImageDeletes = new Set();
   $("#imageUrl").value = "";
