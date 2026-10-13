@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260902-split-hero-v1">
+  <link rel="stylesheet" href="style.css?v=20261013-merged-catalog-v1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -58,10 +58,7 @@
     </section>
 
     <section class="toolbar" data-admin-view="catalog">
-      <label class="catalog-scope">عرض أصناف
-        <select id="catalogScope"><option value="bakery">أصناف المخبز</option><option value="restaurant">أصناف المطعم</option></select>
-      </label>
-      <label class="restaurant-visibility">زر أصناف المطعم <input id="restaurantEnabled" type="checkbox" checked> <span id="restaurantEnabledLabel">مفعّل</span></label>
+      <label class="restaurant-visibility">إظهار أصناف المطعم في المنصة <input id="restaurantEnabled" type="checkbox" checked> <span id="restaurantEnabledLabel">مفعّل</span></label>
       <button id="saveDraft">حفظ الآن</button>
       <button id="exportData" class="export">تنزيل نسخة احتياطية ZIP</button>
       <label class="file-button">استيراد JSON<input id="importData" type="file" accept=".json,application/json" multiple></label>
@@ -75,7 +72,10 @@
         <div>
           <span class="eyebrow">مظهر واجهة المتجر</span>
           <h2>صورة واجهة المتجر</h2>
-          <p>تظهر الصورة في النصف الأيمن من الواجهة، وبجانبها زرا أصناف المطعم وفلترة المنتجات. ارفع صورة واضحة ثم حدد الجزء الذي تريد ظهوره داخل الكادر.</p>
+          <label class="catalog-scope">صورة واجهة
+            <select id="catalogScope"><option value="bakery">المخبز</option><option value="restaurant">المطعم (رابط /rest)</option></select>
+          </label>
+          <p>تظهر الصورة في النصف الأيمن من الواجهة، وبجانبها زر فلترة المنتجات. ارفع صورة واضحة ثم حدد الجزء الذي تريد ظهوره داخل الكادر.</p>
         </div>
         <button type="button" class="primary" id="saveAppearance">حفظ مظهر الواجهة</button>
       </div>
@@ -187,6 +187,10 @@
       <input id="categoryId" type="hidden">
       <label>اسم القسم بالعربي<input id="categoryNameAr" required maxlength="100"></label>
       <label>اسم القسم بالإنجليزي<input id="categoryNameEn" required maxlength="100" dir="ltr"></label>
+      <label>القسم يخص
+        <select id="categoryCatalogType"><option value="bakery">المخبز</option><option value="restaurant">المطعم</option></select>
+        <small>طلب أي صنف من قسم يخص المطعم يجعل الفاتورة فاتورة مطعم.</small>
+      </label>
       <input id="categorySectionImageUrl" type="hidden">
       <label>الصورة التوضيحية للقسم (PNG أو صورة أخرى)
         <input id="categorySectionImage" type="file" accept="image/png,image/jpeg,image/webp">
@@ -333,6 +337,6 @@
     </div>
   </section>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="script.js?v=20261009-vps-api-v1&old=20260921-option-isolation-v1"></script>
+  <script src="script.js?v=20261013-merged-catalog-v1"></script>
 </body>
 </html>
