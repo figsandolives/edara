@@ -49,7 +49,6 @@ let openCategories = new Set();
 let openHeadings = new Set();
 let openSubheadings = new Set();
 let selectedUnassignedProducts = new Set();
-let dragState = null;
 let editingHeadingId = "";
 let editingSubheadings = [];
 let toastTimer;
@@ -597,7 +596,7 @@ function render() {
     const treeData = treeContext ? ` data-tree-heading-id="${escapeHtml(treeContext.headingId)}" data-tree-group-index="${treeContext.groupIndex}"` : "";
     const order = treeContext ? "" : ` style="order:${category.active ? (Number(category.order) || 0) : 100000 + (Number(category.order) || 0)}"`;
     const restaurantCategory = catalogTypeOf(category) === "restaurant";
-    return `<article class="category-card ${treeContext ? "nested-category-card" : ""} ${restaurantCategory ? "restaurant-category" : ""} ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}"${treeData}${order}><div class="category-head"><span class="drag-handle" draggable="true" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(category.nameAr)}${restaurantCategory ? ` <span class="catalog-type-badge">مطعم</span>` : ""}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${list.length} منتج</span><div class="category-actions">${toggleButton("category", category.id, category.active)}<button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button><button data-duplicate-category="${escapeHtml(category.id)}">نسخ</button><button data-edit-category="${escapeHtml(category.id)}">تعديل</button><button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button></div><span class="chevron">⌄</span></div><div class="products">${list.length ? list.map(product => `<div class="product-row ${product.active ? "" : "inactive"}" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}"><span class="drag-handle" draggable="true" data-drag-kind="product" data-drag-id="${escapeHtml(product.id)}" data-drag-category="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="product-main"><img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy"><div class="product-copy"><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || "No English name")}</small></div></div><span class="price">${Number(product.price).toFixed(3)} د.ك</span>${product.inventory?.enabled ? `<span class="count-badge">المخزون: ${Number(product.inventory.quantity || 0)}</span>` : ""}<div class="product-actions">${toggleButton("product", product.id, product.active)}${availabilityButtons(product)}<button data-duplicate-product="${escapeHtml(product.id)}">تكرار</button><button data-edit-product="${escapeHtml(product.id)}">تعديل</button><button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button><button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button></div></div>`).join("") : `<div class="empty">لا توجد منتجات في هذا القسم</div>`}</div></article>`;
+    return `<article class="category-card ${treeContext ? "nested-category-card" : ""} ${restaurantCategory ? "restaurant-category" : ""} ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}"${treeData}${order}><div class="category-head"><span class="drag-handle" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(category.nameAr)}${restaurantCategory ? ` <span class="catalog-type-badge">مطعم</span>` : ""}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${list.length} منتج</span><div class="category-actions">${toggleButton("category", category.id, category.active)}<button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button><button data-duplicate-category="${escapeHtml(category.id)}">نسخ</button><button data-edit-category="${escapeHtml(category.id)}">تعديل</button><button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button></div><span class="chevron">⌄</span></div><div class="products">${list.length ? list.map(product => `<div class="product-row ${product.active ? "" : "inactive"}" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}"><span class="drag-handle" data-drag-kind="product" data-drag-id="${escapeHtml(product.id)}" data-drag-category="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="product-main"><img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy"><div class="product-copy"><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || "No English name")}</small></div></div><span class="price">${Number(product.price).toFixed(3)} د.ك</span>${product.inventory?.enabled ? `<span class="count-badge">المخزون: ${Number(product.inventory.quantity || 0)}</span>` : ""}<div class="product-actions">${toggleButton("product", product.id, product.active)}${availabilityButtons(product)}<button data-duplicate-product="${escapeHtml(product.id)}">تكرار</button><button data-edit-product="${escapeHtml(product.id)}">تعديل</button><button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button><button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button></div></div>`).join("") : `<div class="empty">لا توجد منتجات في هذا القسم</div>`}</div></article>`;
   };
   const headingMarkup = currentHeadings.map(item => {
     const subheadings = Array.isArray(item.subheadings) ? item.subheadings : [];
@@ -611,7 +610,7 @@ function render() {
     }).join("");
     const directLinked = (item.categoryIds || []).map(id => currentCategories.find(category => category.id === id)).filter(Boolean);
     const directMarkup = directLinked.length ? `<div class="tree-category-list">${directLinked.map(category => categoryCardMarkup(category, { headingId: item.id, groupIndex: "direct" })).join("")}</div>` : "";
-    return `<article class="category-card heading-card ${expanded ? "open" : ""}" data-heading-id="${escapeHtml(item.id)}" style="order:${Number(item.order) || 0}"><div class="category-head" data-heading-toggle="${escapeHtml(item.id)}"><span class="drag-handle" draggable="true" data-drag-kind="heading" data-drag-id="${escapeHtml(item.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${nestedCount} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div><span class="chevron">⌄</span></div>${expanded ? `<div class="heading-tree">${nestedMarkup}${directMarkup}</div>` : ""}</article>`;
+    return `<article class="category-card heading-card ${expanded ? "open" : ""}" data-heading-id="${escapeHtml(item.id)}" style="order:${Number(item.order) || 0}"><div class="category-head" data-heading-toggle="${escapeHtml(item.id)}"><span class="drag-handle" data-drag-kind="heading" data-drag-id="${escapeHtml(item.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${nestedCount} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div><span class="chevron">⌄</span></div>${expanded ? `<div class="heading-tree">${nestedMarkup}${directMarkup}</div>` : ""}</article>`;
   }).join("");
   const categoryMarkup = headingMarkup + currentCategories.filter(category => !linkedCategoryIds.has(category.id)).map(category => categoryCardMarkup(category)).join("");
   $("#categoryList").innerHTML = categoryMarkup || (hasSearch ? `<div class="empty">لا توجد منتجات تطابق «${escapeHtml(productSearch)}»</div>` : `<div class="empty">لا توجد أقسام بعد</div>`);
@@ -2485,77 +2484,158 @@ $("#categoryList").addEventListener("change", event => {
   setProductAvailability(select.dataset.availabilitySelect, select.value, true);
 });
 
-$("#categoryList").addEventListener("dragstart", (event) => {
-  const handle = event.target.closest("[data-drag-kind]");
-  if (!handle) return;
-  const kind = handle.dataset.dragKind;
-  const source = kind === "product" ? handle.closest(".product-row") : handle.closest(".category-card");
-  dragState = {
-    kind,
-    id: handle.dataset.dragId,
-    categoryId: handle.dataset.dragCategory || "",
-    treeHeadingId: source?.dataset.treeHeadingId || "",
-    treeGroupIndex: source?.dataset.treeGroupIndex || ""
-  };
-  event.dataTransfer.effectAllowed = "move";
-  event.dataTransfer.setData("text/plain", dragState.id);
-  setTimeout(() => source?.classList.add("dragging"), 0);
-});
+// Pointer-based sorting (mouse, touch and pen). The dragged card follows the
+// pointer, its neighbours slide aside to show where it will land, and the page
+// scrolls by itself near the top or bottom edge. Cards are placed with CSS
+// `order`, so the visual order is read from their positions, not the DOM.
+function sortGroupFor(kind, source) {
+  if (kind === "product") return $$(`.product-row[data-category-id="${CSS.escape(source.dataset.categoryId || "")}"]`, source.parentElement);
+  if (source.dataset.treeHeadingId) return $$(`.category-card[data-tree-heading-id="${CSS.escape(source.dataset.treeHeadingId)}"][data-tree-group-index="${CSS.escape(source.dataset.treeGroupIndex)}"]`, source.parentElement);
+  return $$(":scope > .category-card", $("#categoryList"));
+}
 
-$("#categoryList").addEventListener("dragover", (event) => {
-  if (!dragState) return;
-  const target = dragState.kind === "product"
-    ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`)
-    : dragState.kind === "category" && dragState.treeHeadingId
-      ? event.target.closest(`.category-card[data-tree-heading-id="${CSS.escape(dragState.treeHeadingId)}"][data-tree-group-index="${CSS.escape(dragState.treeGroupIndex)}"]`)
-      : event.target.closest(".category-card");
-  if (!target) return;
-  const targetId = dragState.kind === "product" ? target.dataset.productId : target.dataset.headingId || target.dataset.categoryId;
-  if (targetId === dragState.id) return;
-  event.preventDefault();
-  clearDropLines();
-  target.classList.add(dropPosition(event, target) === "before" ? "drop-before" : "drop-after");
-});
-
-$("#categoryList").addEventListener("drop", (event) => {
-  if (!dragState) return;
-  const target = dragState.kind === "product"
-    ? event.target.closest(`.product-row[data-category-id="${CSS.escape(dragState.categoryId)}"]`)
-    : dragState.kind === "category" && dragState.treeHeadingId
-      ? event.target.closest(`.category-card[data-tree-heading-id="${CSS.escape(dragState.treeHeadingId)}"][data-tree-group-index="${CSS.escape(dragState.treeGroupIndex)}"]`)
-      : event.target.closest(".category-card");
-  if (!target) return;
-  event.preventDefault();
-  const position = target.classList.contains("drop-after") ? "after" : "before";
-  if (dragState.kind === "category" && dragState.treeHeadingId) {
-    const heading = headings.find(item => item.id === dragState.treeHeadingId);
-    const ids = dragState.treeGroupIndex === "direct"
+function applyReorder(state, target, position) {
+  if (state.kind === "category" && state.treeHeadingId) {
+    const heading = headings.find(item => item.id === state.treeHeadingId);
+    const ids = state.treeGroupIndex === "direct"
       ? heading?.categoryIds
-      : heading?.subheadings?.[Number(dragState.treeGroupIndex)]?.categoryIds;
-    const sourceIndex = ids?.indexOf(dragState.id);
+      : heading?.subheadings?.[Number(state.treeGroupIndex)]?.categoryIds;
+    const sourceIndex = ids?.indexOf(state.id);
     const targetIndex = ids?.indexOf(target.dataset.categoryId);
     if (sourceIndex >= 0 && targetIndex >= 0) {
       ids.splice(sourceIndex, 1);
       const insertAt = ids.indexOf(target.dataset.categoryId) + (position === "after" ? 1 : 0);
-      ids.splice(insertAt, 0, dragState.id);
+      ids.splice(insertAt, 0, state.id);
     }
-  } else if (dragState.kind === "category" || dragState.kind === "heading") {
-    reorderCatalogEntry(dragState.kind, dragState.id, target.classList.contains("heading-card") ? "heading" : "category", target.dataset.headingId || target.dataset.categoryId, position);
+  } else if (state.kind === "category" || state.kind === "heading") {
+    reorderCatalogEntry(state.kind, state.id, target.classList.contains("heading-card") ? "heading" : "category", target.dataset.headingId || target.dataset.categoryId, position);
   } else {
-    reorderProduct(dragState.id, target.dataset.productId, dragState.categoryId, position);
+    reorderProduct(state.id, target.dataset.productId, state.categoryId, position);
   }
-  dragState = null;
-  clearDropLines();
-  markDirty();
-  render();
-  toast("تم تحديث الترتيب");
+}
+
+let sortState = null;
+
+function sortPageY(clientY) { return clientY + window.scrollY; }
+
+function updateSortPositions() {
+  const state = sortState;
+  const offset = sortPageY(state.clientY) - state.startPageY;
+  state.source.style.transform = `translate3d(0, ${offset}px, 0)`;
+  const center = state.sourceTop + state.sourceHeight / 2 + offset;
+  let index = state.sourceIndex;
+  state.items.forEach((item, itemIndex) => {
+    if (itemIndex === state.sourceIndex) return;
+    let shift = 0;
+    if (itemIndex < state.sourceIndex && center < item.center) { shift = state.shift; index = Math.min(index, itemIndex); }
+    if (itemIndex > state.sourceIndex && center > item.center) { shift = -state.shift; index = Math.max(index, itemIndex); }
+    if (item.shift !== shift) { item.shift = shift; item.element.style.transform = shift ? `translate3d(0, ${shift}px, 0)` : ""; }
+  });
+  state.index = index;
+}
+
+function autoScrollSort() {
+  if (!sortState?.active) return;
+  const headerBottom = $(".topbar")?.getBoundingClientRect().bottom || 0;
+  const edge = 90, y = sortState.clientY;
+  let speed = 0;
+  if (y < headerBottom + edge) speed = -Math.ceil((headerBottom + edge - y) / 5);
+  else if (y > window.innerHeight - edge) speed = Math.ceil((y - (window.innerHeight - edge)) / 5);
+  // "instant": the page uses smooth scrolling, which would lag behind the pointer.
+  if (speed) { window.scrollBy({ top: Math.max(-24, Math.min(24, speed)), behavior: "instant" }); updateSortPositions(); }
+  sortState.frame = requestAnimationFrame(autoScrollSort);
+}
+
+function beginSort() {
+  const state = sortState;
+  state.active = true;
+  const ordered = sortGroupFor(state.kind, state.source)
+    .map(element => ({ element, rect: element.getBoundingClientRect() }))
+    .sort((a, b) => a.rect.top - b.rect.top);
+  state.sourceIndex = ordered.findIndex(item => item.element === state.source);
+  state.index = state.sourceIndex;
+  state.items = ordered.map(({ element, rect }) => ({ element, center: sortPageY(rect.top) + rect.height / 2, height: rect.height, shift: 0 }));
+  const sourceRect = ordered[state.sourceIndex].rect;
+  const neighbour = ordered[state.sourceIndex + 1] || ordered[state.sourceIndex - 1];
+  const gap = neighbour ? Math.max(0, neighbour.rect.top > sourceRect.top ? neighbour.rect.top - sourceRect.bottom : sourceRect.top - neighbour.rect.bottom) : 0;
+  state.sourceTop = sortPageY(sourceRect.top);
+  state.sourceHeight = sourceRect.height;
+  state.gap = gap;
+  state.shift = sourceRect.height + gap;
+  state.items.forEach(item => item.element.classList.add("sort-sibling"));
+  state.source.classList.remove("sort-sibling");
+  state.source.classList.add("sort-dragging");
+  document.body.classList.add("is-sorting");
+  state.frame = requestAnimationFrame(autoScrollSort);
+}
+
+function finishSort(cancelled = false) {
+  const state = sortState;
+  if (!state) return;
+  sortState = null;
+  cancelAnimationFrame(state.frame);
+  state.handle.releasePointerCapture?.(state.pointerId);
+  if (!state.active) return;
+  const moved = !cancelled && state.index !== state.sourceIndex;
+  const cleanup = () => {
+    document.body.classList.remove("is-sorting");
+    state.items.forEach(item => { item.element.classList.remove("sort-sibling", "sort-dragging", "sort-settling"); item.element.style.transform = ""; });
+  };
+  if (!moved) {
+    state.source.classList.add("sort-settling");
+    state.items.forEach(item => { item.element.style.transform = ""; });
+    setTimeout(cleanup, 180);
+    return;
+  }
+  // Glide the card into the gap, then save and redraw in the new order.
+  const passed = state.items.slice(Math.min(state.index, state.sourceIndex), Math.max(state.index, state.sourceIndex) + 1).filter(item => item.element !== state.source);
+  const landing = (state.index > state.sourceIndex ? 1 : -1) * passed.reduce((total, item) => total + item.height + state.gap, 0);
+  state.source.classList.add("sort-settling");
+  state.source.style.transform = `translate3d(0, ${landing}px, 0)`;
+  const target = state.items[state.index].element;
+  setTimeout(() => {
+    applyReorder(state, target, state.index > state.sourceIndex ? "after" : "before");
+    cleanup();
+    markDirty();
+    render();
+    toast("تم تحديث الترتيب");
+  }, 180);
+}
+
+$("#categoryList").addEventListener("dragstart", event => { if (event.target.closest("[data-drag-kind]")) event.preventDefault(); });
+
+$("#categoryList").addEventListener("pointerdown", event => {
+  const handle = event.target.closest("[data-drag-kind]");
+  if (!handle || event.button !== 0 || sortState) return;
+  const kind = handle.dataset.dragKind;
+  const source = kind === "product" ? handle.closest(".product-row") : handle.closest(".category-card");
+  if (!source) return;
+  event.preventDefault();
+  handle.setPointerCapture?.(event.pointerId);
+  sortState = {
+    kind, handle, source, pointerId: event.pointerId,
+    id: handle.dataset.dragId,
+    categoryId: handle.dataset.dragCategory || "",
+    treeHeadingId: source.dataset.treeHeadingId || "",
+    treeGroupIndex: source.dataset.treeGroupIndex || "",
+    startClientY: event.clientY, clientY: event.clientY, startPageY: sortPageY(event.clientY), active: false
+  };
 });
 
-$("#categoryList").addEventListener("dragend", () => {
-  dragState = null;
-  clearDropLines();
-  $$(".dragging").forEach((element) => element.classList.remove("dragging"));
-});
+window.addEventListener("pointermove", event => {
+  if (!sortState || event.pointerId !== sortState.pointerId) return;
+  sortState.clientY = event.clientY;
+  if (!sortState.active) {
+    if (Math.abs(event.clientY - sortState.startClientY) < 4) return;
+    beginSort();
+  }
+  event.preventDefault();
+  updateSortPositions();
+}, { passive: false });
+
+window.addEventListener("pointerup", event => { if (sortState && event.pointerId === sortState.pointerId) finishSort(); });
+window.addEventListener("pointercancel", event => { if (sortState && event.pointerId === sortState.pointerId) finishSort(true); });
+window.addEventListener("keydown", event => { if (event.key === "Escape" && sortState?.active) finishSort(true); });
 
 initializeAdmin();
 setInterval(renderLiveVisitors, 10000);

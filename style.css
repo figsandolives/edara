@@ -89,3 +89,14 @@ dialog{border:0;padding:0;background:transparent;width:min(760px,calc(100% - 24p
 .catalog-type-badge{display:inline-block;margin-inline-start:6px;padding:2px 9px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;font-weight:800;vertical-align:middle}
 #categoryCatalogType{display:block;width:100%;margin-top:6px}
 .appearance-heading .catalog-scope{display:inline-flex;align-items:center;gap:8px;margin:6px 0;font-weight:700}.appearance-heading .catalog-scope select{width:auto;min-width:170px}
+
+/* Smooth pointer sorting: the dragged card lifts and follows the pointer while
+   its neighbours slide aside; touch-action lets the handle drag on tablets. */
+.drag-handle{touch-action:none;display:inline-grid;place-items:center;min-width:34px;min-height:34px;border-radius:10px;transition:background .15s,color .15s}
+.drag-handle:hover{background:#eef3f0;color:#2b6a4f}
+.sort-sibling{transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.sort-dragging{position:relative;z-index:20;transition:box-shadow .2s;box-shadow:0 18px 45px rgba(20,45,35,.22),0 0 0 2px #2b6a4f!important;cursor:grabbing}
+.sort-dragging.restaurant-category{box-shadow:0 18px 45px rgba(120,20,20,.22),0 0 0 2px #c62828!important}
+.sort-settling{transition:transform .18s cubic-bezier(.2,.8,.2,1)!important}
+body.is-sorting{user-select:none;-webkit-user-select:none;cursor:grabbing}
+body.is-sorting *{cursor:grabbing!important}
