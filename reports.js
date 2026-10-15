@@ -1,6 +1,10 @@
 const $ = selector => document.querySelector(selector);
-const adminEmails = new Set(["sultan.figsolives@gmail.com", "figsandolives.kw@gmail.com"]);
-const services = window.ORDERING_FIREBASE;
+// Reports read from the platform server with the admin panel's own sign-in
+// (same browser tab session), so opening them from the panel needs no new login.
+const API_BASE = "https://162-35-27-249.sslip.io/platform-api";
+const REPORTS_REFRESH_MS = 60000;
+let adminToken = sessionStorage.getItem("figsAdminSession") || "";
+let reportsTimer = null;
 const KUWAIT_TZ = "Asia/Kuwait";
 let events = [], orders = [], catalogById = new Map(), activeDetail = "", detailRows = [];
 const selectedCartKeys = new Set();
@@ -39,7 +43,7 @@ function visitorRows() {
   // بعض الزيارات القديمة لم تسجل حدث visit لكن سجلت السلة، لذلك لا نعتمد visit وحده.
   const activity = events.filter(event => event.visitorId && eventTime(event)).sort((a, b) => eventTime(a) - eventTime(b));
   const firstByVisitor = new Map(); activity.forEach(event => { if (!firstByVisitor.has(event.visitorId)) firstByVisitor.set(event.visitorId, event); });
-  const unique = new Map(); activity.filter(inRange).forEach(event => unique.set(event.visitorId, event));
+  const unique = new Map(); activity.filter(event => inRange(eventTime(event))).forEach(event => unique.set(event.visitorId, event));
   return [...unique.values()].map(event => ({ ...event, isNew: firstByVisitor.get(event.visitorId) === event, registered: Boolean(event.customerName || event.phone) }));
 }
 
@@ -114,7 +118,7 @@ function renderCartRows(records) {
 }
 
 function render() {
-  const visitors = visitorRows(), period = events.filter(inRange), carts = cartRecords(), displayed = filteredCarts();
+  const visitors = visitorRows(), period = events.filter(event => inRange(eventTime(event))), carts = cartRecords(), displayed = filteredCarts();
   const newVisitors = visitors.filter(visitor => visitor.isNew), registered = visitors.filter(visitor => visitor.registered);
   const accounts = period.filter(event => event.type === "account_created");
   const invoices = orders.filter(order => inRange(order.paidAt || order.createdAt));
@@ -207,5 +211,58 @@ $("#visitorMetrics").onclick = event => { const card = event.target.closest("[da
 $("#purchaseMetrics").onclick = event => { const card = event.target.closest("[data-metric]"); if (card) showDetail(card.dataset.metric); };
 $("#detailList").onclick = event => { const item = event.target.closest("[data-person]"); if (item) showPerson(item.dataset.person); };
 $("#detailBack").onclick = () => showDetail(activeDetail); $("#closeReportDetail").onclick = () => $("#reportDetail").close(); $("#downloadCartReport").onclick = downloadCartReport;
-$("#adminGoogleLogin").onclick = async () => { try { const provider = new firebase.auth.GoogleAuthProvider(); provider.setCustomParameters({ prompt: "select_account" }); await services.auth.signInWithPopup(provider); } catch (error) { $("#adminAuthMessage").textContent = error.message || "تعذر تسجيل الدخول"; } };
-services.auth.onAuthStateChanged(user => { const email = String(user?.email || "").toLowerCase(); if (!user) return; if (!adminEmails.has(email)) { $("#adminAuthMessage").textContent = "هذا الحساب غير مصرح له"; services.auth.signOut(); return; } $("#adminAuthGate").classList.add("hidden"); services.database.ref("orderingPlatform/catalog/products").on("value", snapshot => { catalogById = new Map((snapshot.val() || []).filter(Boolean).map(product => [String(product.id), product])); render(); }); services.database.ref("orderingPlatform/analyticsEvents").on("value", snapshot => { events = Object.values(snapshot.val() || {}); render(); }, () => { $("#visitorMetrics").innerHTML = '<div class="empty">تعذر تحميل التقارير.</div>'; }); services.database.ref("orderingPlatform/onlineOrders").on("value", snapshot => { orders = Object.values(snapshot.val() || {}); render(); }); });
+async function adminRequest(path) {
+  const response = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/json", ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}) }, cache: "no-store" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(data.error || "تعذر تحميل التقارير"), { status: response.status });
+  return data;
+}
+
+// Server events keep the customer and details nested; the report reads them flat.
+const flatEvent = event => ({ ...(event.details || {}), type: event.type, visitorId: event.visitorId, createdAt: event.createdAt, customer: event.customer || null, customerName: event.customer?.name || "", phone: event.customer?.phone || "" });
+
+async function loadReports() {
+  try {
+    const [catalog, serverEvents, serverOrders] = await Promise.all([adminRequest("/catalog"), adminRequest("/admin/analytics-events"), adminRequest("/admin/orders")]);
+    catalogById = new Map((catalog.products || []).filter(Boolean).map(product => [String(product.id), product]));
+    events = (Array.isArray(serverEvents) ? serverEvents : []).map(flatEvent);
+    orders = Array.isArray(serverOrders) ? serverOrders : [];
+    render();
+  } catch (error) {
+    if (error.status === 401 || error.status === 403) return showReportsGate("انتهت الجلسة؛ سجّل الدخول مرة أخرى");
+    $("#visitorMetrics").innerHTML = '<div class="empty">تعذر تحميل التقارير.</div>';
+  }
+}
+
+function showReportsGate(message = "") {
+  clearInterval(reportsTimer); reportsTimer = null;
+  adminToken = ""; sessionStorage.removeItem("figsAdminSession");
+  $("#adminAuthGate").classList.remove("hidden");
+  $("#adminAuthMessage").textContent = message;
+}
+
+function startReports() {
+  $("#adminAuthGate").classList.add("hidden");
+  loadReports();
+  clearInterval(reportsTimer);
+  reportsTimer = setInterval(loadReports, REPORTS_REFRESH_MS);
+}
+
+$("#adminCodeForm").onsubmit = async event => {
+  event.preventDefault();
+  const button = event.submitter || $("#adminCodeForm button");
+  const code = latinDigits($("#adminCode").value).trim();
+  if (!code) return;
+  button.disabled = true; $("#adminAuthMessage").textContent = "";
+  try {
+    const response = await fetch(`${API_BASE}/auth/employee`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ code }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.sessionToken) throw new Error(result.error || "تعذر تسجيل الدخول");
+    adminToken = result.sessionToken; sessionStorage.setItem("figsAdminSession", adminToken);
+    $("#adminCode").value = "";
+    startReports();
+  } catch (error) { $("#adminAuthMessage").textContent = error.message || "تعذر تسجيل الدخول"; }
+  finally { button.disabled = false; }
+};
+
+if (adminToken) startReports();
