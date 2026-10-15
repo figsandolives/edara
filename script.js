@@ -1774,7 +1774,7 @@ function showAdminView(view) {
   $("#addProduct").classList.toggle("hidden", currentView !== "catalog");
   $("#addCategory").classList.toggle("hidden", currentView !== "catalog");
   if (currentView === "customers") renderCustomers();
-  if (currentView === "availability") { renderAvailabilityNotifications(); loadAvailabilityNotifications(); }
+  if (currentView === "availability") { openAvailabilityDetail(""); renderAvailabilityNotifications(); loadAvailabilityNotifications(); }
   if (currentView === "advertisement") renderAdvertisementEditor();
   if (currentView === "filters") renderProductFilters();
   if (currentView === "filterDetail") renderProductFilterDetail();
@@ -1806,6 +1806,8 @@ function renderAdvertisementProductResults(query = "") {
   result.innerHTML = matches.length ? matches.map(item => `<button type="button" data-advertisement-product-choice="${escapeHtml(item.id)}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:right;border:1px solid #dfe8e2;background:white;border-radius:12px;padding:8px;margin-top:6px"><img src="${escapeHtml(imageSource(item))}" alt="" style="width:46px;height:46px;border-radius:9px;object-fit:cover"><span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.nameEn)}</small></span></button>`).join("") : `<small>لا توجد نتائج مطابقة</small>`;
 }
 
+let availabilityDetailProductId = "";
+
 async function loadAvailabilityNotifications() {
   try {
     const response = await adminRequest("/admin/availability-notifications");
@@ -1819,28 +1821,126 @@ async function loadAvailabilityNotifications() {
   renderAvailabilityNotifications();
 }
 
-async function removeAvailabilityNotification(key) {
-  const response = await adminRequest("/admin/availability-notifications/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key }) });
-  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "تعذر حذف التبليغ");
-  availabilityNotifications = availabilityNotifications.filter(entry => entry.key !== key);
-  renderAvailabilityNotifications();
+async function availabilityAction(path, body) {
+  const response = await adminRequest(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "تعذر تنفيذ العملية");
+  return result;
 }
+
+function availabilityGroups() {
+  const groups = new Map();
+  for (const entry of availabilityNotifications) {
+    const id = String(entry.productId);
+    if (!groups.has(id)) groups.set(id, { productId: id, productName: entry.productName || products.find(item => String(item.id) === id)?.name || id, available: entry.productAvailable, entries: [] });
+    groups.get(id).entries.push(entry);
+  }
+  return [...groups.values()].map(group => ({ ...group, sent: group.entries.filter(entry => entry.status === "sent").length, latest: Math.max(...group.entries.map(entry => entry.createdAt || 0)) }))
+    .sort((a, b) => (a.sent === a.entries.length) - (b.sent === b.entries.length) || b.latest - a.latest);
+}
+
+const availabilityStatusLabel = { sent: "تم الإرسال", failed: "فشل الإرسال", sending: "جارٍ الإرسال", pending: "لم يُرسل" };
+const formatAvailabilityDate = value => value ? new Date(Number(value)).toLocaleString("ar-KW-u-nu-latn", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
 
 function renderAvailabilityNotifications() {
   const list = $("#availabilityNotificationsList"); if (!list) return;
-  const rows = Array.isArray(availabilityNotifications) ? availabilityNotifications : [];
-  $("#availabilityWaitingCount").textContent = rows.length;
-  const grouped = rows.reduce((map, row) => { (map[row.productId] ||= []).push(row); return map; }, {});
-  list.innerHTML = Object.entries(grouped).length ? Object.entries(grouped).map(([productId, entries]) => {
-    const product = products.find(item => String(item.id) === String(productId));
-    const productName = product?.name || productId;
-    const available = !product?.availability?.status || product.availability.status === "available";
-    return `<article class="availability-card"><header><div><strong>${escapeHtml(productName)}</strong><small>${entries.length} في انتظار التبليغ</small></div><span class="${available ? "is-available" : ""}">${available ? "متوفر الآن" : "غير متوفر"}</span></header><div class="availability-people">${entries.map(entry => {
-      const message = `مرحباً ${entry.name || ""}، يسعدنا إبلاغك أن ${productName} أصبح متوفراً الآن في مخبز التين والزيتون. اطلبه من: https://figsolives.online`;
-      const date = entry.createdAt ? new Date(Number(entry.createdAt)).toLocaleString("ar-KW", { dateStyle: "short", timeStyle: "short" }) : "";
-      return `<div class="availability-person"><div><b>${escapeHtml(entry.name || "عميل")}</b><small dir="ltr">${escapeHtml(entry.phone || "")}</small><small>${escapeHtml(date)}</small></div><a class="secondary" href="https://wa.me/965${encodeURIComponent(entry.phone || "")}?text=${encodeURIComponent(message)}" target="_blank" rel="noopener">واتساب</a><button type="button" class="secondary" data-availability-done="${escapeHtml(entry.key)}">تم التبليغ</button></div>`;
-    }).join("")}</div></article>`;
-  }).join("") : `<div class="empty">لا يوجد عملاء بانتظار التبليغ حالياً</div>`;
+  const groups = availabilityGroups();
+  const sent = availabilityNotifications.filter(entry => entry.status === "sent").length;
+  $("#availabilityWaitingCount").textContent = availabilityNotifications.length - sent;
+  $("#availabilitySentCount").textContent = sent;
+  list.innerHTML = groups.length ? groups.map(group => {
+    const done = group.sent === group.entries.length, waiting = group.entries.length - group.sent;
+    return `<article class="availability-tile ${done ? "is-sent" : "is-waiting"}" data-availability-product="${escapeHtml(group.productId)}" tabindex="0" role="button">
+      <div class="availability-tile-top"><span class="availability-dot"></span><span class="availability-tile-state">${done ? "تم الإرسال" : "لم يُرسل"}</span>
+        <button type="button" class="availability-tile-menu" data-availability-menu aria-label="خيارات">⋮</button>
+        <div class="availability-tile-popover hidden"><button type="button" data-availability-delete="${escapeHtml(group.productId)}">حذف قائمة التبليغ</button></div></div>
+      <strong>${escapeHtml(group.productName)}</strong>
+      <div class="availability-tile-count"><b>${group.entries.length}</b><span>طلب إبلاغ</span></div>
+      <small>${done ? `أُرسل للجميع` : `${waiting} بانتظار · ${group.sent} تم`} · ${group.available ? "المنتج متوفر" : "غير متوفر"}</small>
+    </article>`;
+  }).join("") : `<div class="empty">لا توجد طلبات إبلاغ حالياً</div>`;
+  if (availabilityDetailProductId) renderAvailabilityDetail();
+}
+
+function openAvailabilityDetail(productId) {
+  availabilityDetailProductId = String(productId || "");
+  $("#availabilityOverview").classList.toggle("hidden", Boolean(availabilityDetailProductId));
+  $("#availabilityDetail").classList.toggle("hidden", !availabilityDetailProductId);
+  if (availabilityDetailProductId) renderAvailabilityDetail();
+  window.scrollTo({ top: 0 });
+}
+
+function renderAvailabilityDetail() {
+  const group = availabilityGroups().find(item => item.productId === availabilityDetailProductId);
+  if (!group) return openAvailabilityDetail("");
+  const waiting = group.entries.length - group.sent;
+  $("#availabilityDetailTitle").textContent = group.productName;
+  $("#availabilityDetailSummary").textContent = `${group.entries.length} طلب إبلاغ · ${group.sent} تم الإرسال · ${waiting} لم يُرسل · ${group.available ? "المنتج متوفر الآن" : "المنتج غير متوفر حالياً"}`;
+  $("#availabilitySendNow").classList.toggle("hidden", !(waiting && group.available));
+  $("#availabilitySendNow").textContent = `إرسال واتساب للمتبقين (${waiting})`;
+  $("#availabilityDetailRows").innerHTML = group.entries.map((entry, index) => `<tr>
+    <td>${index + 1}</td><td><b>${escapeHtml(entry.name || "عميل")}</b></td>
+    <td><a dir="ltr" href="https://wa.me/965${encodeURIComponent(entry.phone || "")}" target="_blank" rel="noopener">${escapeHtml(entry.phone || "")}</a></td>
+    <td>${escapeHtml(entry.address || "—")}</td><td>${escapeHtml(group.productName)}</td>
+    <td>${escapeHtml(formatAvailabilityDate(entry.createdAt))}</td>
+    <td><span class="availability-status ${entry.status === "sent" ? "is-sent" : "is-waiting"}">${availabilityStatusLabel[entry.status] || "لم يُرسل"}</span>${entry.sentAt ? `<small>${escapeHtml(formatAvailabilityDate(entry.sentAt))}</small>` : ""}</td>
+  </tr>`).join("");
+}
+
+function availabilityReportRows() {
+  const entries = availabilityDetailProductId ? availabilityNotifications.filter(entry => String(entry.productId) === availabilityDetailProductId) : availabilityGroups().flatMap(group => group.entries);
+  return entries.map((entry, index) => [index + 1, entry.name || "عميل", entry.phone || "", entry.address || "", entry.productName || "", formatAvailabilityDate(entry.createdAt), availabilityStatusLabel[entry.status] || "لم يُرسل"]);
+}
+const availabilityReportHeaders = ["#", "اسم الزبون", "رقم الهاتف", "العنوان", "اسم المنتج", "تاريخ ووقت الطلب", "الحالة"];
+function availabilityReportTitle() {
+  const group = availabilityGroups().find(item => item.productId === availabilityDetailProductId);
+  return group ? `طلبات الإبلاغ - ${group.productName}` : "طلبات الإبلاغ - جميع المنتجات";
+}
+
+// Builds a real .xlsx (right-to-left, styled header) with the JSZip already on the page.
+async function downloadAvailabilityExcel() {
+  const rows = availabilityReportRows(), title = availabilityReportTitle();
+  const xml = value => String(value ?? "").replace(/[<>&"]/g, char => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[char]);
+  const column = index => String.fromCharCode(65 + index);
+  const cell = (ref, value, style) => typeof value === "number" ? `<c r="${ref}" s="${style}"><v>${value}</v></c>` : `<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
+  const sheetRows = [
+    `<row r="1" ht="30" customHeight="1">${cell("A1", title, 1)}</row>`,
+    `<row r="2">${cell("A2", `تاريخ التقرير: ${formatAvailabilityDate(Date.now())} · عدد الطلبات: ${rows.length}`, 2)}</row>`,
+    `<row r="4" ht="24" customHeight="1">${availabilityReportHeaders.map((header, index) => cell(`${column(index)}4`, header, 3)).join("")}</row>`,
+    ...rows.map((row, rowIndex) => `<row r="${rowIndex + 5}">${row.map((value, index) => cell(`${column(index)}${rowIndex + 5}`, value, index === 6 ? (value === "تم الإرسال" ? 5 : 6) : 4)).join("")}</row>`)
+  ].join("");
+  const widths = [6, 24, 16, 40, 34, 22, 16];
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
+  zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  zip.file("xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="طلبات الإبلاغ" sheetId="1" r:id="rId1"/></sheets></workbook>`);
+  zip.file("xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`);
+  zip.file("xl/styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="5"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="16"/><color rgb="FF173F32"/><name val="Arial"/></font><font><sz val="10"/><color rgb="FF708078"/><name val="Arial"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font></fonts><fills count="5"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF173F32"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE5F4E9"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF9E3E3"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"><color rgb="FFD9DEDB"/></left><right style="thin"><color rgb="FFD9DEDB"/></right><top style="thin"><color rgb="FFD9DEDB"/></top><bottom style="thin"><color rgb="FFD9DEDB"/></bottom></border></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="7"><xf/><xf fontId="1" applyFont="1"/><xf fontId="2" applyFont="1"/><xf fontId="3" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf borderId="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf fontId="4" fillId="3" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf fontId="4" fillId="4" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`);
+  zip.file("xl/worksheets/sheet1.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1" workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`).join("")}</cols><sheetData>${sheetRows}</sheetData><mergeCells count="2"><mergeCell ref="A1:G1"/><mergeCell ref="A2:G2"/></mergeCells></worksheet>`);
+  const blob = await zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${title}.xlsx`;
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+}
+
+// Opens a print-ready report; the browser's "Save as PDF" produces the file.
+function downloadAvailabilityPdf() {
+  const rows = availabilityReportRows(), title = availabilityReportTitle();
+  const report = window.open("", "_blank");
+  if (!report) return alert("اسمح بالنوافذ المنبثقة لتحميل التقرير");
+  report.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>@page{size:A4 landscape;margin:14mm}@media screen{body{padding:28px}}*{box-sizing:border-box}body{margin:0;font-family:"Noto Kufi Arabic",Arial,sans-serif;color:#19231f;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;margin-bottom:16px;border-bottom:3px solid #173f32}header div{display:flex;align-items:center;gap:12px}header img{width:58px;height:58px;object-fit:contain}
+  h1{margin:0;font-size:20px;color:#173f32}p{margin:3px 0 0;color:#708078;font-size:11px}.meta{text-align:left;font-size:11px;color:#708078}
+  table{width:100%;border-collapse:collapse;font-size:11px}th{background:#173f32;color:#fff;padding:9px 8px;text-align:right;font-weight:800}td{padding:8px;border-bottom:1px solid #e3e8e5;vertical-align:top}tr:nth-child(even) td{background:#f7f9f8}
+  .s{display:inline-block;padding:3px 9px;border-radius:999px;font-weight:800;font-size:10px}.ok{background:#e5f4e9;color:#1c6a3a}.no{background:#f9e3e3;color:#b43e3e}footer{margin-top:14px;font-size:10px;color:#708078;text-align:center}</style></head><body>
+  <header><div><img src="https://figsolives.online/logo.png" alt=""><div style="display:block"><h1>${escapeHtml(title)}</h1><p>مخبز التين والزيتون</p></div></div><div class="meta">تاريخ التقرير: ${escapeHtml(formatAvailabilityDate(Date.now()))}<br>عدد الطلبات: ${rows.length}</div></header>
+  <table><thead><tr>${availabilityReportHeaders.map(header => `<th>${header}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map((value, index) => `<td${index === 2 ? ' dir="ltr" style="text-align:right"' : ""}>${index === 6 ? `<span class="s ${value === "تم الإرسال" ? "ok" : "no"}">${escapeHtml(value)}</span>` : escapeHtml(value)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+  <footer>figsolives.online</footer><script>document.fonts.ready.then(()=>setTimeout(()=>print(),300));<\/script></body></html>`);
+  report.document.close();
 }
 
 function clearDropLines() {
@@ -2168,14 +2268,44 @@ $("#advertisementProductResults").addEventListener("click", event => { const cho
 $("#advertisementImage").addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; try { advertisement.image = await optimizeImage(file, "advertisement"); renderAdvertisementEditor(); toast("تم رفع صورة الإعلان"); } catch (error) { toast(error.message || "تعذر رفع الصورة"); } });
 $("#advertisementForm").addEventListener("submit", event => { event.preventDefault(); advertisement = { ...normalizeAdvertisement(advertisement), enabled: $("#advertisementEnabled").checked, size: $("#advertisementSize").value, targetType: $("#advertisementTargetType").value, productId: $("#advertisementProduct").value, link: clean($("#advertisementLink").value) }; if (advertisement.enabled && !advertisement.image) return toast("أضف صورة الإعلان أولاً"); if (advertisement.enabled && advertisement.targetType === "product" && !advertisement.productId) return toast("اختر المنتج المطلوب"); if (advertisement.enabled && advertisement.targetType === "link" && !advertisement.link) return toast("أدخل الرابط المطلوب"); markDirty("جارٍ حفظ الإعلان…"); toast("تم حفظ الإعلان"); });
 $("#availabilityNotificationsList").addEventListener("click", async event => {
-  const button = event.target.closest("[data-availability-done]");
-  if (!button || !confirm("حذف هذا العميل من قائمة الانتظار بعد تبليغه؟")) return;
-  button.disabled = true;
-  try { await removeAvailabilityNotification(button.dataset.availabilityDone); }
-  catch (error) { button.disabled = false; alert(error.message); }
+  const menuButton = event.target.closest("[data-availability-menu]");
+  if (menuButton) {
+    event.stopPropagation();
+    const popover = menuButton.nextElementSibling, wasHidden = popover.classList.contains("hidden");
+    $$(".availability-tile-popover").forEach(item => item.classList.add("hidden"));
+    popover.classList.toggle("hidden", !wasHidden);
+    return;
+  }
+  const deleteButton = event.target.closest("[data-availability-delete]");
+  if (deleteButton) {
+    event.stopPropagation();
+    const group = availabilityGroups().find(item => item.productId === deleteButton.dataset.availabilityDelete);
+    if (!confirm(`حذف قائمة التبليغ لمنتج «${group?.productName || ""}» (${group?.entries.length || 0} طلب)؟ لا يمكن التراجع.`)) return;
+    deleteButton.disabled = true;
+    try { await availabilityAction("/admin/availability-notifications/remove-product", { productId: deleteButton.dataset.availabilityDelete }); await loadAvailabilityNotifications(); toast("تم حذف قائمة التبليغ"); }
+    catch (error) { deleteButton.disabled = false; alert(error.message); }
+    return;
+  }
+  const tile = event.target.closest("[data-availability-product]");
+  if (tile) openAvailabilityDetail(tile.dataset.availabilityProduct);
 });
+$("#availabilityNotificationsList").addEventListener("keydown", event => {
+  const tile = event.target.closest("[data-availability-product]");
+  if (tile && event.target === tile && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openAvailabilityDetail(tile.dataset.availabilityProduct); }
+});
+document.addEventListener("click", () => $$(".availability-tile-popover").forEach(item => item.classList.add("hidden")));
+$("#availabilityDetailBack").addEventListener("click", () => openAvailabilityDetail(""));
+$("#availabilitySendNow").addEventListener("click", async event => {
+  const button = event.currentTarget;
+  if (!confirm("إرسال رسالة واتساب لكل عميل لم يُرسل له بعد؟")) return;
+  button.disabled = true; button.textContent = "جارٍ الإرسال…";
+  try { const result = await availabilityAction("/admin/availability-notifications/send", { productId: availabilityDetailProductId }); toast(`تم الإرسال: ${result.sent}${result.failed ? ` · فشل: ${result.failed}` : ""}`); }
+  catch (error) { alert(error.message); }
+  button.disabled = false;
+  await loadAvailabilityNotifications();
+});
+$$("[data-availability-export]").forEach(button => button.addEventListener("click", () => button.dataset.availabilityExport === "xlsx" ? downloadAvailabilityExcel().catch(error => alert(error.message)) : downloadAvailabilityPdf()));
 $("#backFromAvailabilityNotifications").addEventListener("click", () => showAdminView("catalog"));
-$("#downloadAvailabilityNotifications").addEventListener("click", () => { showAdminView("availability"); setTimeout(() => window.print(), 50); });
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
 $("#liveVisitorsPage").addEventListener("click", showLiveVisitorsView);
 $("#backFromLiveVisitors").addEventListener("click", () => showAdminView("catalog"));
