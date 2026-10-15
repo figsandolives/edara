@@ -100,3 +100,15 @@ dialog{border:0;padding:0;background:transparent;width:min(760px,calc(100% - 24p
 .sort-settling{transition:transform .18s cubic-bezier(.2,.8,.2,1)!important}
 body.is-sorting{user-select:none;-webkit-user-select:none;cursor:grabbing}
 body.is-sorting *{cursor:grabbing!important}
+.availability-card{display:grid;gap:10px;padding:16px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 24px rgba(28,54,43,.05)}
+.availability-card header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.availability-card header div{display:grid;gap:3px}
+.availability-card header small{color:var(--muted)}
+.availability-card header span{padding:5px 10px;border-radius:999px;background:#f6e9e9;color:#a33;font-size:11px;font-weight:800}
+.availability-card header span.is-available{background:#e5f4e9;color:#1c6a3a}
+.availability-people{display:grid;gap:8px;padding-top:10px;border-top:1px dashed var(--line)}
+.availability-person{display:flex;align-items:center;gap:8px}
+.availability-person div{display:grid;gap:2px;flex:1;min-width:0}
+.availability-person small{color:var(--muted);font-size:11px}
+.availability-person a,.availability-person button{padding:8px 12px;border-radius:10px;font-size:12px;text-decoration:none;white-space:nowrap}
+@media print{.availability-person a,.availability-person button{display:none}}

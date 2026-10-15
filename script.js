@@ -58,7 +58,7 @@ let catalogRef = null;
 let customersRef = null;
 let visitorPresenceRef = null;
 let visitorPresence = [];
-let availabilityNotifications = {};
+let availabilityNotifications = [];
 let advertisement = { enabled: false, image: "", size: "square", targetType: "product", productId: "", link: "" };
 let productFilters = [];
 let editingProductFilterId = "";
@@ -512,6 +512,7 @@ async function loadData() {
   $("#saveState").textContent = "تم تحميل آخر نسخة من الخادم";
   loadCustomers();
   loadVisitorPresence();
+  loadAvailabilityNotifications();
 }
 
 function renderLiveVisitors() {
@@ -1773,7 +1774,7 @@ function showAdminView(view) {
   $("#addProduct").classList.toggle("hidden", currentView !== "catalog");
   $("#addCategory").classList.toggle("hidden", currentView !== "catalog");
   if (currentView === "customers") renderCustomers();
-  if (currentView === "availability") renderAvailabilityNotifications();
+  if (currentView === "availability") { renderAvailabilityNotifications(); loadAvailabilityNotifications(); }
   if (currentView === "advertisement") renderAdvertisementEditor();
   if (currentView === "filters") renderProductFilters();
   if (currentView === "filterDetail") renderProductFilterDetail();
@@ -1805,14 +1806,40 @@ function renderAdvertisementProductResults(query = "") {
   result.innerHTML = matches.length ? matches.map(item => `<button type="button" data-advertisement-product-choice="${escapeHtml(item.id)}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:right;border:1px solid #dfe8e2;background:white;border-radius:12px;padding:8px;margin-top:6px"><img src="${escapeHtml(imageSource(item))}" alt="" style="width:46px;height:46px;border-radius:9px;object-fit:cover"><span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.nameEn)}</small></span></button>`).join("") : `<small>لا توجد نتائج مطابقة</small>`;
 }
 
+async function loadAvailabilityNotifications() {
+  try {
+    const response = await adminRequest("/admin/availability-notifications");
+    const entries = await response.json().catch(() => []);
+    if (!response.ok) throw new Error(entries.error || "تعذر تحميل التبليغات");
+    availabilityNotifications = Array.isArray(entries) ? entries : [];
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "تعذر تحميل التبليغات");
+  }
+  renderAvailabilityNotifications();
+}
+
+async function removeAvailabilityNotification(key) {
+  const response = await adminRequest("/admin/availability-notifications/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key }) });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "تعذر حذف التبليغ");
+  availabilityNotifications = availabilityNotifications.filter(entry => entry.key !== key);
+  renderAvailabilityNotifications();
+}
+
 function renderAvailabilityNotifications() {
   const list = $("#availabilityNotificationsList"); if (!list) return;
-  const rows = Object.entries(availabilityNotifications).flatMap(([productId, entries]) => Object.entries(entries || {}).map(([uid, entry]) => ({ productId, uid, ...entry })));
+  const rows = Array.isArray(availabilityNotifications) ? availabilityNotifications : [];
   $("#availabilityWaitingCount").textContent = rows.length;
   const grouped = rows.reduce((map, row) => { (map[row.productId] ||= []).push(row); return map; }, {});
   list.innerHTML = Object.entries(grouped).length ? Object.entries(grouped).map(([productId, entries]) => {
     const product = products.find(item => String(item.id) === String(productId));
-    return `<article class="customer-card"><div class="customer-summary"><div><strong>${escapeHtml(product?.name || productId)}</strong><small>${entries.length} في انتظار التبليغ</small></div></div><div class="customer-order-items">${entries.map(entry => `<span><b>${escapeHtml(entry.name || "عميل")}</b><small dir="ltr">${escapeHtml(entry.phone || "")}</small></span>`).join("")}</div></article>`;
+    const productName = product?.name || productId;
+    const available = !product?.availability?.status || product.availability.status === "available";
+    return `<article class="availability-card"><header><div><strong>${escapeHtml(productName)}</strong><small>${entries.length} في انتظار التبليغ</small></div><span class="${available ? "is-available" : ""}">${available ? "متوفر الآن" : "غير متوفر"}</span></header><div class="availability-people">${entries.map(entry => {
+      const message = `مرحباً ${entry.name || ""}، يسعدنا إبلاغك أن ${productName} أصبح متوفراً الآن في مخبز التين والزيتون. اطلبه من: https://figsolives.online`;
+      const date = entry.createdAt ? new Date(Number(entry.createdAt)).toLocaleString("ar-KW", { dateStyle: "short", timeStyle: "short" }) : "";
+      return `<div class="availability-person"><div><b>${escapeHtml(entry.name || "عميل")}</b><small dir="ltr">${escapeHtml(entry.phone || "")}</small><small>${escapeHtml(date)}</small></div><a class="secondary" href="https://wa.me/965${encodeURIComponent(entry.phone || "")}?text=${encodeURIComponent(message)}" target="_blank" rel="noopener">واتساب</a><button type="button" class="secondary" data-availability-done="${escapeHtml(entry.key)}">تم التبليغ</button></div>`;
+    }).join("")}</div></article>`;
   }).join("") : `<div class="empty">لا يوجد عملاء بانتظار التبليغ حالياً</div>`;
 }
 
@@ -2140,6 +2167,13 @@ $("#advertisementProductSearch").addEventListener("input", event => { $("#advert
 $("#advertisementProductResults").addEventListener("click", event => { const choice = event.target.closest("[data-advertisement-product-choice]"); if (!choice) return; const product = products.find(item => item.id === choice.dataset.advertisementProductChoice); $("#advertisementProduct").value = product?.id || ""; $("#advertisementProductSearch").value = product?.name || ""; $("#advertisementProductResults").innerHTML = product ? `<div style="display:flex;align-items:center;gap:10px;padding:8px"><img src="${escapeHtml(imageSource(product))}" alt="" style="width:46px;height:46px;border-radius:9px;object-fit:cover"><b>${escapeHtml(product.name)}</b></div>` : ""; });
 $("#advertisementImage").addEventListener("change", async event => { const file = event.target.files?.[0]; if (!file) return; try { advertisement.image = await optimizeImage(file, "advertisement"); renderAdvertisementEditor(); toast("تم رفع صورة الإعلان"); } catch (error) { toast(error.message || "تعذر رفع الصورة"); } });
 $("#advertisementForm").addEventListener("submit", event => { event.preventDefault(); advertisement = { ...normalizeAdvertisement(advertisement), enabled: $("#advertisementEnabled").checked, size: $("#advertisementSize").value, targetType: $("#advertisementTargetType").value, productId: $("#advertisementProduct").value, link: clean($("#advertisementLink").value) }; if (advertisement.enabled && !advertisement.image) return toast("أضف صورة الإعلان أولاً"); if (advertisement.enabled && advertisement.targetType === "product" && !advertisement.productId) return toast("اختر المنتج المطلوب"); if (advertisement.enabled && advertisement.targetType === "link" && !advertisement.link) return toast("أدخل الرابط المطلوب"); markDirty("جارٍ حفظ الإعلان…"); toast("تم حفظ الإعلان"); });
+$("#availabilityNotificationsList").addEventListener("click", async event => {
+  const button = event.target.closest("[data-availability-done]");
+  if (!button || !confirm("حذف هذا العميل من قائمة الانتظار بعد تبليغه؟")) return;
+  button.disabled = true;
+  try { await removeAvailabilityNotification(button.dataset.availabilityDone); }
+  catch (error) { button.disabled = false; alert(error.message); }
+});
 $("#backFromAvailabilityNotifications").addEventListener("click", () => showAdminView("catalog"));
 $("#downloadAvailabilityNotifications").addEventListener("click", () => { showAdminView("availability"); setTimeout(() => window.print(), 50); });
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
