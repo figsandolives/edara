@@ -1,0 +1,160 @@
+/* الأغلفة: ملف مشترك بين المنصة (index.html) والإدارة (edara/index.html)
+   عشان يطلع الغلاف بنفس الشكل بالضبط في الثنتين.
+   الشكل يعتمد على عرض الحاوية (container query) مو على عرض الشاشة،
+   فمعاينة الهاتف في الإدارة تطلع نفس تصميم الهاتف في المنصة. */
+.catalog-worlds,.covers-phone{container:covers/inline-size}
+.cover-stage{container:coverstage/inline-size}
+
+/* ---------- شبكة الأغلفة ---------- */
+.catalog-worlds{width:min(1320px,calc(100% - 32px));margin:0 auto 34px}
+.catalog-worlds-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-auto-rows:clamp(190px,17vw,250px);
+  grid-auto-flow:row dense;
+  gap:14px;
+}
+.world-tile{
+  position:relative;
+  display:block;
+  overflow:hidden;
+  padding:0;
+  border:0;
+  border-radius:26px;
+  background:#e9ece4;
+  color:#fff;
+  text-align:start;
+  text-decoration:none;
+  isolation:isolate;
+  box-shadow:0 14px 34px rgba(16,47,34,.16);
+  font:inherit;
+}
+.world-tile.size-full{grid-column:span 2}
+.world-tile.size-half{grid-column:span 1}
+.world-tile img{
+  position:absolute;inset:0;z-index:-2;
+  width:100%;height:100%;
+  object-fit:cover;
+  transition:transform .7s cubic-bezier(.2,.7,.2,1);
+}
+.world-tile::before{
+  content:"";
+  position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(17,46,34,0) 35%,rgba(17,46,34,.82) 100%);
+}
+.world-tile-copy{position:absolute;inset-inline:20px;bottom:18px;display:grid;gap:4px}
+.world-tile-copy strong{font-size:clamp(22px,2.3vw,32px);font-weight:900;line-height:1.25;text-shadow:0 2px 14px rgba(0,0,0,.25)}
+.world-tile.size-full .world-tile-copy strong{font-size:clamp(28px,3.2vw,44px)}
+.world-tile-copy small{font-size:12px;font-weight:700;opacity:.9;line-height:1.7}
+.world-tile-count{
+  position:absolute;top:14px;inset-inline-start:14px;
+  padding:6px 12px;border-radius:999px;
+  background:rgba(255,254,251,.94);color:#194433;
+  font-size:11px;font-weight:900;
+}
+.world-tile:focus-visible{outline:3px solid #dca83e;outline-offset:3px}
+@media(hover:hover) and (pointer:fine){.world-tile:hover img{transform:scale(1.06)}}
+
+@container covers (max-width:760px){
+  .catalog-worlds-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    /* ارتفاع الصف = عرض الغلاف النصفي ÷ 1.14 (القياس 800×700) */
+    grid-auto-rows:calc((100cqw - 9px) / 2 / 1.14);
+    gap:9px;
+  }
+  .world-tile{border-radius:20px}
+  .world-tile.size-full{grid-column:span 2}
+  .world-tile-copy{inset-inline:13px;bottom:12px}
+  .world-tile-copy strong{font-size:19px}
+  .world-tile.size-full .world-tile-copy strong{font-size:26px}
+  .world-tile-copy small{display:none}
+  .world-tile.size-full .world-tile-copy small{display:block;font-size:11px}
+  .world-tile-count{top:10px;inset-inline-start:10px;padding:4px 9px;font-size:10px}
+}
+
+/* ---------- بانر الغلاف داخل صفحته ---------- */
+.world-cover{
+  position:relative;
+  min-height:clamp(250px,24vw,330px);
+  margin:0 0 14px;
+  border-radius:30px;
+  overflow:hidden;
+  display:flex;
+  align-items:flex-end;
+  color:#fff;
+  background:#194433;
+  isolation:isolate;
+  box-shadow:0 22px 55px rgba(16,47,34,.16);
+}
+.world-cover-media{position:absolute;inset:0;z-index:-2}
+.world-cover-media img{width:100%;height:100%;object-fit:cover}
+.world-cover::before{
+  content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(270deg,rgba(25,68,51,.94) 0%,rgba(25,68,51,.72) 38%,rgba(25,68,51,.08) 78%);
+}
+[dir="ltr"] .world-cover::before{background:linear-gradient(90deg,rgba(25,68,51,.94) 0%,rgba(25,68,51,.72) 38%,rgba(25,68,51,.08) 78%)}
+.world-cover-copy{width:min(560px,100%);padding:clamp(24px,3.4vw,46px);display:grid;gap:8px;justify-items:start}
+.world-cover-copy h1{margin:0;font-size:clamp(34px,4.4vw,58px);font-weight:900;line-height:1.15}
+.world-cover-copy h1::after{content:"";display:block;width:58px;height:4px;margin-top:14px;border-radius:4px;background:#dca83e}
+.world-cover-copy p{margin:4px 0 0;font-size:clamp(13px,1.2vw,16px);font-weight:700;opacity:.92;line-height:1.9}
+.world-cover-count{margin-top:6px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);font-size:12px;font-weight:800}
+.world-cover-stack{position:absolute;inset-inline-end:clamp(18px,3vw,40px);bottom:clamp(18px,3vw,34px);display:flex}
+.world-cover-stack img{
+  width:clamp(64px,7vw,96px);aspect-ratio:1;object-fit:cover;
+  border:4px solid #fffefb;border-radius:20px;
+  box-shadow:0 12px 28px rgba(0,0,0,.25);
+  margin-inline-start:-18px;background:#eee;
+}
+.world-cover-stack img:nth-child(1){transform:rotate(-6deg)}
+.world-cover-stack img:nth-child(2){transform:translateY(-12px) rotate(3deg)}
+.world-cover-stack img:nth-child(3){transform:rotate(7deg)}
+
+@container coverstage (max-width:760px){
+  .world-cover{min-height:230px;border-radius:22px}
+  .world-cover::before,[dir="ltr"] .world-cover::before{background:linear-gradient(180deg,rgba(25,68,51,.05) 0%,rgba(25,68,51,.6) 45%,rgba(25,68,51,.95) 100%)}
+  .world-cover-copy{padding:20px 18px}
+  .world-cover-copy h1{font-size:32px}
+  .world-cover-copy h1::after{margin-top:10px;width:44px}
+  .world-cover-stack{top:16px;bottom:auto;inset-inline-end:16px}
+  .world-cover-stack img{width:54px;border-width:3px;border-radius:14px;margin-inline-start:-14px}
+}
+
+/* ---------- صفحة الغلاف في المنصة ---------- */
+.cover-back{
+  position:sticky;
+  top:calc(var(--site-header-height,82px) + 10px);
+  z-index:35;
+  display:inline-flex;align-items:center;gap:6px;
+  margin:6px 0 12px;
+  padding:9px 16px 9px 18px;
+  border:1px solid #d9e2db;border-radius:999px;
+  background:rgba(255,254,251,.96);
+  backdrop-filter:blur(10px);
+  color:#194433;font-weight:900;font-size:13px;text-decoration:none;
+  box-shadow:0 8px 24px rgba(16,47,34,.14);
+}
+.cover-back svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+[dir="ltr"] .cover-back svg{transform:scaleX(-1)}
+body.cover-mode .hero,
+body.cover-mode .quality-strip,
+body.cover-mode .catalog-worlds{display:none}
+body.cover-mode main{padding-top:10px}
+/* شريط الأقسام ما يطلع إلا بعد ما يختفي بانر الغلاف */
+body.cover-mode.cover-banner-visible #categories,
+body.cover-mode.cover-banner-visible #headingNavigation{visibility:hidden;opacity:0;pointer-events:none}
+body.cover-mode #categories,body.cover-mode #headingNavigation{transition:opacity .25s}
+/* بعد ما يظهر الشريط، زر الرجوع يصير أول زر فيه ويبقى ثابت فوق */
+.cover-back{position:relative;top:auto}
+.categories .cover-bar-back{display:inline-flex;align-items:center;gap:5px;background:#fffefb;color:#194433;border-color:#cfdcd2;font-weight:900}
+.categories .cover-bar-back svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+[dir="ltr"] .categories .cover-bar-back svg{transform:scaleX(-1)}
+
+/* ما يطلع تحت الأغلفة إلا الأقسام اللي برا الأغلفة والتذييل */
+.seo-content{display:none}
+
+@media(max-width:760px){
+  .catalog-worlds{width:calc(100% - 24px);margin-bottom:24px}
+  .cover-back{padding:8px 13px;font-size:12px}
+}
+.categories .cover-bar-back{position:sticky;inset-inline-start:0;z-index:3;flex:0 0 auto;width:82px;justify-content:center;padding-inline:8px;box-shadow:8px 0 0 var(--paper,#fffefb)}
+body.cover-mode .category-menu-toggle{inset-inline-start:90px}

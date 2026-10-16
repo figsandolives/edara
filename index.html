@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20261015-availability-v3">
+  <link rel="stylesheet" href="covers.css?v=20261017-covers-1">
+  <link rel="stylesheet" href="covers-admin.css?v=20261017-covers-1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -101,7 +103,28 @@
       </div>
     </section>
 
-    <section id="categoryList" class="category-list" data-admin-view="catalog" aria-live="polite"></section>
+    <div class="catalog-workspace" id="catalogWorkspace" data-admin-view="catalog">
+      <aside class="covers-panel" id="coversPanel" aria-labelledby="coversPanelTitle">
+        <header class="workspace-head">
+          <div><h2 id="coversPanelTitle">الأغلفة</h2><small>نفس شكلها في الهاتف. اسحب لتغيير الترتيب، واضغط مرتين للدخول.</small></div>
+          <button type="button" class="covers-add" id="addCover" aria-label="إضافة غلاف" title="إضافة غلاف">+</button>
+        </header>
+        <div class="covers-phone"><div class="catalog-worlds-grid" id="coversGrid"></div></div>
+      </aside>
+      <section class="sections-panel">
+        <header class="workspace-head" id="sectionsHead"><div><h2>الأقسام</h2><small>الأقسام والعناوين اللي برا الأغلفة</small></div></header>
+        <header class="cover-page-head hidden" id="coverPageHead">
+          <button type="button" class="cover-page-back" id="coverPageBack">→ رجوع للأغلفة</button>
+          <div class="cover-page-actions">
+            <button type="button" class="secondary" id="coverEditFromPage">تعديل الغلاف</button>
+            <button type="button" class="cover-remove-toggle" id="coverRemoveToggle">حذف أقسام</button>
+            <button type="button" class="primary" id="coverAddSections">+ إضافة قسم</button>
+          </div>
+        </header>
+        <div class="cover-stage" id="coverPageBanner"></div>
+        <section id="categoryList" class="category-list" aria-live="polite"></section>
+      </section>
+    </div>
 
     <section id="customersView" class="customers-view hidden" aria-live="polite">
       <div class="customers-head">
@@ -208,6 +231,54 @@
     </section>
   </main>
 
+  <dialog id="coverDialog" class="cover-dialog"><form method="dialog" id="coverForm" class="dialog-card">
+    <header><div><span class="eyebrow" id="coverDialogEyebrow">غلاف جديد</span><h2 id="coverDialogTitle">إضافة غلاف</h2></div><button type="button" class="icon-btn" data-close-dialog="coverDialog">×</button></header>
+    <div class="cover-form-layout">
+      <div class="cover-form-fields">
+        <div class="form-grid">
+          <label>اسم الغلاف بالعربي<input id="coverNameAr" required maxlength="60"></label>
+          <label>اسم الغلاف بالإنجليزي<input id="coverNameEn" required maxlength="60" dir="ltr"></label>
+          <label>وصف الغلاف بالعربي<input id="coverDescriptionAr" maxlength="90"></label>
+          <label>وصف الغلاف بالإنجليزي<input id="coverDescriptionEn" maxlength="90" dir="ltr"></label>
+        </div>
+        <fieldset class="cover-size-choice"><legend>حجم الغلاف</legend>
+          <label><input type="radio" name="coverSize" value="full"> <span><b>حجم كامل</b><small>بعرض الشاشة في الهاتف</small></span></label>
+          <label><input type="radio" name="coverSize" value="half" checked> <span><b>نصف حجم</b><small>غلافين جنب بعض</small></span></label>
+        </fieldset>
+        <div class="cover-image-field">
+          <strong>صورة الغلاف</strong>
+          <p class="cover-size-hint" id="coverSizeHint"></p>
+          <label class="secondary cover-file-btn">اختيار صورة<input id="coverImageInput" type="file" accept="image/*" hidden></label>
+          <small id="coverImageStatus"></small>
+        </div>
+        <div class="cover-helpers-field">
+          <div><strong>الصور المساعدة</strong><small>ثلاث صور لمنتجات تطلع فوق البانر داخل صفحة الغلاف</small></div>
+          <div class="cover-helper-slots" id="coverHelperSlots"></div>
+          <button type="button" class="secondary" id="coverPickHelpers">تحديد الصور المساعدة</button>
+        </div>
+      </div>
+      <div class="cover-form-preview">
+        <strong>المعاينة في الهاتف</strong>
+        <div class="covers-phone"><div class="catalog-worlds-grid" id="coverPreviewGrid"></div></div>
+      </div>
+    </div>
+    <footer><button type="button" class="delete cover-delete hidden" id="coverDelete">حذف الغلاف</button><button type="button" data-close-dialog="coverDialog">إلغاء</button><button class="primary" type="submit" id="coverSubmit">إضافة الغلاف</button></footer>
+  </form></dialog>
+
+  <dialog id="coverHelpersDialog" class="cover-helpers-dialog"><div class="dialog-card">
+    <header><div><span class="eyebrow">الصور المساعدة</span><h2>اختر 3 منتجات</h2><p>اضغط على المنتج ليصير الصورة الأولى ثم الثانية ثم الثالثة.</p></div><button type="button" class="icon-btn" data-close-dialog="coverHelpersDialog">×</button></header>
+    <label>بحث عن منتج<input id="coverHelperSearch" type="search" placeholder="اكتب اسم المنتج بالعربي أو الإنجليزي" autocomplete="off"></label>
+    <div class="cover-helper-picked" id="coverHelperPicked"></div>
+    <div class="cover-product-grid" id="coverHelperResults"></div>
+    <footer><button type="button" data-close-dialog="coverHelpersDialog">إلغاء</button><button type="button" class="primary" id="coverHelpersDone">تم</button></footer>
+  </div></dialog>
+
+  <dialog id="coverSectionsDialog" class="cover-sections-dialog"><div class="dialog-card">
+    <header><div><span class="eyebrow">إضافة للغلاف</span><h2 id="coverSectionsTitle">اختر الأقسام والعناوين</h2><p>العنوان يدخل بكل أقسامه وعناوينه الفرعية.</p></div><button type="button" class="icon-btn" data-close-dialog="coverSectionsDialog">×</button></header>
+    <label>بحث<input id="coverSectionsSearch" type="search" placeholder="اسم القسم أو العنوان" autocomplete="off"></label>
+    <div class="cover-section-grid" id="coverSectionsGrid"></div>
+    <footer><span id="coverSectionsCount"></span><button type="button" data-close-dialog="coverSectionsDialog">إلغاء</button><button type="button" class="primary" id="coverSectionsAdd">إضافة</button></footer>
+  </div></dialog>
   <dialog id="categoryDialog">
     <form method="dialog" id="categoryForm" class="dialog-card">
       <header><div><span class="eyebrow">القسم</span><h2 id="categoryDialogTitle">إضافة قسم جديد</h2></div><button type="button" class="icon-btn" data-close-dialog="categoryDialog" aria-label="إغلاق">×</button></header>
@@ -364,6 +435,7 @@
     </div>
   </section>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="script.js?v=20261015-availability-v3&old=20260921-option-isolation-v1"></script>
+  <script src="script.js?v=20261017-covers-1"></script>
+  <script src="covers-admin.js?v=20261017-covers-1"></script>
 </body>
 </html>

@@ -35,6 +35,8 @@ const DEFAULT_APPEARANCE = Object.freeze({
 
 let categories = [];
 let headings = [];
+// الأغلفة: تنعرض في المنصة كصفحات مستقلة (?cover=). منطقها في covers-admin.js
+let covers = [];
 let restaurantEnabled = true;
 let products = [];
 let deliveryAreas = [];
@@ -464,6 +466,7 @@ function applyRemoteCatalog(catalog) {
   products = Array.isArray(catalog?.products) ? catalog.products : [];
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
   headings = Array.isArray(catalog?.headings) ? catalog.headings : [];
+  covers = typeof normalizeAdminCovers === "function" ? normalizeAdminCovers(catalog?.covers) : (Array.isArray(catalog?.covers) ? catalog.covers : []);
   restaurantEnabled = catalog?.restaurantEnabled !== false;
   $("#restaurantEnabled").checked = restaurantEnabled;
   $("#restaurantEnabledLabel").textContent = restaurantEnabled ? "مفعّل" : "مغلق";
@@ -588,8 +591,8 @@ function render() {
   $("#categoryCount").textContent = currentCategories.length;
   $("#productCount").textContent = products.filter(product => currentCategoryIds.has(product.category)).length;
   const hasSearch = Boolean(productSearch.trim());
-  const currentHeadings = headings.slice().sort((a, b) => Number(a.order) - Number(b.order));
-  const linkedCategoryIds = new Set(currentHeadings.flatMap(item => [...(item.categoryIds || []), ...(item.subheadings || []).flatMap(group => group.categoryIds || [])]));
+  const currentHeadings = headings.slice().sort((a, b) => Number(a.order) - Number(b.order)).filter(item => typeof coverEntryVisible !== "function" || coverEntryVisible("heading", item.id));
+  const linkedCategoryIds = new Set(headings.flatMap(item => [...(item.categoryIds || []), ...(item.subheadings || []).flatMap(group => group.categoryIds || [])]));
   const categoryCardMarkup = (category, treeContext = null) => {
     const list = categoryProducts(category.id).filter(productMatchesSearch);
     if (hasSearch && list.length) openCategories.add(category.id);
@@ -613,10 +616,11 @@ function render() {
     const directMarkup = directLinked.length ? `<div class="tree-category-list">${directLinked.map(category => categoryCardMarkup(category, { headingId: item.id, groupIndex: "direct" })).join("")}</div>` : "";
     return `<article class="category-card heading-card ${expanded ? "open" : ""}" data-heading-id="${escapeHtml(item.id)}" style="order:${Number(item.order) || 0}"><div class="category-head" data-heading-toggle="${escapeHtml(item.id)}"><span class="drag-handle" data-drag-kind="heading" data-drag-id="${escapeHtml(item.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(item.nameAr)}</strong><small>${escapeHtml(item.nameEn)}</small></div><span class="count-badge">${nestedCount} قسم مرتبط</span><div class="category-actions"><button data-move-heading="${escapeHtml(item.id)}" data-direction="up">↑</button><button data-move-heading="${escapeHtml(item.id)}" data-direction="down">↓</button><button data-link-heading="${escapeHtml(item.id)}">ربط</button></div><span class="chevron">⌄</span></div>${expanded ? `<div class="heading-tree">${nestedMarkup}${directMarkup}</div>` : ""}</article>`;
   }).join("");
-  const categoryMarkup = headingMarkup + currentCategories.filter(category => !linkedCategoryIds.has(category.id)).map(category => categoryCardMarkup(category)).join("");
+  const categoryMarkup = headingMarkup + currentCategories.filter(category => !linkedCategoryIds.has(category.id) && (typeof coverEntryVisible !== "function" || coverEntryVisible("category", category.id))).map(category => categoryCardMarkup(category)).join("");
   $("#categoryList").innerHTML = categoryMarkup || (hasSearch ? `<div class="empty">لا توجد منتجات تطابق «${escapeHtml(productSearch)}»</div>` : `<div class="empty">لا توجد أقسام بعد</div>`);
 
   hydrateRenderedImages();
+  if (typeof renderCoversPanel === "function") renderCoversPanel();
 }
 
 function renderAppearanceSettings(preserveTextInput = false) {
@@ -712,7 +716,7 @@ async function saveToالخادم() {
   const payload = {
     categories: categories.map((category, index) => ({ ...category, order: index + 1 })), headings, restaurantEnabled,
     products: downloadableProducts(), deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
-    appearance: catalogAppearancePayload(), advertisement: normalizeAdvertisement(advertisement), productFilters,
+    appearance: catalogAppearancePayload(), advertisement: normalizeAdvertisement(advertisement), productFilters, covers,
     ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
     ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
     ...(productOptionIdsIsolationMigrationComplete ? { productOptionIdsIsolationV1: true } : {}),
