@@ -22,25 +22,37 @@ function normalizeAdminCovers(list) {
     size: cover?.size === "full" ? "full" : "half",
     image: clean(cover?.image),
     helperProductIds: (Array.isArray(cover?.helperProductIds) ? cover.helperProductIds : []).map(String).filter(Boolean).slice(0, 3),
-    items: (Array.isArray(cover?.items) ? cover.items : []).map(item => ({ type: item?.type === "heading" ? "heading" : "category", id: String(item?.id || "") })).filter(item => item.id)
+    items: (Array.isArray(cover?.items) ? cover.items : []).map(item => ({ type: item?.type === "heading" ? "heading" : "category", id: String(item?.id || "") })).filter(item => item.id),
+    filtered: cover?.filtered === true,
+    imageMode: cover?.imageMode === "animated" ? "animated" : "photo",
+    sourceFilterId: clean(cover?.sourceFilterId),
+    products: (Array.isArray(cover?.products) ? cover.products : []).map(entry => ({ productId: String(entry?.productId || ""), firstStepId: clean(entry?.firstStepId), optionIds: (Array.isArray(entry?.optionIds) ? entry.optionIds : []).map(String), steps: (Array.isArray(entry?.steps) ? entry.steps : []).map(step => ({ stepId: clean(step?.stepId), optionIds: (Array.isArray(step?.optionIds) ? step.optionIds : []).map(String) })).filter(step => step.stepId) })).filter(entry => entry.productId),
+    sectionOrder: (Array.isArray(cover?.sectionOrder) ? cover.sectionOrder : []).map(String),
+    productOrder: Object.fromEntries(Object.entries(cover?.productOrder && typeof cover.productOrder === "object" ? cover.productOrder : {}).map(([key, ids]) => [String(key), (Array.isArray(ids) ? ids : []).map(String)]))
   }));
 }
 
 function adminHeadingCategoryIds(heading) {
   return [...(heading?.subheadings || []).flatMap(group => group.categoryIds || []), ...(heading?.categoryIds || [])].map(String);
 }
-function coverOf(type, id) { return covers.find(cover => cover.items.some(item => item.type === type && String(item.id) === String(id))) || null; }
+// Only regular covers own their sections; a filtered cover holds copies.
+function coverOf(type, id) { return covers.find(cover => !cover.filtered && cover.items.some(item => item.type === type && String(item.id) === String(id))) || null; }
 function activeAdminCover() { return covers.find(cover => cover.id === activeAdminCoverId) || null; }
 
 // Called by render() in script.js: a heading/category shows either in «الأقسام»
 // (when no cover holds it) or inside the cover page that holds it.
 function coverEntryVisible(type, id) {
+  if (activeAdminCover()?.filtered) return false;
   const holder = coverOf(type, id);
   return activeAdminCoverId ? holder?.id === activeAdminCoverId : !holder;
 }
 
 // Same count as the storefront: active products in active categories.
 function coverProductCount(cover) {
+  if (cover.filtered) {
+    const activeCategoryIds = new Set(categories.filter(category => category.active !== false).map(category => String(category.id)));
+    return cover.products.map(entry => productById(entry.productId)).filter(product => product && product.active !== false && activeCategoryIds.has(String(product.category))).length;
+  }
   const ids = cover.items.flatMap(item => item.type === "heading" ? adminHeadingCategoryIds(headings.find(heading => heading.id === item.id)) : [item.id]);
   const activeIds = new Set(categories.filter(category => category.active !== false && ids.includes(String(category.id))).map(category => String(category.id)));
   return products.filter(product => product.active !== false && activeIds.has(String(product.category))).length;
@@ -58,11 +70,28 @@ function thumbImg(src, extra = "") {
 }
 function productById(id) { return products.find(product => String(product.id) === String(id)); }
 
+// Products a cover shows, for its moving photos.
+function coverDisplayProducts(cover) {
+  if (cover.filtered) return cover.products.map(entry => productById(entry.productId)).filter(product => product && product.active !== false);
+  const ids = cover.items.flatMap(item => item.type === "heading" ? adminHeadingCategoryIds(headings.find(heading => heading.id === item.id)) : [item.id]);
+  return ids.flatMap(id => categoryProducts(id)).filter(product => product.active !== false);
+}
+// Same markup as coverMosaicMarkup() in the storefront.
+function adminCoverMosaic(cover, rows) {
+  const images = [...new Set(coverDisplayProducts(cover).map(imageSource).filter(Boolean))].slice(0, rows * 6).map(coverThumb);
+  if (!images.length) return "";
+  const perRow = Math.max(3, Math.ceil(images.length / rows));
+  return `<span class="cover-mosaic rows-${rows}" aria-hidden="true">${Array.from({ length: rows }, (_, row) => {
+    const cells = Array.from({ length: perRow }, (_, index) => images[(row * perRow + index) % images.length]).map(src => `<img src="${escapeHtml(src)}" alt="" draggable="false">`).join("");
+    return `<span class="cover-mosaic-row"><span class="cover-mosaic-track" style="--mosaic-duration:${26 + row * 7}s">${cells}${cells}</span></span>`;
+  }).join("")}</span>`;
+}
+
 // Exactly the storefront tile (covers.css) plus the admin's edit button.
 function adminCoverTileMarkup(cover, { preview = false } = {}) {
   const count = coverProductCount(cover);
-  return `<div class="world-tile size-${cover.size}${preview ? " is-preview" : ""}" ${preview ? "" : `draggable="true" data-cover-id="${escapeHtml(cover.id)}" tabindex="0" title="اضغط مرتين للدخول"`}>
-    ${cover.image ? `<img src="${escapeHtml(cover.image)}" alt="" draggable="false">` : `<span class="cover-tile-empty">بدون صورة</span>`}
+  return `<div class="world-tile size-${cover.size}${cover.imageMode === "animated" ? " is-animated" : ""}${preview ? " is-preview" : ""}" ${preview ? "" : `draggable="true" data-cover-id="${escapeHtml(cover.id)}" tabindex="0" title="اضغط مرتين للدخول"`}>
+    ${cover.imageMode === "animated" ? (adminCoverMosaic(cover, 3) || `<span class="cover-tile-empty">أضف منتجات عشان تتحرك صورها</span>`) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="" draggable="false">` : `<span class="cover-tile-empty">بدون صورة</span>`)}
     <span class="world-tile-copy"><strong>${escapeHtml(cover.nameAr || "اسم الغلاف")}</strong>${cover.descriptionAr ? `<small>${escapeHtml(cover.descriptionAr)}</small>` : ""}</span>
     <span class="world-tile-count">${coverItemsLabel(count)}</span>
     ${preview ? "" : `<button type="button" class="cover-tile-edit" data-cover-edit="${escapeHtml(cover.id)}">تعديل</button>`}
@@ -71,8 +100,8 @@ function adminCoverTileMarkup(cover, { preview = false } = {}) {
 
 function coverBannerPreviewMarkup(cover) {
   const helpers = cover.helperProductIds.map(productById).filter(Boolean).map(imageSource).filter(Boolean);
-  return `<header class="world-cover">
-    <div class="world-cover-media">${cover.image ? `<img src="${escapeHtml(cover.image)}" alt="">` : ""}</div>
+  return `<header class="world-cover${cover.imageMode === "animated" ? " is-animated" : ""}">
+    <div class="world-cover-media">${cover.imageMode === "animated" ? adminCoverMosaic(cover, 4) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="">` : "")}</div>
     <div class="world-cover-copy"><h1>${escapeHtml(cover.nameAr)}</h1>${cover.descriptionAr ? `<p>${escapeHtml(cover.descriptionAr)}</p>` : ""}<span class="world-cover-count">${coverItemsLabel(coverProductCount(cover))}</span></div>
     ${helpers.length ? `<div class="world-cover-stack">${helpers.map(src => `<img src="${escapeHtml(src)}" alt="">`).join("")}</div>` : ""}
   </header>`;
@@ -90,7 +119,9 @@ function renderCoversPanel() {
   $("#coverPageBanner").innerHTML = cover ? coverBannerPreviewMarkup(cover) : "";
   grid.innerHTML = covers.length ? covers.map(item => adminCoverTileMarkup(item)).join("") : `<div class="covers-empty"><p>ما في أغلفة بعد. اضغط + لإضافة غلاف، أو أضف الأغلفة الست الجاهزة (المعجنات، الخبز، الإفطار، الغداء، المقبلات والسلطات، الحلويات).</p><button type="button" class="primary" id="addReadyCovers">إضافة الأغلفة الست الجاهزة</button></div>`;
   const toggle = $("#coverRemoveToggle");
-  if (toggle) { toggle.textContent = coverRemoveMode ? "إلغاء" : "حذف أقسام"; toggle.classList.toggle("active", coverRemoveMode); }
+  if (toggle) { toggle.textContent = coverRemoveMode ? "إلغاء" : "حذف أقسام"; toggle.classList.toggle("active", coverRemoveMode); toggle.classList.toggle("hidden", Boolean(cover?.filtered)); }
+  $("#coverAddSections").textContent = cover?.filtered ? "+ إضافة منتجات" : "+ إضافة قسم";
+  if (cover?.filtered) { $("#categoryList").classList.remove("cover-remove-mode"); $("#categoryList").innerHTML = filteredCoverMarkup(cover); return; }
   $("#categoryList")?.classList.toggle("cover-remove-mode", Boolean(cover && coverRemoveMode));
   if (cover) {
     // Every top-level card inside the cover gets a remove mark in «حذف أقسام» mode.
@@ -144,8 +175,24 @@ document.addEventListener("click", event => { if (event.target.closest("#addRead
 
 // ---------- نافذة إضافة / تعديل الغلاف ----------
 function coverFormSize() { return $("input[name='coverSize']:checked")?.value === "full" ? "full" : "half"; }
+function coverImageMode() { return $("input[name='coverImageMode']:checked")?.value === "animated" ? "animated" : "photo"; }
+// «غلاف مفلتر» يتفعّل بس لما الغلاف فاضي من الأقسام، وما ينطفي وفيه منتجات.
+function syncCoverFilteredField() {
+  const input = $("#coverFiltered");
+  input.checked = Boolean(coverDraft.filtered);
+  const locked = coverDraft.filtered ? coverDraft.products.length > 0 : coverDraft.items.length > 0;
+  input.disabled = locked;
+  $("#coverFilteredField").classList.toggle("locked", locked);
+  $("#coverFilteredHint").textContent = locked
+    ? (coverDraft.filtered ? "الغلاف فيه منتجات، احذفها من داخل الغلاف أول عشان تقدر تطفي الخيار." : "الغلاف فيه أقسام، طلّعها من الغلاف أول عشان تقدر تفعّل الخيار.")
+    : "تضيف له منتجات مختارة بخياراتها بدل الأقسام. الأقسام والمنتجات داخله نسخ وما تختفي من «الأقسام».";
+  $("#coverCopyFilterWrap").classList.toggle("hidden", !coverDraft.filtered);
+  $("#coverImageField").classList.toggle("hidden", coverImageMode() === "animated");
+}
 function renderCoverDialogPreview() {
   if (!coverDraft) return;
+  coverDraft.imageMode = coverImageMode();
+  $("#coverImageField").classList.toggle("hidden", coverDraft.imageMode === "animated");
   coverDraft.nameAr = clean($("#coverNameAr").value);
   coverDraft.descriptionAr = clean($("#coverDescriptionAr").value);
   coverDraft.size = coverFormSize();
@@ -160,7 +207,7 @@ function renderCoverDialogPreview() {
 
 function openCoverDialog(id = "") {
   const existing = covers.find(cover => cover.id === id);
-  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", helperProductIds: [], items: [] };
+  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", helperProductIds: [], items: [], filtered: false, imageMode: "photo", sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
   $("#coverDialogEyebrow").textContent = existing ? "تعديل الغلاف" : "غلاف جديد";
   $("#coverDialogTitle").textContent = existing ? existing.nameAr || "تعديل الغلاف" : "إضافة غلاف";
   $("#coverSubmit").textContent = existing ? "حفظ التعديل" : "إضافة الغلاف";
@@ -168,6 +215,10 @@ function openCoverDialog(id = "") {
   $("#coverNameAr").value = coverDraft.nameAr; $("#coverNameEn").value = coverDraft.nameEn;
   $("#coverDescriptionAr").value = coverDraft.descriptionAr; $("#coverDescriptionEn").value = coverDraft.descriptionEn;
   $$("input[name='coverSize']").forEach(input => { input.checked = input.value === coverDraft.size; });
+  $$("input[name='coverImageMode']").forEach(input => { input.checked = input.value === coverDraft.imageMode; });
+  $("#coverCopyFilter").innerHTML = `<option value="">بدون نسخ</option>` + productFilters.map(filter => `<option value="${escapeHtml(filter.id)}">${escapeHtml(filter.nameAr)} (${filter.products.length} منتج)</option>`).join("");
+  $("#coverCopyFilter").value = "";
+  syncCoverFilteredField();
   $("#coverImageInput").value = ""; $("#coverImageStatus").textContent = coverDraft.image ? "الصورة الحالية محفوظة" : "";
   renderCoverDialogPreview();
   $("#coverDialog").showModal();
@@ -212,8 +263,10 @@ $("#coverForm").addEventListener("submit", event => {
   event.preventDefault();
   const nameAr = clean($("#coverNameAr").value), nameEn = clean($("#coverNameEn").value);
   if (!nameAr || !nameEn) return toast("اكتب اسم الغلاف باللغتين");
-  if (!coverDraft.image) return toast("اختر صورة للغلاف");
-  Object.assign(coverDraft, { nameAr, nameEn, descriptionAr: clean($("#coverDescriptionAr").value), descriptionEn: clean($("#coverDescriptionEn").value), size: coverFormSize() });
+  const imageMode = coverImageMode();
+  if (imageMode === "photo" && !coverDraft.image) return toast("اختر صورة للغلاف");
+  Object.assign(coverDraft, { nameAr, nameEn, descriptionAr: clean($("#coverDescriptionAr").value), descriptionEn: clean($("#coverDescriptionEn").value), size: coverFormSize(), imageMode });
+  if (coverDraft.filtered) syncFilteredOrders(coverDraft);
   const index = covers.findIndex(cover => cover.id === coverDraft.id);
   if (index >= 0) covers[index] = coverDraft; else covers.push(coverDraft);
   $("#coverDialog").close();
@@ -356,6 +409,7 @@ function renderCoverSections() {
   $("#coverSectionsCount").textContent = coverSectionsPicked.size ? `${coverSectionsPicked.size} محدد` : "";
 }
 $("#coverAddSections").addEventListener("click", () => {
+  if (activeAdminCover()?.filtered) return openCoverProductsPicker();
   coverSectionsPicked = new Set();
   $("#coverSectionsSearch").value = "";
   $("#coverSectionsTitle").textContent = `إضافة لغلاف «${activeAdminCover()?.nameAr || ""}»`;
@@ -379,3 +433,196 @@ $("#coverSectionsAdd").addEventListener("click", () => {
   markDirty(); render();
   toast(`تمت إضافة ${count} للغلاف`);
 });
+
+// ---------- الغلاف المفلتر ----------
+// منتجات مختارة (نفس نظام فلترة المنتجات) تنعرض مع أقسامها كنسخ:
+// ترتيب الأقسام والمنتجات داخله خاص فيه وما يأثر على «الأقسام» ولا على باقي الأغلفة.
+let coverProductsSession = false;
+let coverOptionEditId = "";
+
+$("#coverFiltered").addEventListener("change", event => {
+  if (!coverDraft) return;
+  coverDraft.filtered = event.target.checked;
+  if (coverDraft.filtered && !$("input[name='coverImageMode'][value='animated']").checked && !coverDraft.image) $("input[name='coverImageMode'][value='animated']").checked = true;
+  syncCoverFilteredField();
+  renderCoverDialogPreview();
+});
+$$("input[name='coverImageMode']").forEach(input => input.addEventListener("change", () => { syncCoverFilteredField(); renderCoverDialogPreview(); }));
+$("#coverCopyFilter").addEventListener("change", event => {
+  const filter = productFilters.find(item => item.id === event.target.value);
+  if (!filter || !coverDraft) return;
+  coverDraft.products = clone(filter.products);
+  coverDraft.sourceFilterId = filter.id;
+  syncFilteredOrders(coverDraft);
+  renderCoverDialogPreview();
+  toast(`انسخت ${filter.products.length} منتج من «${filter.nameAr}» بخياراتها`);
+});
+
+// Keep the cover's own section and product order in step with its products.
+function syncFilteredOrders(cover) {
+  const listed = cover.products.map(entry => productById(entry.productId)).filter(Boolean);
+  const categoryRank = id => Number(categories.find(category => String(category.id) === String(id))?.order) || 9999;
+  const sectionIds = [...new Set(listed.map(product => String(product.category)))];
+  const kept = (cover.sectionOrder || []).filter(id => sectionIds.includes(id));
+  cover.sectionOrder = [...kept, ...sectionIds.filter(id => !kept.includes(id)).sort((a, b) => categoryRank(a) - categoryRank(b))];
+  const productOrder = {};
+  cover.sectionOrder.forEach(id => {
+    const inSection = listed.filter(product => String(product.category) === id).map(product => String(product.id));
+    const previous = (cover.productOrder?.[id] || []).filter(value => inSection.includes(value));
+    const productRank = value => Number(productById(value)?.order) || 9999;
+    productOrder[id] = [...previous, ...inSection.filter(value => !previous.includes(value)).sort((a, b) => productRank(a) - productRank(b))];
+  });
+  cover.productOrder = productOrder;
+}
+
+function chosenOptionsText(product, entry) {
+  const steps = filterProductSteps(product);
+  return steps.map(step => {
+    const selected = filterStepSelection(entry, step.id);
+    return selected.length ? `${step.titleAr}: ${step.items.filter(option => selected.includes(String(option.id))).map(option => option.nameAr || option.nameEn).join("، ")}` : "";
+  }).filter(Boolean).join(" · ") || "كل الخيارات";
+}
+
+function filteredCoverMarkup(cover) {
+  syncFilteredOrders(cover);
+  if (!cover.products.length) return `<div class="empty">الغلاف المفلتر فاضي. اضغط «+ إضافة منتجات» واختار المنتجات وخياراتها.</div>`;
+  return `<p class="filtered-cover-note">الأقسام والمنتجات هني نسخ خاصة بهالغلاف: ترتيبها ما يأثر على «الأقسام». تقدر تعدّل خيارات المنتج أو تحذفه بس. اسحب ⠿ للترتيب.</p>` + cover.sectionOrder.map(categoryId => {
+    const category = categories.find(item => String(item.id) === categoryId);
+    const rows = (cover.productOrder[categoryId] || []).map(productId => {
+      const product = productById(productId);
+      const entry = cover.products.find(item => item.productId === productId);
+      if (!product || !entry) return "";
+      const hasSteps = filterProductSteps(product).length > 0;
+      return `<div class="product-row filtered-product-row ${product.active === false ? "inactive" : ""}" draggable="true" data-fproduct="${escapeHtml(productId)}" data-fsection-of="${escapeHtml(categoryId)}">
+        <span class="drag-handle" title="اسحب لتغيير الترتيب داخل الغلاف">⠿</span>
+        <div class="product-main"><img src="${escapeHtml(coverThumb(imageSource(product)))}" alt="" loading="lazy"><div class="product-copy"><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(chosenOptionsText(product, entry))}</small></div></div>
+        <span class="price">${Number(product.price || 0).toFixed(3)} د.ك</span>
+        <div class="product-actions">${hasSteps ? `<button type="button" data-fproduct-options="${escapeHtml(productId)}">خيارات المنتج</button>` : ""}<button type="button" class="delete" data-fproduct-remove="${escapeHtml(productId)}">حذف</button></div>
+      </div>`;
+    }).join("");
+    return `<article class="category-card open filtered-section ${catalogTypeOf(category) === "restaurant" ? "restaurant-category" : ""}" draggable="true" data-fsection="${escapeHtml(categoryId)}">
+      <div class="category-head"><span class="drag-handle" title="اسحب لتغيير ترتيب القسم داخل الغلاف">⠿</span><div class="category-copy"><strong>${escapeHtml(category?.nameAr || "قسم")}${catalogTypeOf(category) === "restaurant" ? ` <span class="catalog-type-badge">مطعم</span>` : ""} <span class="copy-badge">نسخة</span></strong><small>${escapeHtml(category?.nameEn || "")}</small></div><span class="count-badge">${(cover.productOrder[categoryId] || []).length} منتج</span></div>
+      <div class="products">${rows}</div>
+    </article>`;
+  }).join("");
+}
+
+function openCoverProductsPicker() {
+  const cover = activeAdminCover();
+  if (!cover) return;
+  coverProductsSession = true;
+  filterProductSearch = ""; $("#filterProductSearch").value = "";
+  pendingFilterSelections = new Map(cover.products.map(entry => [entry.productId, clone(entry)]));
+  renderFilterProductsDialog();
+  $("#filterProductsDialog").showModal();
+}
+// The product picker and option steps are the «فلترة المنتجات» ones; in a cover session they save to the cover.
+$("#saveFilterProducts").addEventListener("click", event => {
+  if (!coverProductsSession) return;
+  event.stopImmediatePropagation();
+  const cover = activeAdminCover();
+  if (!cover) return;
+  for (const entry of pendingFilterSelections.values()) {
+    const product = productById(entry.productId);
+    for (const step of filterProductSteps(product)) {
+      if (filterStepItems(product, step, entry).length && !filterStepSelection(entry, step.id).length) return toast(`أكمل خيارات المنتج «${product.name}» قبل الحفظ`);
+    }
+  }
+  cover.products = [...pendingFilterSelections.values()];
+  syncFilteredOrders(cover);
+  $("#filterProductsDialog").close();
+  markDirty(); render();
+  toast(`صار في الغلاف ${cover.products.length} منتج`);
+}, true);
+$("#filterProductsDialog").addEventListener("close", () => { coverProductsSession = false; });
+$("#filterOptionStepsDialog").addEventListener("close", () => {
+  if (!coverOptionEditId) return;
+  const cover = activeAdminCover();
+  const entry = pendingFilterSelections.get(coverOptionEditId);
+  const product = productById(coverOptionEditId);
+  coverOptionEditId = "";
+  if (!cover || !entry || !product) return;
+  const complete = filterProductSteps(product).every(step => !filterStepItems(product, step, entry).length || filterStepSelection(entry, step.id).length);
+  if (!complete) return toast("ما انحفظت الخيارات: لازم تختار خيار واحد على الأقل بكل صفحة");
+  cover.products = cover.products.map(item => item.productId === entry.productId ? clone(entry) : item);
+  markDirty(); render();
+  toast("تم حفظ خيارات المنتج في الغلاف");
+});
+
+$("#categoryList").addEventListener("click", event => {
+  const cover = activeAdminCover();
+  if (!cover?.filtered) return;
+  const options = event.target.closest("[data-fproduct-options]");
+  const remove = event.target.closest("[data-fproduct-remove]");
+  if (!options && !remove) return;
+  event.stopPropagation(); event.preventDefault();
+  if (options) {
+    coverOptionEditId = options.dataset.fproductOptions;
+    pendingFilterSelections = new Map(cover.products.map(entry => [entry.productId, clone(entry)]));
+    return openFilterOptionSteps(coverOptionEditId);
+  }
+  const product = productById(remove.dataset.fproductRemove);
+  cover.products = cover.products.filter(entry => entry.productId !== remove.dataset.fproductRemove);
+  syncFilteredOrders(cover);
+  markDirty(); render();
+  toast(`انحذف «${product?.name || "المنتج"}» من الغلاف`);
+}, true);
+
+// Drag sections, or products inside their own section.
+let filteredDrag = null;
+$("#categoryList").addEventListener("dragstart", event => {
+  if (!activeAdminCover()?.filtered) return;
+  const row = event.target.closest("[data-fproduct]");
+  const section = event.target.closest("[data-fsection]");
+  filteredDrag = row ? { kind: "product", id: row.dataset.fproduct, section: row.dataset.fsectionOf } : section ? { kind: "section", id: section.dataset.fsection } : null;
+  if (!filteredDrag) return;
+  event.stopPropagation();
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", filteredDrag.id);
+  const element = row || section;
+  requestAnimationFrame(() => element.classList.add("cover-dragging"));
+}, true);
+$("#categoryList").addEventListener("dragover", event => {
+  if (!filteredDrag) return;
+  const target = filteredDrag.kind === "product" ? event.target.closest(`[data-fproduct][data-fsection-of="${CSS.escape(filteredDrag.section)}"]`) : event.target.closest("[data-fsection]");
+  if (!target) return;
+  event.preventDefault();
+  $$(".cover-drop-target", $("#categoryList")).forEach(item => item.classList.remove("cover-drop-target"));
+  target.classList.add("cover-drop-target");
+});
+$("#categoryList").addEventListener("drop", event => {
+  if (!filteredDrag) return;
+  event.preventDefault();
+  const cover = activeAdminCover();
+  const drag = filteredDrag; filteredDrag = null;
+  const list = drag.kind === "product" ? cover.productOrder[drag.section] : cover.sectionOrder;
+  const target = drag.kind === "product" ? event.target.closest("[data-fproduct]")?.dataset.fproduct : event.target.closest("[data-fsection]")?.dataset.fsection;
+  const from = list.indexOf(drag.id), to = list.indexOf(target);
+  if (from < 0 || to < 0 || from === to) return render();
+  list.splice(from, 1); list.splice(to, 0, drag.id);
+  markDirty(); render();
+  toast("تم تحديث الترتيب داخل الغلاف");
+});
+$("#categoryList").addEventListener("dragend", () => { filteredDrag = null; $$(".cover-dragging,.cover-drop-target", $("#categoryList")).forEach(item => item.classList.remove("cover-dragging", "cover-drop-target")); });
+
+// غلاف «نظام الطيبات» الجاهز: غلاف مفلتر بحجم كامل بنفس منتجات وخيارات فلتر نظام الطيبات.
+function tayyibatFilter() { return productFilters.find(filter => filter.id === "filter-mt8zswyi") || productFilters.find(filter => /الطيبات/.test(filter.nameAr)); }
+function addTayyibatCover() {
+  const filter = tayyibatFilter();
+  if (!filter) return toast("ما لقيت فلتر نظام الطيبات");
+  if (covers.some(cover => cover.id === "cover-tayyibat")) return toast("غلاف نظام الطيبات موجود");
+  const cover = { id: "cover-tayyibat", nameAr: filter.nameAr || "نظام الطيبات", nameEn: filter.nameEn || "Al-Tayyibat Diet", descriptionAr: "أصناف مختارة تناسب نظام الطيبات", descriptionEn: "Selected items for the Al-Tayyibat diet", size: "full", image: "", imageMode: "animated", filtered: true, sourceFilterId: filter.id, helperProductIds: [], items: [], products: clone(filter.products), sectionOrder: [], productOrder: {} };
+  syncFilteredOrders(cover);
+  covers = [cover, ...covers];
+  markDirty(); render();
+  toast(`تمت إضافة غلاف «${cover.nameAr}» بـ ${cover.products.length} منتج`);
+}
+document.addEventListener("click", event => { if (event.target.closest("#addTayyibatCover")) addTayyibatCover(); });
+const baseRenderCoversPanel = renderCoversPanel;
+renderCoversPanel = function () {
+  baseRenderCoversPanel();
+  $("#addTayyibatCover")?.parentElement.remove();
+  const grid = $("#coversGrid");
+  if (!grid || activeAdminCoverId || covers.some(cover => cover.id === "cover-tayyibat") || !tayyibatFilter()) return;
+  grid.insertAdjacentHTML("afterend", `<div class="covers-ready-row"><button type="button" class="secondary" id="addTayyibatCover">+ إضافة غلاف «نظام الطيبات» المفلتر الجاهز</button></div>`);
+};

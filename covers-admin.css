@@ -107,3 +107,46 @@ dialog.cover-helpers-dialog,dialog.cover-sections-dialog{width:min(960px,96vw)}
 .cover-size-choice label{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start}
 .cover-size-choice input{width:18px!important;height:18px;flex:0 0 auto;margin:0;accent-color:var(--green)}
 .covers-empty .primary{border:0;border-radius:14px;padding:12px 18px;font-weight:900;margin-top:6px}
+
+/* ---------- إعدادات الشريط المتحرك (مكان صورة الواجهة والفلاتر) ---------- */
+.appearance-panel,#productFiltersPage{display:none!important}
+.strip-panel{display:grid;gap:16px;margin-bottom:18px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 28px rgba(28,54,43,.05)}
+.strip-panel.hidden{display:none}
+.strip-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.strip-panel-head h2{margin:2px 0 4px;font-size:22px}
+.strip-panel-head p{margin:0;color:var(--muted);font-size:12px;line-height:1.8}
+.strip-panel-head .primary{border:0;border-radius:14px;padding:12px 20px;font-weight:900}
+.strip-preview{border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.strip-preview .quality-strip{margin:0}
+.strip-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(220px,.8fr);gap:14px;align-items:start}
+.strip-form label{display:grid;gap:7px;font-size:12px;font-weight:900}
+.strip-form label small{color:var(--muted);font-weight:700}
+.strip-form input[type=text],.strip-form input:not([type]),.strip-form textarea{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit;outline:0}
+.strip-form textarea{resize:vertical;line-height:1.9;min-height:170px}
+.strip-controls{display:grid;gap:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fbfbf8}
+.strip-speed span{display:flex;justify-content:space-between}
+.strip-speed input{accent-color:var(--green)}
+.strip-speed small{display:flex;justify-content:space-between}
+.strip-pause{display:flex!important;align-items:center;gap:8px}
+.strip-pause input{width:18px;height:18px;accent-color:var(--green)}
+body.admin-cover-open .strip-panel{display:none!important}
+@media(max-width:1100px){.strip-form{grid-template-columns:1fr}}
+
+/* ---------- الغلاف المفلتر ---------- */
+.cover-filtered-field{display:grid;gap:10px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#f4f8f5}
+.cover-filtered-field.locked{opacity:.75}
+.cover-switch{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:10px;cursor:pointer}
+.cover-switch input{width:20px!important;height:20px;margin-top:3px;flex:0 0 auto;accent-color:var(--green)}
+.cover-switch span{display:grid;gap:3px}
+.cover-switch small{color:var(--muted);font-size:11px;line-height:1.7;font-weight:600}
+.cover-copy-filter{display:grid;gap:6px;font-size:12px;font-weight:900}
+.cover-copy-filter select{border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;background:#fff}
+.filtered-cover-note{margin:0 0 4px;padding:10px 14px;border-radius:12px;background:#fff6df;color:#7a5a12;font-size:12px;font-weight:800;line-height:1.8}
+.filtered-section .category-head{cursor:grab}
+.filtered-product-row{cursor:grab}
+.filtered-product-row .product-copy small{white-space:normal;line-height:1.6}
+.copy-badge{font-size:10px;padding:2px 8px;border-radius:999px;background:#e7f0ea;color:var(--green);font-weight:900;vertical-align:middle}
+.category-list .cover-drop-target{outline:3px dashed #2d6a4f;outline-offset:2px}
+.category-list .cover-dragging{opacity:.4}
+.covers-ready-row{margin-top:12px;display:grid}
+.covers-ready-row .secondary{border:0;border-radius:14px;padding:12px;font-weight:900}

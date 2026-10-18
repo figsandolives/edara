@@ -158,3 +158,54 @@ body.cover-mode #categories,body.cover-mode #headingNavigation{transition:opacit
 }
 .categories .cover-bar-back{position:sticky;inset-inline-start:0;z-index:3;flex:0 0 auto;width:82px;justify-content:center;padding-inline:8px;box-shadow:8px 0 0 var(--paper,#fffefb)}
 body.cover-mode .category-menu-toggle{inset-inline-start:90px}
+
+/* ---------- غلاف «صور المنتجات المتحركة» ----------
+   صفوف من صور المنتجات تمشي بعكس بعض بزاوية خفيفة.
+   الحركة transform فقط (بدون layout ولا paint) عشان تبقى ناعمة على الجوال. */
+.cover-mosaic{
+  position:absolute;
+  inset:-22% -14%;
+  z-index:-2;
+  display:grid;
+  gap:8px;
+  direction:ltr;
+  transform:rotate(-7deg);
+  pointer-events:none;
+}
+.cover-mosaic.rows-2{grid-template-rows:repeat(2,1fr)}
+.cover-mosaic.rows-3{grid-template-rows:repeat(3,1fr)}
+.cover-mosaic.rows-4{grid-template-rows:repeat(4,1fr)}
+.cover-mosaic-row{display:flex;min-height:0;overflow:visible}
+.cover-mosaic-track{
+  display:flex;
+  height:100%;
+  width:max-content;
+  animation:coverMosaicMove var(--mosaic-duration,30s) linear infinite;
+}
+.cover-mosaic-row:nth-child(even) .cover-mosaic-track{animation-direction:reverse}
+.world-tile .cover-mosaic img,
+.world-cover .cover-mosaic img{
+  position:static;
+  flex:0 0 auto;
+  width:auto;
+  height:100%;
+  aspect-ratio:1;
+  margin-inline-end:8px;
+  object-fit:cover;
+  border-radius:16px;
+  background:#e8ece5;
+  transform:none;
+  transition:none;
+}
+@keyframes coverMosaicMove{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+.world-tile.is-animated::before{background:linear-gradient(180deg,rgba(17,46,34,.18) 0%,rgba(17,46,34,.35) 45%,rgba(17,46,34,.9) 100%)}
+.world-cover.is-animated::before{background:linear-gradient(270deg,rgba(25,68,51,.95) 0%,rgba(25,68,51,.78) 40%,rgba(25,68,51,.25) 85%)}
+[dir="ltr"] .world-cover.is-animated::before{background:linear-gradient(90deg,rgba(25,68,51,.95) 0%,rgba(25,68,51,.78) 40%,rgba(25,68,51,.25) 85%)}
+@container coverstage (max-width:760px){
+  .world-cover.is-animated::before,[dir="ltr"] .world-cover.is-animated::before{background:linear-gradient(180deg,rgba(25,68,51,.2) 0%,rgba(25,68,51,.65) 45%,rgba(25,68,51,.96) 100%)}
+}
+@container covers (max-width:760px){
+  .world-tile .cover-mosaic img{border-radius:11px;margin-inline-end:6px}
+  .cover-mosaic{gap:6px}
+}
+@media(prefers-reduced-motion:reduce){.cover-mosaic-track{animation:none}}

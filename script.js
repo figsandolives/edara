@@ -37,6 +37,8 @@ let categories = [];
 let headings = [];
 // الأغلفة: تنعرض في المنصة كصفحات مستقلة (?cover=). منطقها في covers-admin.js
 let covers = [];
+// الشريط المتحرك أعلى المنصة. منطقه في strip-admin.js
+let qualityStrip = null;
 let restaurantEnabled = true;
 let products = [];
 let deliveryAreas = [];
@@ -467,6 +469,8 @@ function applyRemoteCatalog(catalog) {
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
   headings = Array.isArray(catalog?.headings) ? catalog.headings : [];
   covers = typeof normalizeAdminCovers === "function" ? normalizeAdminCovers(catalog?.covers) : (Array.isArray(catalog?.covers) ? catalog.covers : []);
+  qualityStrip = catalog?.qualityStrip && typeof catalog.qualityStrip === "object" ? catalog.qualityStrip : null;
+  if (typeof renderStripSettings === "function") renderStripSettings();
   restaurantEnabled = catalog?.restaurantEnabled !== false;
   $("#restaurantEnabled").checked = restaurantEnabled;
   $("#restaurantEnabledLabel").textContent = restaurantEnabled ? "مفعّل" : "مغلق";
@@ -716,7 +720,7 @@ async function saveToالخادم() {
   const payload = {
     categories: categories.map((category, index) => ({ ...category, order: index + 1 })), headings, restaurantEnabled,
     products: downloadableProducts(), deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
-    appearance: catalogAppearancePayload(), advertisement: normalizeAdvertisement(advertisement), productFilters, covers,
+    appearance: catalogAppearancePayload(), advertisement: normalizeAdvertisement(advertisement), productFilters, covers, ...(qualityStrip ? { qualityStrip } : {}),
     ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
     ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
     ...(productOptionIdsIsolationMigrationComplete ? { productOptionIdsIsolationV1: true } : {}),

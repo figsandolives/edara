@@ -9,8 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20261015-availability-v3">
-  <link rel="stylesheet" href="covers.css?v=20261017-covers-1">
-  <link rel="stylesheet" href="covers-admin.css?v=20261017-covers-1">
+  <link rel="stylesheet" href="strip.css?v=20261018-strip-1">
+  <link rel="stylesheet" href="covers.css?v=20261018-strip-1">
+  <link rel="stylesheet" href="covers-admin.css?v=20261018-strip-1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -67,6 +68,22 @@
       <button id="resetData" class="danger-link">إعادة تحميل بيانات Firebase</button>
       <label class="product-search" for="productSearch">⌕<input id="productSearch" type="search" placeholder="ابحث باسم المنتج بالعربي أو الإنجليزي"></label>
       <span id="saveState">جاري تحميل بيانات Firebase…</span>
+    </section>
+
+    <section class="strip-panel" id="stripPanel" data-admin-view="catalog" aria-labelledby="stripPanelTitle">
+      <header class="strip-panel-head">
+        <div><span class="eyebrow">أعلى المنصة</span><h2 id="stripPanelTitle">الشريط المتحرك</h2><p>المعاينة تحت بنفس شكل المنصة. كل سطر في «محتوى الشريط» يصير نقطة عليها علامة صح.</p></div>
+        <button type="button" class="primary" id="saveStrip">حفظ الشريط</button>
+      </header>
+      <div class="strip-preview quality-strip-host" id="stripPreview"></div>
+      <div class="strip-form">
+        <label>عنوان الشريط<input id="stripTitle" maxlength="90" placeholder="جميع مخبوزاتنا من خبز وفطاير وبسكويت:"></label>
+        <label class="strip-points">محتوى الشريط <small>كل عبارة في سطر</small><textarea id="stripPoints" rows="7" placeholder="من القمح الكامل والنخالة&#10;بالخميرة الطبيعية"></textarea></label>
+        <div class="strip-controls">
+          <label class="strip-speed"><span>سرعة الحركة <output id="stripSpeedValue">5</output></span><input id="stripSpeed" type="range" min="1" max="10" step="1" value="5"><small><span>أبطأ</span><span>أسرع</span></small></label>
+          <label class="options-enable strip-pause"><input id="stripPauseOnHover" type="checkbox" checked> <span>يوقف الشريط لما يمر الماوس فوقه</span></label>
+        </div>
+      </div>
     </section>
 
     <section class="appearance-panel" data-admin-view="catalog">
@@ -245,7 +262,15 @@
           <label><input type="radio" name="coverSize" value="full"> <span><b>حجم كامل</b><small>بعرض الشاشة في الهاتف</small></span></label>
           <label><input type="radio" name="coverSize" value="half" checked> <span><b>نصف حجم</b><small>غلافين جنب بعض</small></span></label>
         </fieldset>
-        <div class="cover-image-field">
+        <div class="cover-filtered-field" id="coverFilteredField">
+          <label class="cover-switch"><input id="coverFiltered" type="checkbox"> <span><b>غلاف مفلتر</b><small id="coverFilteredHint">تضيف له منتجات مختارة بخياراتها بدل الأقسام. الأقسام والمنتجات داخله نسخ وما تختفي من «الأقسام».</small></span></label>
+          <label class="cover-copy-filter hidden" id="coverCopyFilterWrap">نسخ المنتجات من فلتر موجود <small>اختياري</small><select id="coverCopyFilter"><option value="">بدون نسخ</option></select></label>
+        </div>
+        <fieldset class="cover-size-choice cover-image-mode"><legend>صورة الغلاف</legend>
+          <label><input type="radio" name="coverImageMode" value="photo" checked> <span><b>صورة ثابتة</b><small>ترفع صورة بالقياس المطلوب</small></span></label>
+          <label><input type="radio" name="coverImageMode" value="animated"> <span><b>صور المنتجات المتحركة</b><small>صفوف من صور منتجات الغلاف تتحرك</small></span></label>
+        </fieldset>
+        <div class="cover-image-field" id="coverImageField">
           <strong>صورة الغلاف</strong>
           <p class="cover-size-hint" id="coverSizeHint"></p>
           <label class="secondary cover-file-btn">اختيار صورة<input id="coverImageInput" type="file" accept="image/*" hidden></label>
@@ -435,7 +460,8 @@
     </div>
   </section>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="script.js?v=20261017-covers-1"></script>
-  <script src="covers-admin.js?v=20261017-covers-1"></script>
+  <script src="script.js?v=20261018-strip-1"></script>
+  <script src="covers-admin.js?v=20261018-strip-1"></script>
+  <script src="strip-admin.js?v=20261018-strip-1"></script>
 </body>
 </html>
