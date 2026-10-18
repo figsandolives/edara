@@ -577,7 +577,9 @@ function openCoverProductsPicker() {
 // ---------- نافذة المنصة (وضع الاختيار) ----------
 // المنصة نفسها تنفتح داخل iframe: بالنسخة المحلية من «/»، وبالإدارة المنشورة من مجلد picker/.
 let storePicker = null;
-function storePickerUrl() { return window.LOCAL_MODE ? "/?picker=1" : "picker/?picker=1"; }
+// The version in the link makes the browser load the latest picker page after each update.
+const STORE_PICKER_VERSION = "20261018-3";
+function storePickerUrl() { return window.LOCAL_MODE ? `/?picker=1&v=${STORE_PICKER_VERSION}` : `picker/?picker=1&v=${STORE_PICKER_VERSION}`; }
 function sendPickerState() {
   if (!storePicker) return;
   $("#storePickerFrame").contentWindow?.postMessage({ type: "fo-picker-state", selected: [...storePicker.selected] }, location.origin);
