@@ -234,3 +234,28 @@ html.picker-mode .product-card.picker-selected::after{
   background:#2d6a4f;color:#fff;font-size:18px;font-weight:900;
   box-shadow:0 0 0 3px #fff;
 }
+/* وضع الاختيار مضغوط: بطاقات صغيرة وكثيرة بالصف عشان تشوف منتجات أكثر بدون سكرول */
+html.picker-mode .product-grid,
+html.picker-mode .category-section .product-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr))!important;gap:8px!important}
+html.picker-mode .product-card{padding:4px;border-radius:14px}
+html.picker-mode .product-image{aspect-ratio:1;border-radius:11px}
+html.picker-mode .product-info{padding:6px 4px 4px}
+html.picker-mode .product-info h3{font-size:11px;line-height:1.5;min-height:0;margin:2px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+html.picker-mode .product-info p,
+html.picker-mode .preparation-badge,
+html.picker-mode .minimum-order-badge,
+html.picker-mode .product-feature-badge,
+html.picker-mode .section-thumbs,
+html.picker-mode .restaurant-image-notice{display:none!important}
+html.picker-mode .product-foot{margin-top:2px}
+html.picker-mode .product-foot strong{font-size:11px}
+html.picker-mode .product-sections{gap:18px;padding-bottom:40px}
+html.picker-mode .section-heading{margin-bottom:8px;padding-bottom:6px}
+html.picker-mode .section-heading h2{font-size:16px}
+html.picker-mode .section-meta b{padding:3px 8px;font-size:10px}
+html.picker-mode{--site-header-height:58px}
+html.picker-mode .header-inner{height:58px}
+html.picker-mode .brand img{width:38px;height:38px}
+html.picker-mode .categories{padding:8px 0 6px}
+html.picker-mode .categories button{padding:7px 11px;font-size:12px}
+html.picker-mode .product-card.picker-selected::after{top:8px;inset-inline-end:8px;width:24px;height:24px;font-size:13px}
