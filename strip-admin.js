@@ -32,7 +32,9 @@ function renderStripPreview(settings) {
   if (!host) return;
   const title = settings.title || STRIP_DEFAULTS.title;
   const points = settings.points.length ? settings.points : STRIP_DEFAULTS.points;
-  const group = hidden => `<ul class="quality-strip-group"${hidden ? ' aria-hidden="true"' : ""}>${points.map(point => `<li>${STRIP_SEAL}<span>${escapeHtml(point)}</span></li>`).join("")}</ul>`;
+  // Same as the storefront: reversed so that, read from the title leftwards, the points keep the written order.
+  const ordered = [...points].reverse();
+  const group = hidden => `<ul class="quality-strip-group"${hidden ? ' aria-hidden="true"' : ""}>${ordered.map(point => `<li>${STRIP_SEAL}<span>${escapeHtml(point)}</span></li>`).join("")}</ul>`;
   host.innerHTML = `<section class="quality-strip ${settings.pauseOnHover ? "pause-on-hover" : ""}" aria-label="معاينة الشريط">
     <div class="quality-strip-title"><span class="quality-seal" aria-hidden="true"></span><strong>${escapeHtml(title)}</strong></div>
     <div class="quality-strip-viewport"><div class="quality-strip-track">${group(false)}${group(true)}</div></div>

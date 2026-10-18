@@ -1,0 +1,92 @@
+/* نسخة التجارب: شريط الجودة، عوالم المتجر، أغلفة الأقسام، وتحسين بطاقات المنتجات.
+   الألوان مأخوذة من ألوان الموقع الحالية في style.css. */
+:root{
+  --sc-dark:#194433;
+  --sc-green:#2d6a4f;
+  --sc-leaf:#3f8a62;
+  --sc-gold:#dca83e;
+  --sc-cream:#f7f2e8;
+  --sc-paper:#fffefb;
+  --sc-line:#e7e3d6;
+  --sc-shade:rgba(16,47,34,.16);
+}
+
+/* ---------- عنوان كل قسم ---------- */
+.category-section .section-heading{
+  display:flex;
+  flex-direction:row;
+  justify-content:space-between;
+  gap:14px;
+  align-items:center;
+  padding-bottom:14px;
+  border-bottom:0;
+  background:linear-gradient(90deg,transparent,var(--sc-line) 30%,var(--sc-line)) bottom/100% 1px no-repeat;
+}
+.section-heading h2{position:relative;padding-inline-start:16px;font-weight:900}
+.section-heading h2::before{
+  content:"";
+  position:absolute;
+  inset-inline-start:0;
+  top:.25em;bottom:.25em;
+  width:5px;border-radius:5px;
+  background:linear-gradient(180deg,var(--sc-gold),var(--sc-green));
+}
+.section-meta{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.section-thumbs{display:flex}
+.section-thumbs img{
+  width:36px;height:36px;
+  object-fit:cover;
+  border:2px solid var(--sc-paper);
+  border-radius:50%;
+  margin-inline-start:-10px;
+  box-shadow:0 3px 8px rgba(16,47,34,.15);
+  background:#eef0eb;
+}
+.section-thumbs img:first-child{margin-inline-start:0}
+.section-meta b{
+  padding:6px 12px;
+  border-radius:999px;
+  background:#eef4ef;
+  color:var(--sc-green);
+  font-size:11px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+/* ---------- بطاقة المنتج ---------- */
+.product-card{
+  padding:8px;
+  border:1px solid var(--sc-line);
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 1px 0 rgba(16,47,34,.04);
+  transition:box-shadow .3s,border-color .3s,transform .3s;
+}
+.product-image{border-radius:18px;background:#f3f1ea}
+.product-image img{transition:opacity .3s,transform .6s cubic-bezier(.2,.7,.2,1)}
+@media(hover:hover) and (pointer:fine){
+  .product-card:hover{border-color:#d4dfd6;box-shadow:0 22px 44px rgba(16,47,34,.12)}
+  .product-card:hover .product-image img{transform:scale(1.05)}
+}
+.product-info{padding:12px 8px 6px}
+.product-info h3{font-weight:800;color:var(--ink)}
+.product-foot strong{color:var(--sc-dark);font-size:16px;font-weight:900}
+.product-card .product-foot .product-add{
+  background:var(--sc-dark);
+  color:#fff;
+  transition:background .2s;
+}
+.product-card .product-foot .product-add:hover{background:var(--sc-green)}
+.product-qty{border-color:#b9cdbf}
+.product-qty button{background:#e7f0ea}
+
+/* ---------- موبايل ---------- */
+@media(max-width:760px){
+  .category-section .section-heading{gap:10px}
+  .section-heading h2{padding-inline-start:12px}
+  .section-heading h2::before{width:4px}
+  .section-thumbs{display:none}
+  .product-card{padding:5px;border-radius:18px}
+  .product-image{border-radius:14px}
+  .product-info{padding:9px 5px 4px}
+}

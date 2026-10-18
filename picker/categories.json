@@ -1,0 +1,320 @@
+[
+  {
+    "id": "Bowls",
+    "nameAr": "الأطباق",
+    "nameEn": "Bowls",
+    "order": 1
+  },
+  {
+    "id": "Basket",
+    "nameAr": "السلال",
+    "nameEn": "Basket",
+    "order": 2
+  },
+  {
+    "id": "Fermenters and olives",
+    "nameAr": "المخمرات والزيتون",
+    "nameEn": "Fermenters and olives",
+    "order": 3
+  },
+  {
+    "id": "Dairy",
+    "nameAr": "منتجات الألبان",
+    "nameEn": "Dairy",
+    "order": 4
+  },
+  {
+    "id": "Fatayer",
+    "nameAr": "الفطائر",
+    "nameEn": "Fatayer",
+    "order": 5
+  },
+  {
+    "id": "Zwara Trays",
+    "nameAr": "صواني الزوارة",
+    "nameEn": "Zwara Trays",
+    "order": 6
+  },
+  {
+    "id": "Bread",
+    "nameAr": "الخبز",
+    "nameEn": "Bread",
+    "order": 7
+  },
+  {
+    "id": "keto diet (Made with almond flour)",
+    "nameAr": "منتجات الكيتو",
+    "nameEn": "keto diet (Made with almond flour)",
+    "order": 8
+  },
+  {
+    "id": "منتجات مختارة",
+    "nameAr": "منتجات مختارة",
+    "nameEn": "Featured products",
+    "order": 9
+  },
+  {
+    "id": "Gluten-free",
+    "nameAr": "خالي من الجلوتين",
+    "nameEn": "Gluten-free",
+    "order": 10
+  },
+  {
+    "id": "Whole grain sweets",
+    "nameAr": "حلويات الحبوب الكاملة",
+    "nameEn": "Whole grain sweets",
+    "order": 11
+  },
+  {
+    "id": "Za'ater",
+    "nameAr": "الزعتر",
+    "nameEn": "Za'ater",
+    "order": 12
+  },
+  {
+    "id": "Sprouted Grains and legumes",
+    "nameAr": "الحبوب والبقوليات المبرعمة",
+    "nameEn": "Sprouted Grains and legumes",
+    "order": 13
+  },
+  {
+    "id": "Chapati Section",
+    "nameAr": "الشباتي",
+    "nameEn": "Chapati Section",
+    "order": 14
+  },
+  {
+    "id": "Frozen Section",
+    "nameAr": "المجمدات",
+    "nameEn": "Frozen Section",
+    "order": 15
+  },
+  {
+    "id": "Sweets & biscuits",
+    "nameAr": "الحلويات والبسكويت",
+    "nameEn": "Sweets & biscuits",
+    "order": 16
+  },
+  {
+    "id": "Koshari",
+    "nameAr": "الكشري",
+    "nameEn": "Koshari",
+    "order": 17
+  },
+  {
+    "id": "Natural Soap",
+    "nameAr": "الصابون الطبيعي",
+    "nameEn": "Natural Soap",
+    "order": 18
+  },
+  {
+    "id": "National Day products",
+    "nameAr": "منتجات العيد الوطني",
+    "nameEn": "National Day products",
+    "order": 19
+  },
+  {
+    "id": "Eid breakfast",
+    "nameAr": "فطور العيد",
+    "nameEn": "Eid breakfast",
+    "order": 20
+  },
+  {
+    "id": "Toast and samoon",
+    "nameAr": "التوست والصمون",
+    "nameEn": "Toast and samoon",
+    "order": 21
+  },
+  {
+    "id": "Organic Products",
+    "nameAr": "منتجات عضوية",
+    "nameEn": "Organic Products",
+    "order": 22
+  },
+  {
+    "id": "Water Purification",
+    "nameAr": "تنقية المياه",
+    "nameEn": "Water Purification",
+    "order": 23
+  },
+  {
+    "id": "Gluten free & dairy free Fatayer",
+    "nameAr": "فطائر خالية من الجلوتين والألبان",
+    "nameEn": "Gluten free & dairy free Fatayer",
+    "order": 24
+  },
+  {
+    "id": "Protein bars",
+    "nameAr": "ألواح البروتين",
+    "nameEn": "Protein bars",
+    "order": 25
+  },
+  {
+    "id": "Bread and chapati mixed baskets",
+    "nameAr": "سلال الخبز والشباتي المشكلة",
+    "nameEn": "Bread and chapati mixed baskets",
+    "order": 26
+  },
+  {
+    "id": "Bowls with olive oil",
+    "nameAr": "أطباق بزيت الزيتون",
+    "nameEn": "Bowls with olive oil",
+    "order": 27
+  },
+  {
+    "id": "Rekak Sourdough Bread",
+    "nameAr": "خبز الرقاق بالعجين المخمر",
+    "nameEn": "Rekak Sourdough Bread",
+    "order": 28
+  },
+  {
+    "id": "Ramadan products",
+    "nameAr": "منتجات رمضان",
+    "nameEn": "Ramadan products",
+    "order": 29
+  },
+  {
+    "id": "Cake",
+    "nameAr": "الكيك",
+    "nameEn": "Cake",
+    "order": 30
+  },
+  {
+    "id": "Jam",
+    "nameAr": "المربى",
+    "nameEn": "Jam",
+    "order": 31
+  },
+  {
+    "id": "ZAYTOONA products: For hair and body care",
+    "nameAr": "منتجات زيتونة للعناية بالشعر والجسم",
+    "nameEn": "ZAYTOONA products: For hair and body care",
+    "order": 32
+  },
+  {
+    "id": "grasses frozen juice",
+    "nameAr": "عصائر الأعشاب المجمدة",
+    "nameEn": "grasses frozen juice",
+    "order": 33
+  },
+  {
+    "id": "Pasta and Jordanian-style tomato sauce",
+    "nameAr": "المعكرونة وصلصة الطماطم الأردنية",
+    "nameEn": "Pasta and Jordanian-style tomato sauce",
+    "order": 34
+  },
+  {
+    "id": "Trotters / bone soups",
+    "nameAr": "شوربات الكوارع والعظام",
+    "nameEn": "Trotters / bone soups",
+    "order": 35
+  },
+  {
+    "id": "Strengthen immune System products",
+    "nameAr": "منتجات تقوية المناعة",
+    "nameEn": "Strengthen immune System products",
+    "order": 36
+  },
+  {
+    "id": "Ramadan tray",
+    "nameAr": "صينية رمضان",
+    "nameEn": "Ramadan tray",
+    "order": 37
+  },
+  {
+    "id": "Sourdough Samosa",
+    "nameAr": "سمبوسة بالعجين المخمر",
+    "nameEn": "Sourdough Samosa",
+    "order": 38
+  },
+  {
+    "id": "talbeenah",
+    "nameAr": "التلبينة",
+    "nameEn": "talbeenah",
+    "order": 39
+  },
+  {
+    "id": "Desserts that are free of eggs, flour, and all kin",
+    "nameAr": "حلويات خالية من البيض والدقيق",
+    "nameEn": "Desserts that are free of eggs, flour, and all kin",
+    "order": 40
+  },
+  {
+    "id": "Local flour",
+    "nameAr": "الطحين المحلي",
+    "nameEn": "Local flour",
+    "order": 41
+  },
+  {
+    "id": "Occasions",
+    "nameAr": "المناسبات",
+    "nameEn": "Occasions",
+    "order": 42
+  },
+  {
+    "id": "Qarqian",
+    "nameAr": "القرقيعان",
+    "nameEn": "Qarqian",
+    "order": 43
+  },
+  {
+    "id": "منتجات الفخار",
+    "nameAr": "منتجات الفخار",
+    "nameEn": "Pottery products",
+    "order": 44
+  },
+  {
+    "id": "Eid Al-Adha Breakfast & Sweets",
+    "nameAr": "فطور وحلويات عيد الأضحى",
+    "nameEn": "Eid Al-Adha Breakfast & Sweets",
+    "order": 45
+  },
+  {
+    "id": "خلظة رفع المناعة",
+    "nameAr": "خلطة رفع المناعة",
+    "nameEn": "Immune boosting blend",
+    "order": 46
+  },
+  {
+    "id": "The hydrosol",
+    "nameAr": "الهيدروسول",
+    "nameEn": "The hydrosol",
+    "order": 47
+  },
+  {
+    "id": "Shipping products collection",
+    "nameAr": "مجموعة منتجات الشحن",
+    "nameEn": "Shipping products collection",
+    "order": 48
+  },
+  {
+    "id": "Healthy Biscate Chocolate",
+    "nameAr": "شوكولاتة وبسكويت صحي",
+    "nameEn": "Healthy Biscate Chocolate",
+    "order": 49
+  },
+  {
+    "id": "olive oil",
+    "nameAr": "زيت الزيتون",
+    "nameEn": "olive oil",
+    "order": 50
+  },
+  {
+    "id": "Juices",
+    "nameAr": "العصائر",
+    "nameEn": "Juices",
+    "order": 51
+  },
+  {
+    "id": "Sprouted Chickpea chips",
+    "nameAr": "شيبس الحمص المبرعم",
+    "nameEn": "Sprouted Chickpea chips",
+    "order": 52
+  },
+  {
+    "id": "diabetes and insulin resistance Products",
+    "nameAr": "منتجات السكري ومقاومة الإنسولين",
+    "nameEn": "diabetes and insulin resistance Products",
+    "order": 53
+  }
+]

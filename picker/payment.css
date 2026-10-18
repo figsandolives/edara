@@ -1,0 +1,43 @@
+.payment-contact {
+  margin-top: 14px;
+  padding: 15px;
+  border-radius: 17px;
+  background: #f2f5f1;
+}
+
+.payment-error {
+  min-height: 430px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.payment-error .error-mark {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #fff0ee;
+  color: #b32924;
+  display: grid;
+  place-items: center;
+  font-size: 48px;
+  font-weight: 900;
+  box-shadow: 0 0 0 12px #fff7f5;
+}
+
+.payment-error h3 {
+  margin: 28px 0 6px;
+  font-size: 24px;
+}
+
+.payment-error p {
+  max-width: 470px;
+  color: var(--muted);
+  line-height: 1.9;
+}
+
+.payment-error .actions {
+  width: min(390px, 100%);
+}

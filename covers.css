@@ -209,3 +209,27 @@ body.cover-mode .category-menu-toggle{inset-inline-start:90px}
   .cover-mosaic{gap:6px}
 }
 @media(prefers-reduced-motion:reduce){.cover-mosaic-track{animation:none}}
+
+/* ---------- وضع الاختيار: المنصة داخل نافذة الإدارة ---------- */
+html.picker-mode #accountButton,
+html.picker-mode #headerCart,
+html.picker-mode #languageToggle,
+html.picker-mode #floatingCart,
+html.picker-mode #whatsappWidget,
+html.picker-mode .quality-strip-host,
+html.picker-mode .catalog-worlds,
+html.picker-mode .cover-stage,
+html.picker-mode .cover-back,
+html.picker-mode .product-quantity-slot,
+html.picker-mode .in-cart{display:none!important}
+html.picker-mode main{padding-top:8px}
+html.picker-mode .product-card{cursor:pointer;position:relative;transition:box-shadow .2s,border-color .2s}
+html.picker-mode .product-card.picker-selected{border-color:#2d6a4f;box-shadow:0 0 0 3px #2d6a4f}
+html.picker-mode .product-card.picker-selected::after{
+  content:"✓";
+  position:absolute;top:14px;inset-inline-end:14px;z-index:4;
+  width:34px;height:34px;border-radius:50%;
+  display:grid;place-items:center;
+  background:#2d6a4f;color:#fff;font-size:18px;font-weight:900;
+  box-shadow:0 0 0 3px #fff;
+}

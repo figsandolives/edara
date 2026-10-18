@@ -25,6 +25,7 @@ function normalizeAdminCovers(list) {
     items: (Array.isArray(cover?.items) ? cover.items : []).map(item => ({ type: item?.type === "heading" ? "heading" : "category", id: String(item?.id || "") })).filter(item => item.id),
     filtered: cover?.filtered === true,
     imageMode: cover?.imageMode === "animated" ? "animated" : "photo",
+    mosaic: normalizeCoverMosaic(cover?.mosaic),
     sourceFilterId: clean(cover?.sourceFilterId),
     products: (Array.isArray(cover?.products) ? cover.products : []).map(entry => ({ productId: String(entry?.productId || ""), firstStepId: clean(entry?.firstStepId), optionIds: (Array.isArray(entry?.optionIds) ? entry.optionIds : []).map(String), steps: (Array.isArray(entry?.steps) ? entry.steps : []).map(step => ({ stepId: clean(step?.stepId), optionIds: (Array.isArray(step?.optionIds) ? step.optionIds : []).map(String) })).filter(step => step.stepId) })).filter(entry => entry.productId),
     sectionOrder: (Array.isArray(cover?.sectionOrder) ? cover.sectionOrder : []).map(String),
@@ -76,14 +77,37 @@ function coverDisplayProducts(cover) {
   const ids = cover.items.flatMap(item => item.type === "heading" ? adminHeadingCategoryIds(headings.find(heading => heading.id === item.id)) : [item.id]);
   return ids.flatMap(id => categoryProducts(id)).filter(product => product.active !== false);
 }
-// Same markup as coverMosaicMarkup() in the storefront.
-function adminCoverMosaic(cover, rows) {
-  const images = [...new Set(coverDisplayProducts(cover).map(imageSource).filter(Boolean))].slice(0, rows * 6).map(coverThumb);
-  if (!images.length) return "";
-  const perRow = Math.max(3, Math.ceil(images.length / rows));
-  return `<span class="cover-mosaic rows-${rows}" aria-hidden="true">${Array.from({ length: rows }, (_, row) => {
-    const cells = Array.from({ length: perRow }, (_, index) => images[(row * perRow + index) % images.length]).map(src => `<img src="${escapeHtml(src)}" alt="" draggable="false">`).join("");
-    return `<span class="cover-mosaic-row"><span class="cover-mosaic-track" style="--mosaic-duration:${26 + row * 7}s">${cells}${cells}</span></span>`;
+// Same rules and markup as coverMosaicMarkup() in the storefront: 4 rows of up to 10 slots,
+// an empty row takes the cover's product photos.
+const COVER_MOSAIC_ROWS = 4;
+const COVER_MOSAIC_SLOTS = 10;
+function normalizeCoverMosaic(value) {
+  const rows = Array.from({ length: COVER_MOSAIC_ROWS }, (_, row) => Array.from({ length: COVER_MOSAIC_SLOTS }, (_, index) => {
+    const slot = value?.rows?.[row]?.[index];
+    if (slot?.type === "product" && slot.productId) return { type: "product", productId: String(slot.productId) };
+    if (slot?.type === "image" && slot.url) return { type: "image", url: String(slot.url) };
+    return null;
+  }));
+  return { speed: Math.min(10, Math.max(1, Number(value?.speed) || 5)), rows };
+}
+function mosaicSlotImage(slot) {
+  if (slot?.type === "image") return slot.url;
+  if (slot?.type === "product") { const product = productById(slot.productId); return product ? coverThumb(imageSource(product)) : ""; }
+  return "";
+}
+function adminCoverMosaic(cover) {
+  const mosaic = cover.mosaic || normalizeCoverMosaic();
+  const auto = [...new Set(coverDisplayProducts(cover).map(imageSource).filter(Boolean))].map(coverThumb);
+  const rows = Array.from({ length: COVER_MOSAIC_ROWS }, (_, row) => {
+    // Same as the storefront: an empty slot takes one of the cover's product photos.
+    let images = Array.from({ length: COVER_MOSAIC_SLOTS }, (_, index) => mosaicSlotImage(mosaic.rows[row]?.[index]) || (auto.length ? auto[(row * COVER_MOSAIC_SLOTS + index) % auto.length] : "")).filter(Boolean);
+    while (images.length && images.length < 8) images = [...images, ...images];
+    return images;
+  });
+  if (!rows.some(images => images.length)) return "";
+  return `<span class="cover-mosaic rows-${COVER_MOSAIC_ROWS}" aria-hidden="true">${rows.map((images, row) => {
+    const cells = images.map(src => `<img src="${escapeHtml(src)}" alt="" draggable="false">`).join("");
+    return `<span class="cover-mosaic-row"><span class="cover-mosaic-track" style="--mosaic-duration:${((150 / mosaic.speed) * (1 + row * .22)).toFixed(1)}s">${cells}${cells}</span></span>`;
   }).join("")}</span>`;
 }
 
@@ -91,7 +115,7 @@ function adminCoverMosaic(cover, rows) {
 function adminCoverTileMarkup(cover, { preview = false } = {}) {
   const count = coverProductCount(cover);
   return `<div class="world-tile size-${cover.size}${cover.imageMode === "animated" ? " is-animated" : ""}${preview ? " is-preview" : ""}" ${preview ? "" : `draggable="true" data-cover-id="${escapeHtml(cover.id)}" tabindex="0" title="اضغط مرتين للدخول"`}>
-    ${cover.imageMode === "animated" ? (adminCoverMosaic(cover, 3) || `<span class="cover-tile-empty">أضف منتجات عشان تتحرك صورها</span>`) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="" draggable="false">` : `<span class="cover-tile-empty">بدون صورة</span>`)}
+    ${cover.imageMode === "animated" ? (adminCoverMosaic(cover) || `<span class="cover-tile-empty">أضف منتجات عشان تتحرك صورها</span>`) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="" draggable="false">` : `<span class="cover-tile-empty">بدون صورة</span>`)}
     <span class="world-tile-copy"><strong>${escapeHtml(cover.nameAr || "اسم الغلاف")}</strong>${cover.descriptionAr ? `<small>${escapeHtml(cover.descriptionAr)}</small>` : ""}</span>
     <span class="world-tile-count">${coverItemsLabel(count)}</span>
     ${preview ? "" : `<button type="button" class="cover-tile-edit" data-cover-edit="${escapeHtml(cover.id)}">تعديل</button>`}
@@ -101,7 +125,7 @@ function adminCoverTileMarkup(cover, { preview = false } = {}) {
 function coverBannerPreviewMarkup(cover) {
   const helpers = cover.helperProductIds.map(productById).filter(Boolean).map(imageSource).filter(Boolean);
   return `<header class="world-cover${cover.imageMode === "animated" ? " is-animated" : ""}">
-    <div class="world-cover-media">${cover.imageMode === "animated" ? adminCoverMosaic(cover, 4) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="">` : "")}</div>
+    <div class="world-cover-media">${cover.imageMode === "animated" ? adminCoverMosaic(cover) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="">` : "")}</div>
     <div class="world-cover-copy"><h1>${escapeHtml(cover.nameAr)}</h1>${cover.descriptionAr ? `<p>${escapeHtml(cover.descriptionAr)}</p>` : ""}<span class="world-cover-count">${coverItemsLabel(coverProductCount(cover))}</span></div>
     ${helpers.length ? `<div class="world-cover-stack">${helpers.map(src => `<img src="${escapeHtml(src)}" alt="">`).join("")}</div>` : ""}
   </header>`;
@@ -188,11 +212,14 @@ function syncCoverFilteredField() {
     : "تضيف له منتجات مختارة بخياراتها بدل الأقسام. الأقسام والمنتجات داخله نسخ وما تختفي من «الأقسام».";
   $("#coverCopyFilterWrap").classList.toggle("hidden", !coverDraft.filtered);
   $("#coverImageField").classList.toggle("hidden", coverImageMode() === "animated");
+  $("#coverMosaicField").classList.toggle("hidden", coverImageMode() !== "animated");
 }
 function renderCoverDialogPreview() {
   if (!coverDraft) return;
   coverDraft.imageMode = coverImageMode();
   $("#coverImageField").classList.toggle("hidden", coverDraft.imageMode === "animated");
+  $("#coverMosaicField").classList.toggle("hidden", coverDraft.imageMode !== "animated");
+  renderMosaicEditor();
   coverDraft.nameAr = clean($("#coverNameAr").value);
   coverDraft.descriptionAr = clean($("#coverDescriptionAr").value);
   coverDraft.size = coverFormSize();
@@ -207,7 +234,10 @@ function renderCoverDialogPreview() {
 
 function openCoverDialog(id = "") {
   const existing = covers.find(cover => cover.id === id);
-  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", helperProductIds: [], items: [], filtered: false, imageMode: "photo", sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
+  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
+  coverDraft.mosaic = normalizeCoverMosaic(coverDraft.mosaic);
+  $("#coverMosaicSpeed").value = String(coverDraft.mosaic.speed);
+  $("#coverMosaicSpeedValue").textContent = String(coverDraft.mosaic.speed);
   $("#coverDialogEyebrow").textContent = existing ? "تعديل الغلاف" : "غلاف جديد";
   $("#coverDialogTitle").textContent = existing ? existing.nameAr || "تعديل الغلاف" : "إضافة غلاف";
   $("#coverSubmit").textContent = existing ? "حفظ التعديل" : "إضافة الغلاف";
@@ -507,15 +537,157 @@ function filteredCoverMarkup(cover) {
   }).join("");
 }
 
+// إضافة منتجات الغلاف المفلتر: من صفحة المنصة نفسها (وضع الاختيار)، وخيارات كل منتج بنفس صفحات الفلاتر.
 function openCoverProductsPicker() {
   const cover = activeAdminCover();
   if (!cover) return;
-  coverProductsSession = true;
-  filterProductSearch = ""; $("#filterProductSearch").value = "";
   pendingFilterSelections = new Map(cover.products.map(entry => [entry.productId, clone(entry)]));
-  renderFilterProductsDialog();
-  $("#filterProductsDialog").showModal();
+  openStorePicker({
+    multi: true,
+    title: `منتجات غلاف «${cover.nameAr}»`,
+    hint: "اضغط على المنتجات من المنصة عشان تحددها أو تلغيها. المنتج اللي له خيارات تختار خياراته بعدها.",
+    selected: [...pendingFilterSelections.keys()],
+    onToggle(productId, selected) {
+      const product = productById(productId);
+      if (!product) return selected;
+      if (selected.has(productId)) { selected.delete(productId); pendingFilterSelections.delete(productId); return selected; }
+      const steps = filterProductSteps(product);
+      selected.add(productId);
+      pendingFilterSelections.set(productId, { productId, firstStepId: steps[0]?.id || "", optionIds: [], steps: steps.map(step => ({ stepId: step.id, optionIds: [] })) });
+      if (steps.length) openFilterOptionSteps(productId);
+      return selected;
+    },
+    onConfirm() {
+      for (const entry of pendingFilterSelections.values()) {
+        const product = productById(entry.productId);
+        for (const step of filterProductSteps(product)) {
+          if (filterStepItems(product, step, entry).length && !filterStepSelection(entry, step.id).length) { toast(`أكمل خيارات المنتج «${product.name}» قبل الحفظ`); openFilterOptionSteps(entry.productId); return false; }
+        }
+      }
+      const target = activeAdminCover();
+      target.products = [...pendingFilterSelections.values()];
+      syncFilteredOrders(target);
+      markDirty(); render();
+      toast(`صار في الغلاف ${target.products.length} منتج`);
+      return true;
+    }
+  });
 }
+
+// ---------- نافذة المنصة (وضع الاختيار) ----------
+// المنصة نفسها تنفتح داخل iframe: بالنسخة المحلية من «/»، وبالإدارة المنشورة من مجلد picker/.
+let storePicker = null;
+function storePickerUrl() { return window.LOCAL_MODE ? "/?picker=1" : "picker/?picker=1"; }
+function sendPickerState() {
+  if (!storePicker) return;
+  $("#storePickerFrame").contentWindow?.postMessage({ type: "fo-picker-state", selected: [...storePicker.selected] }, location.origin);
+  $("#storePickerCount").textContent = storePicker.multi ? `${storePicker.selected.size} منتج محدد` : (storePicker.selected.size ? `محدد: ${productById([...storePicker.selected][0])?.name || ""}` : "");
+}
+function openStorePicker(options) {
+  storePicker = { ...options, selected: new Set((options.selected || []).map(String)) };
+  $("#storePickerTitle").textContent = options.title;
+  $("#storePickerHint").textContent = options.hint;
+  const frame = $("#storePickerFrame");
+  if (!frame.getAttribute("src")) frame.setAttribute("src", storePickerUrl());
+  $("#storePickerDialog").showModal();
+  sendPickerState();
+}
+window.addEventListener("message", event => {
+  if (event.origin !== location.origin || !storePicker) return;
+  if (event.data?.type === "fo-picker-ready") return sendPickerState();
+  if (event.data?.type !== "fo-picker-toggle") return;
+  const id = String(event.data.productId || "");
+  if (!productById(id)) return toast("هالمنتج مو موجود في بيانات الإدارة");
+  if (storePicker.onToggle) storePicker.selected = storePicker.onToggle(id, storePicker.selected);
+  else storePicker.selected = storePicker.selected.has(id) && !storePicker.multi ? new Set() : new Set(storePicker.multi ? [...storePicker.selected, id] : [id]);
+  sendPickerState();
+});
+$("#storePickerConfirm").addEventListener("click", () => {
+  if (!storePicker) return;
+  if (!storePicker.multi && !storePicker.selected.size) return toast("اضغط على منتج من المنصة أول");
+  if (storePicker.onConfirm([...storePicker.selected]) === false) return;
+  $("#storePickerDialog").close();
+});
+$("#storePickerDialog").addEventListener("close", () => { storePicker = null; });
+// Option steps opened from the picker: re-send marks once they close (a product may have been cancelled).
+$("#filterOptionStepsDialog").addEventListener("close", () => { if (storePicker) setTimeout(sendPickerState, 0); });
+
+// ---------- محرر مربعات الصور المتحركة ----------
+let mosaicSlotTarget = null;
+function renderMosaicEditor() {
+  const host = $("#coverMosaicEditor");
+  if (!host || !coverDraft?.mosaic) return;
+  host.innerHTML = coverDraft.mosaic.rows.map((row, rowIndex) => `<div class="cover-mosaic-editor-row"><span class="row-label">${rowIndex + 1}</span>${row.map((slot, index) => {
+    const src = mosaicSlotImage(slot);
+    return `<button type="button" class="mosaic-slot ${src ? "filled" : ""}" data-mosaic-slot="${rowIndex}:${index}" title="${slot?.type === "product" ? escapeHtml(productById(slot.productId)?.name || "") : slot ? "صورة مرفوعة" : "مربع فاضي"}">${src ? `<img src="${escapeHtml(src)}" alt="">` : "+"}</button>`;
+  }).join("")}</div>`).join("");
+}
+function closeMosaicMenu() { $("#mosaicSlotMenu")?.remove(); }
+$("#coverMosaicEditor").addEventListener("click", event => {
+  const button = event.target.closest("[data-mosaic-slot]");
+  if (!button) return;
+  event.stopPropagation();
+  closeMosaicMenu();
+  const [row, index] = button.dataset.mosaicSlot.split(":").map(Number);
+  mosaicSlotTarget = { row, index };
+  const filled = Boolean(coverDraft.mosaic.rows[row][index]);
+  button.insertAdjacentHTML("afterend", `<div class="mosaic-slot-menu" id="mosaicSlotMenu" role="menu">
+    <button type="button" data-mosaic-action="upload">إضافة صورة</button>
+    <button type="button" data-mosaic-action="product">تحديد من منتج منشور</button>
+    ${filled ? `<button type="button" class="delete" data-mosaic-action="clear">إفراغ المربع</button>` : ""}
+  </div>`);
+  const menu = $("#mosaicSlotMenu"), box = button.getBoundingClientRect(), parent = $("#coverMosaicEditor").getBoundingClientRect();
+  menu.style.top = `${box.bottom - parent.top + 4}px`;
+  menu.style.insetInlineStart = `${Math.max(0, parent.right - box.right)}px`;
+});
+$("#coverMosaicField").addEventListener("click", event => {
+  const action = event.target.closest("[data-mosaic-action]")?.dataset.mosaicAction;
+  if (!action || !mosaicSlotTarget) return;
+  event.stopPropagation();
+  closeMosaicMenu();
+  const { row, index } = mosaicSlotTarget;
+  if (action === "clear") { coverDraft.mosaic.rows[row][index] = null; return renderCoverDialogPreview(); }
+  if (action === "upload") return $("#coverMosaicFile").click();
+  const current = coverDraft.mosaic.rows[row][index];
+  openStorePicker({
+    multi: false,
+    title: `صورة المربع ${index + 1} في الصف ${row + 1}`,
+    hint: "اضغط على المنتج اللي تبي صورته، بعدين «تأكيد».",
+    selected: current?.type === "product" ? [current.productId] : [],
+    onConfirm(selected) {
+      coverDraft.mosaic.rows[row][index] = { type: "product", productId: selected[0] };
+      renderCoverDialogPreview();
+      return true;
+    }
+  });
+});
+document.addEventListener("click", event => { if (!event.target.closest("#mosaicSlotMenu")) closeMosaicMenu(); });
+$("#coverMosaicFile").addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file || !mosaicSlotTarget || !coverDraft) return;
+  const { row, index } = mosaicSlotTarget;
+  try {
+    if (!file.type.startsWith("image/")) throw new Error("اختر ملف صورة صالحاً");
+    toast("جارٍ رفع الصورة…");
+    const bitmap = await createImageBitmap(file);
+    const side = Math.min(bitmap.width, bitmap.height), size = Math.min(480, side);
+    const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+    canvas.getContext("2d").drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
+    bitmap.close();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .86));
+    const url = await uploadPlatformAsset(`orderingPlatform/catalog/appearance/covers/mosaic-${coverDraft.id}-${Date.now()}.webp`, blob);
+    coverDraft.mosaic.rows[row][index] = { type: "image", url };
+    renderCoverDialogPreview();
+    toast("تمت إضافة الصورة للمربع");
+  } catch (error) { toast(error.message || "تعذر رفع الصورة"); }
+});
+$("#coverMosaicSpeed").addEventListener("input", event => {
+  if (!coverDraft?.mosaic) return;
+  coverDraft.mosaic.speed = Number(event.target.value) || 5;
+  $("#coverMosaicSpeedValue").textContent = String(coverDraft.mosaic.speed);
+  renderCoverDialogPreview();
+});
 // The product picker and option steps are the «فلترة المنتجات» ones; in a cover session they save to the cover.
 $("#saveFilterProducts").addEventListener("click", event => {
   if (!coverProductsSession) return;

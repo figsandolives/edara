@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20261015-availability-v3">
-  <link rel="stylesheet" href="strip.css?v=20261018-strip-1">
-  <link rel="stylesheet" href="covers.css?v=20261018-strip-1">
-  <link rel="stylesheet" href="covers-admin.css?v=20261018-strip-1">
+  <link rel="stylesheet" href="strip.css?v=20261018-picker-1">
+  <link rel="stylesheet" href="covers.css?v=20261018-picker-1">
+  <link rel="stylesheet" href="covers-admin.css?v=20261018-picker-1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -270,6 +270,12 @@
           <label><input type="radio" name="coverImageMode" value="photo" checked> <span><b>صورة ثابتة</b><small>ترفع صورة بالقياس المطلوب</small></span></label>
           <label><input type="radio" name="coverImageMode" value="animated"> <span><b>صور المنتجات المتحركة</b><small>صفوف من صور منتجات الغلاف تتحرك</small></span></label>
         </fieldset>
+        <div class="cover-mosaic-field hidden" id="coverMosaicField">
+          <div class="cover-mosaic-head"><strong>الصور المتحركة</strong><small>4 صفوف، كل صف 10 مربعات. اضغط على أي مربع عشان تحط فيه صورة أو صورة منتج. المربع الفاضي ياخذ صورة من منتجات الغلاف.</small></div>
+          <div class="cover-mosaic-editor" id="coverMosaicEditor"></div>
+          <label class="strip-speed cover-mosaic-speed"><span>سرعة الحركة <output id="coverMosaicSpeedValue">5</output></span><input id="coverMosaicSpeed" type="range" min="1" max="10" step="1" value="5"><small><span>أبطأ</span><span>أسرع</span></small></label>
+          <input id="coverMosaicFile" type="file" accept="image/*" hidden>
+        </div>
         <div class="cover-image-field" id="coverImageField">
           <strong>صورة الغلاف</strong>
           <p class="cover-size-hint" id="coverSizeHint"></p>
@@ -303,6 +309,11 @@
     <label>بحث<input id="coverSectionsSearch" type="search" placeholder="اسم القسم أو العنوان" autocomplete="off"></label>
     <div class="cover-section-grid" id="coverSectionsGrid"></div>
     <footer><span id="coverSectionsCount"></span><button type="button" data-close-dialog="coverSectionsDialog">إلغاء</button><button type="button" class="primary" id="coverSectionsAdd">إضافة</button></footer>
+  </div></dialog>
+  <dialog id="storePickerDialog" class="store-picker-dialog"><div class="store-picker-card">
+    <header><div><span class="eyebrow" id="storePickerEyebrow">اختيار من المنصة</span><h2 id="storePickerTitle">اختر منتج</h2><p id="storePickerHint">اضغط على المنتج من المنصة ثم «تأكيد».</p></div>
+      <div class="store-picker-actions"><span id="storePickerCount"></span><button type="button" data-close-dialog="storePickerDialog">إلغاء</button><button type="button" class="primary" id="storePickerConfirm">تأكيد</button></div></header>
+    <iframe id="storePickerFrame" title="المنصة"></iframe>
   </div></dialog>
   <dialog id="categoryDialog">
     <form method="dialog" id="categoryForm" class="dialog-card">
@@ -460,8 +471,8 @@
     </div>
   </section>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="script.js?v=20261018-strip-1"></script>
-  <script src="covers-admin.js?v=20261018-strip-1"></script>
-  <script src="strip-admin.js?v=20261018-strip-1"></script>
+  <script src="script.js?v=20261018-picker-1"></script>
+  <script src="covers-admin.js?v=20261018-picker-1"></script>
+  <script src="strip-admin.js?v=20261018-picker-1"></script>
 </body>
 </html>
