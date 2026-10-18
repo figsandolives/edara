@@ -180,3 +180,10 @@ dialog.store-picker-dialog{width:min(1280px,96vw);max-height:94vh;height:94vh}
 .store-picker-actions .primary{border:0}
 #storePickerCount{color:var(--green);font-weight:900;font-size:13px;margin-inline-end:6px}
 #storePickerFrame{width:100%;height:100%;border:0;background:#fffefb}
+
+/* خانة رمز الإدارة داخل الصفحة */
+.admin-code-form{display:grid;gap:10px;margin-top:18px;text-align:start}
+.admin-code-form label{font-size:12px;font-weight:900}
+.admin-code-form input{width:100%;padding:14px;border:1px solid var(--line);border-radius:14px;font:inherit;font-size:18px;letter-spacing:.3em;text-align:center;direction:ltr;outline:0}
+.admin-code-form input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(45,106,79,.15)}
+.admin-code-form .primary{border:0;border-radius:14px;padding:14px;font-weight:900}

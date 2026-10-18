@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20261015-availability-v3">
-  <link rel="stylesheet" href="strip.css?v=20261018-picker-1">
-  <link rel="stylesheet" href="covers.css?v=20261018-compact-1">
-  <link rel="stylesheet" href="covers-admin.css?v=20261018-picker-1">
+  <link rel="stylesheet" href="strip.css?v=20261018-login-1">
+  <link rel="stylesheet" href="covers.css?v=20261018-login-1">
+  <link rel="stylesheet" href="covers-admin.css?v=20261018-login-1">
   <style>#categoryList{display:flex;flex-direction:column}</style>
 </head>
 <body>
@@ -466,13 +466,17 @@
       <span class="eyebrow">دخول محمي</span>
       <h1>إدارة منصة البيع</h1>
       <p>أدخل رمز الإدارة للوصول إلى المنتجات والصور.</p>
-      <button class="primary" id="adminGoogleLogin">دخول الإدارة</button>
+      <form class="admin-code-form" id="adminCodeForm" autocomplete="off">
+        <label for="adminCodeInput">رمز الإدارة</label>
+        <input id="adminCodeInput" type="password" inputmode="numeric" autocomplete="current-password" required placeholder="اكتب الرمز">
+        <button class="primary" id="adminGoogleLogin" type="submit">دخول الإدارة</button>
+      </form>
       <small id="adminAuthMessage"></small>
     </div>
   </section>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="script.js?v=20261018-picker-1"></script>
-  <script src="covers-admin.js?v=20261018-picker-2"></script>
-  <script src="strip-admin.js?v=20261018-picker-1"></script>
+  <script src="script.js?v=20261018-login-1"></script>
+  <script src="covers-admin.js?v=20261018-login-1"></script>
+  <script src="strip-admin.js?v=20261018-login-1"></script>
 </body>
 </html>

@@ -2087,16 +2087,19 @@ async function exportData() {
   }
 }
 
-async function signInAdmin() {
+// الرمز ينكتب في خانة داخل الصفحة (بدل نافذة المتصفح) عشان يشتغل في كل المتصفحات.
+async function signInAdmin(event) {
+  event?.preventDefault();
   const button = $("#adminGoogleLogin");
-  const code = window.prompt("أدخل رمز إدارة المنصة");
-  if (!code) return;
+  const code = clean($("#adminCodeInput")?.value);
+  if (!code) { $("#adminAuthMessage").textContent = "اكتب رمز الإدارة"; $("#adminCodeInput")?.focus(); return; }
   button.disabled = true; $("#adminAuthMessage").textContent = "جارٍ تسجيل الدخول…";
   try {
     const response = await fetch(`${API_BASE}/auth/employee`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ code }) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.sessionToken) throw new Error(result.error || "تعذر تسجيل الدخول");
     adminToken = result.sessionToken; sessionStorage.setItem("figsAdminSession", adminToken);
+    $("#adminCodeInput").value = "";
     currentAdmin = result.employee || { role: "manager" };
     $("#adminAuthGate").classList.add("hidden"); $("#adminSignOut").classList.remove("hidden");
     await loadData(); setCloudStatus("متصل ومحفوظ", "connected");
@@ -2104,7 +2107,7 @@ async function signInAdmin() {
   finally { button.disabled = false; }
 }
 async function initializeAdmin() {
-  $("#adminGoogleLogin").addEventListener("click", signInAdmin);
+  $("#adminCodeForm").addEventListener("submit", signInAdmin);
   $("#adminSignOut").addEventListener("click", () => { adminToken = ""; currentAdmin = null; sessionStorage.removeItem("figsAdminSession"); $("#adminAuthGate").classList.remove("hidden"); $("#adminSignOut").classList.add("hidden"); setCloudStatus("يلزم تسجيل الدخول"); });
   if (adminToken) { currentAdmin = { role: "manager" }; try { await loadData(); $("#adminAuthGate").classList.add("hidden"); $("#adminSignOut").classList.remove("hidden"); setCloudStatus("متصل ومحفوظ", "connected"); } catch { adminToken = ""; sessionStorage.removeItem("figsAdminSession"); } }
 }
