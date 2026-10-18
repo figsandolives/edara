@@ -67,8 +67,9 @@
   .world-tile-copy{inset-inline:13px;bottom:12px}
   .world-tile-copy strong{font-size:19px}
   .world-tile.size-full .world-tile-copy strong{font-size:26px}
-  .world-tile-copy small{display:none}
-  .world-tile.size-full .world-tile-copy small{display:block;font-size:11px}
+  /* الوصف يطلع لكل غلاف له وصف، والنص يقصر لسطرين في الغلاف النصفي */
+  .world-tile-copy small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:10px;line-height:1.6}
+  .world-tile.size-full .world-tile-copy small{-webkit-line-clamp:2;font-size:11px}
   .world-tile-count{top:10px;inset-inline-start:10px;padding:4px 9px;font-size:10px}
 }
 
