@@ -711,7 +711,7 @@ function markDirty(message = "جارٍ حفظ التعديلات في الخاد
   $("#saveState").textContent = message;
   setCloudStatus("جارٍ الحفظ…");
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => saveToالخادم().catch(() => undefined), 650);
+  syncTimer = setTimeout(() => saveToالخادم().catch(reportSaveFailure), 650);
 }
 
 async function saveToالخادم() {
@@ -734,8 +734,23 @@ async function saveToالخادم() {
   siteCategories = clone(categories); siteProducts = clone(products);
   $("#saveState").textContent = "تم الحفظ في الخادم"; setCloudStatus("متصل ومحفوظ", "connected");
 }
+// الحفظ ما يفشل بصمت: نعرض السبب، ولو الجلسة انتهت نطلب الدخول ونحفظ نفس التعديلات بعده.
+let saveAfterLogin = false;
+function reportSaveFailure(error) {
+  const message = error?.message || "تعذر الحفظ";
+  setCloudStatus("فشل الحفظ", "error");
+  $("#saveState").textContent = `لم يتم الحفظ: ${message}`;
+  toast(`لم يتم الحفظ: ${message}`);
+  if (/انتهت جلسة|سجّل الدخول/.test(message)) {
+    saveAfterLogin = true;
+    adminToken = ""; sessionStorage.removeItem("figsAdminSession");
+    $("#adminAuthMessage").textContent = "انتهت الجلسة. سجّل الدخول وتنحفظ تعديلاتك على طول.";
+    $("#adminAuthGate").classList.remove("hidden");
+    $("#adminCodeInput")?.focus();
+  }
+}
 function saveDraft() {
-  saveToالخادم().then(() => toast("تم الحفظ في الخادم")).catch(() => undefined);
+  saveToالخادم().then(() => toast("تم الحفظ في الخادم")).catch(reportSaveFailure);
 }
 
 function renderDeliveryAreas() {
@@ -2102,7 +2117,12 @@ async function signInAdmin(event) {
     $("#adminCodeInput").value = "";
     currentAdmin = result.employee || { role: "manager" };
     $("#adminAuthGate").classList.add("hidden"); $("#adminSignOut").classList.remove("hidden");
-    await loadData(); setCloudStatus("متصل ومحفوظ", "connected");
+    if (saveAfterLogin) {
+      // Keep the edits made before the session ran out and save them now.
+      saveAfterLogin = false;
+      await saveToالخادم(); toast("تم حفظ تعديلاتك");
+    } else await loadData();
+    setCloudStatus("متصل ومحفوظ", "connected");
   } catch (error) { $("#adminAuthMessage").textContent = error.message || "تعذر تسجيل الدخول"; }
   finally { button.disabled = false; }
 }
