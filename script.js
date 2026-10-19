@@ -531,10 +531,28 @@ function loadVisitorPresence() {
   window.LiveVisitors?.start();
 }
 
-function loadCustomers() {
-  customers = [];
-  renderCustomers();
-  renderProductSales();
+// العملاء وطلباتهم من الخادم (/admin/customers). تنعاد كل ما تنفتح صفحة العملاء إذا صار لها أكثر من دقيقة.
+let customersLoadedAt = 0;
+let customersLoading = null;
+function loadCustomers({ force = false } = {}) {
+  if (customersLoading) return customersLoading;
+  if (!force && customersLoadedAt && Date.now() - customersLoadedAt < 60000) return Promise.resolve();
+  if (!customers.length && $("#customerList")) $("#customerList").innerHTML = `<div class="empty customer-empty">يجيب العملاء من الخادم…</div>`;
+  customersLoading = adminRequest("/admin/customers")
+    .then(async response => {
+      if (!response.ok) throw new Error(`تعذر جلب العملاء (${response.status})`);
+      const list = await response.json();
+      customers = Array.isArray(list) ? list : [];
+      customersLoadedAt = Date.now();
+    })
+    .catch(error => {
+      if ($("#customerList")) $("#customerList").innerHTML = `<div class="empty customer-empty">${escapeHtml(error.message || "تعذر جلب العملاء")}. حدّث الصفحة وجرّب مرة ثانية.</div>`;
+      throw error;
+    })
+    .then(() => { renderCustomers(); renderProductSales(); })
+    .catch(() => undefined)
+    .finally(() => { customersLoading = null; });
+  return customersLoading;
 }
 
 function categoryProducts(categoryId) {
@@ -1782,7 +1800,8 @@ function showAdminView(view) {
   $("#liveVisitorsPage").classList.remove("active");
   $("#addProduct").classList.toggle("hidden", currentView !== "catalog");
   $("#addCategory").classList.toggle("hidden", currentView !== "catalog");
-  if (currentView === "customers") renderCustomers();
+  if (currentView === "customers") { renderCustomers(); loadCustomers(); }
+  if (currentView === "productSales") loadCustomers();
   if (currentView === "availability") { openAvailabilityDetail(""); renderAvailabilityNotifications(); loadAvailabilityNotifications(); }
   if (currentView === "advertisement") renderAdvertisementEditor();
   if (currentView === "filters") renderProductFilters();
