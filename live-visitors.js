@@ -35,7 +35,19 @@
   };
   const clock = time => new Date(Number(time)).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kuwait" });
   const itemsCount = count => { const n = Number(count) || 0; return n === 1 ? "صنف واحد" : n === 2 ? "صنفين" : n >= 3 && n <= 10 ? `${n} أصناف` : `${n} صنف`; };
-  const status = visitor => { const gap = now() - Number(visitor.lastSeen || 0); return gap <= ACTIVE_MS ? "active" : gap <= IDLE_MS ? "idle" : "left"; };
+  // آخر حركة فعلية: فتح صفحة أو حدث (منتج، سلة، طلب). الموقع المفتوح بتبويب بدون أي حركة 10 دقايق ما يُحسب «يتصفح».
+  const STILL_MS = 10 * 60000;
+  const lastAction = visitor => Math.max(
+    Number(visitor.firstSeen || 0),
+    ...(Array.isArray(visitor.pages) ? visitor.pages.map(page => Number(page.at) || 0) : []),
+    ...state.events.filter(event => event.visitorId === visitor.visitorId).map(event => Number(event.createdAt) || 0)
+  );
+  const status = visitor => {
+    const gap = now() - Number(visitor.lastSeen || 0);
+    if (gap > IDLE_MS) return "left";
+    if (gap > ACTIVE_MS) return "idle";
+    return now() - lastAction(visitor) > STILL_MS ? "still" : "active";
+  };
   const whoOf = item => {
     const name = item?.customer?.name;
     return name ? name : `زائر ${short(item.visitorId)}`;
@@ -102,7 +114,10 @@
   function rangeVisitors() {
     const range = RANGES.find(item => item.id === state.range) || RANGES[0];
     const since = now() - range.minutes * 60000;
-    return state.visitors.filter(visitor => Number(visitor.lastSeen) >= (range.id === "now" ? now() - ACTIVE_MS : since));
+    const rank = { active: 0, still: 1, idle: 2, left: 3 };
+    return state.visitors
+      .filter(visitor => Number(visitor.lastSeen) >= (range.id === "now" ? now() - ACTIVE_MS : since))
+      .sort((a, b) => rank[status(a)] - rank[status(b)] || Number(b.lastSeen) - Number(a.lastSeen));
   }
   function visitorEvents(visitorId) { return state.events.filter(event => event.visitorId === visitorId); }
   function lastCart(visitorId) {
@@ -117,7 +132,8 @@
     const name = registered ? (visitor.customer.name || "عميل مسجل") : `زائر جديد ${short(visitor.visitorId)}`;
     const phone = registered ? visitor.customer.phone : "";
     const place = activity.view ? `${VIEW_NAMES[activity.view] || ""}${activity.view !== "home" && activity.label && activity.view !== "checkout" ? `: ${activity.label}` : activity.view === "checkout" ? `: ${(activity.label || "").replace(/^إتمام الطلب:\s*/, "")}` : ""}` : "ما وصلت تفاصيل الصفحة بعد";
-    const where = activity.view === "product" && activity.coverName ? `<small class="lv-where-sub">داخل غلاف ${esc(activity.coverName)}</small>` : "";
+    const stillFor = st === "still" ? `<small class="lv-where-sub lv-still">مفتوح بدون أي حركة من ${esc(duration(lastAction(visitor), now()))}</small>` : "";
+    const where = stillFor + (activity.view === "product" && activity.coverName ? `<small class="lv-where-sub">داخل غلاف ${esc(activity.coverName)}</small>` : "");
     const device = [DEVICE_NAMES[visitor.device], visitor.os, visitor.app].filter(Boolean);
     const cartCount = Number(activity.cartCount || 0);
     const isOpen = state.open.has(visitor.visitorId);
@@ -127,7 +143,7 @@
     const ordered = visitorEvents(visitor.visitorId).some(event => event.type === "checkout_complete" && Number(event.createdAt) >= Number(visitor.firstSeen || 0));
     return `<article class="lv-visitor is-${st}${isOpen ? " is-open" : ""}${activity.view === "checkout" ? " is-checkout" : ""}" data-visitor="${esc(visitor.visitorId)}">
       <button type="button" class="lv-visitor-main" data-lv-toggle="${esc(visitor.visitorId)}" aria-expanded="${isOpen}">
-        <span class="lv-dot" title="${st === "active" ? "يتصفح الحين" : st === "idle" ? "ساكت شوي" : "طلع"}"></span>
+        <span class="lv-dot" title="${st === "active" ? "يتصفح الحين" : st === "still" ? "الموقع مفتوح بدون حركة" : st === "idle" ? "ساكت شوي" : "طلع"}"></span>
         <span class="lv-who"><strong>${esc(name)}</strong>${phone ? `<small dir="ltr">${esc(phone)}</small>` : `<small>${registered ? "" : "غير مسجل"}</small>`}</span>
         <span class="lv-where"><b class="lv-view lv-view-${esc(activity.view || "none")}">${esc(place)}</b>${where}</span>
         <span class="lv-cart${cartCount ? " has-items" : ""}">${cartCount ? `<b>${esc(itemsCount(cartCount))}</b> في السلة<small>${money(activity.cartValue)}</small>` : "السلة فاضية"}</span>
@@ -147,6 +163,7 @@
     if (!root) return;
     const all = state.visitors;
     const active = all.filter(visitor => status(visitor) === "active");
+    const still = all.filter(visitor => status(visitor) === "still");
     const withCart = active.filter(visitor => Number(visitor.activity?.cartCount) > 0);
     const inCheckout = active.filter(visitor => visitor.activity?.view === "checkout");
     const cartValue = withCart.reduce((sum, visitor) => sum + Number(visitor.activity?.cartValue || 0), 0);
@@ -166,7 +183,7 @@
           <li class="${inCheckout.length ? "is-hot" : ""}"><b>${inCheckout.length}</b><span>يكمل الطلب</span></li>
           <li class="is-done"><b>${ordersToday}</b><span>طلب اليوم</span></li>
         </ol>
-        <p class="lv-today">اليوم: ${visitorsToday} زائر فتح الموقع، و${active.filter(visitor => visitor.visitorType === "registered").length} من اللي يتصفحون الحين مسجلين.</p>
+        <p class="lv-today">اليوم: ${visitorsToday} زائر فتح الموقع، و${active.filter(visitor => visitor.visitorType === "registered").length} من اللي يتصفحون الحين مسجلين.${still.length ? ` وفي ${still.length} الموقع مفتوح عندهم بدون أي حركة (ما ينحسبون).` : ""}</p>
       </div>
       <div class="lv-toolbar">
         <div class="lv-ranges" role="tablist">${RANGES.map(range => `<button type="button" role="tab" aria-selected="${state.range === range.id}" data-lv-range="${range.id}">${range.label}</button>`).join("")}</div>

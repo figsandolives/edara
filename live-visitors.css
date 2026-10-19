@@ -98,3 +98,8 @@
   .lv-tags{padding-inline-start:36px}
   .lv-detail{grid-template-columns:1fr}
 }
+
+/* الموقع مفتوح بتبويب بدون أي حركة: ينعرض باهت وما ينحسب في العدد */
+.lv-visitor.is-still{opacity:.7;background:#fbfbf9}
+.is-still .lv-dot{background:transparent;border:2px solid #b9a36b;width:10px;height:10px}
+.lv-still{color:#8a6d1f!important;font-weight:700!important}
