@@ -522,27 +522,13 @@ async function loadData() {
   loadAvailabilityNotifications();
 }
 
+// «الزوار الآن» صارت لوحة مباشرة في live-visitors.js (تقرا من الخادم كل 5 ثواني).
 function renderLiveVisitors() {
-  const now = Date.now();
-  const active = visitorPresence.filter(visitor => now - Number(visitor.lastSeenAt || 0) <= 90000).sort((a, b) => Number(b.lastSeenAt || 0) - Number(a.lastSeenAt || 0));
-  const registered = active.filter(visitor => visitor.visitorType === "registered").length;
-  $("#liveVisitorCount").textContent = active.length;
-  $("#liveNewVisitorCount").textContent = active.length - registered;
-  $("#liveRegisteredVisitorCount").textContent = registered;
-  $("#liveVisitorsUpdated").textContent = `آخر تحديث: ${new Date(now).toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
-  const list = $("#liveVisitorListItems");
-  list.innerHTML = active.length ? active.map(visitor => {
-    const isRegistered = visitor.visitorType === "registered";
-    const name = isRegistered && visitor.customerName ? visitor.customerName : "غير مسجل";
-    const phone = isRegistered && visitor.phone ? visitor.phone : "لا يوجد رقم هاتف";
-    const seen = new Date(Number(visitor.lastSeenAt || now)).toLocaleTimeString("ar-KW", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    return `<article class="live-visitor-entry"><span class="live-visitor-avatar">${isRegistered ? escapeHtml(name.charAt(0) || "ع") : "؟"}</span><div><strong>${escapeHtml(name)}</strong><small dir="ltr">${escapeHtml(phone)}</small></div><time>نشط ${escapeHtml(seen)}</time></article>`;
-  }).join("") : '<p class="customer-empty">لا يوجد زوار نشطون حالياً.</p>';
+  window.LiveVisitors?.render();
 }
 
 function loadVisitorPresence() {
-  visitorPresence = [];
-  renderLiveVisitors();
+  window.LiveVisitors?.start();
 }
 
 function loadCustomers() {
@@ -819,7 +805,7 @@ function showLiveVisitorsView() {
   $("#liveVisitorsPage").classList.add("active");
   $("#addProduct").classList.add("hidden");
   $("#addCategory").classList.add("hidden");
-  renderLiveVisitors();
+  window.LiveVisitors?.start();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -2340,8 +2326,6 @@ $("#backFromAvailabilityNotifications").addEventListener("click", () => showAdmi
 $("#backToCatalog").addEventListener("click", () => showAdminView("catalog"));
 $("#liveVisitorsPage").addEventListener("click", showLiveVisitorsView);
 $("#backFromLiveVisitors").addEventListener("click", () => showAdminView("catalog"));
-$("#liveVisitorListTrigger").addEventListener("click", () => { const list = $("#liveVisitorList"); const opening = list.classList.contains("hidden"); list.classList.toggle("hidden", !opening); $("#liveVisitorListTrigger").setAttribute("aria-expanded", String(opening)); });
-$("#closeLiveVisitorList").addEventListener("click", () => { $("#liveVisitorList").classList.add("hidden"); $("#liveVisitorListTrigger").setAttribute("aria-expanded", "false"); });
 $("#deliveryAreasPage").addEventListener("click", showDeliveryAreasView);
 $("#backFromDeliveryAreas").addEventListener("click", () => showAdminView("catalog"));
 $("#addDeliveryArea").addEventListener("click", () => openDeliveryAreaDialog());

@@ -1,0 +1,100 @@
+/* «الزوار الآن»: لوحة مباشرة. الشي الوحيد اللافت هو رقم الزوار الحي ونقطته النابضة؛ الباقي هادي ومرتب. */
+#liveVisitorsBoard{display:grid;gap:18px}
+#liveVisitorsBoard button{transform:none;filter:none}
+
+/* النبض: العدد الحي + مراحل الطلب */
+.lv-pulse{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:14px 28px;padding:22px 24px;border-radius:22px;background:var(--green);color:#f4efe2}
+.lv-pulse-count{display:flex;align-items:baseline;gap:12px}
+.lv-pulse-count strong{font-size:clamp(46px,6vw,68px);font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
+.lv-pulse-count span:last-child{font-size:15px;font-weight:800;color:rgba(244,239,226,.82)}
+.lv-live-dot{position:relative;align-self:center;width:12px;height:12px;border-radius:50%;background:#5fd38d}
+.lv-live-dot::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid #5fd38d;animation:lvPing 1.8s ease-out infinite}
+@keyframes lvPing{from{opacity:.9;transform:scale(.6)}to{opacity:0;transform:scale(1.6)}}
+@media(prefers-reduced-motion:reduce){.lv-live-dot::after{animation:none;opacity:.4}}
+.lv-funnel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;padding:0;list-style:none;border:1px solid rgba(244,239,226,.18);border-radius:16px;overflow:hidden}
+.lv-funnel li{position:relative;display:grid;gap:2px;padding:12px 14px;border-inline-start:1px solid rgba(244,239,226,.14)}
+.lv-funnel li:first-child{border:0}
+.lv-funnel b{font-size:24px;font-weight:900;font-variant-numeric:tabular-nums}
+.lv-funnel span{font-size:12px;font-weight:700;color:rgba(244,239,226,.75)}
+.lv-funnel li.is-hot{background:rgba(220,168,62,.16)}
+.lv-funnel li.is-hot b{color:#f0c66b}
+.lv-funnel li.is-done{background:rgba(95,211,141,.12)}
+.lv-today{grid-column:1/-1;margin:0;font-size:12.5px;color:rgba(244,239,226,.72)}
+
+/* أدوات: الفترة وحالة التحديث */
+.lv-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lv-ranges{display:inline-flex;gap:4px;padding:4px;border-radius:14px;background:#e9eeea}
+.lv-ranges button{padding:8px 14px;border-radius:10px;background:transparent;color:#4d5f56;font-size:13px;font-weight:800}
+.lv-ranges button[aria-selected="true"]{background:#fff;color:var(--green);box-shadow:0 2px 8px rgba(23,63,50,.1)}
+.lv-sync{font-size:12px;font-weight:700;color:var(--muted)}
+.lv-sync.is-error{color:var(--danger)}
+
+.lv-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+
+/* صف الزائر */
+.lv-list{display:grid;gap:10px}
+.lv-visitor{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden}
+.lv-visitor.is-checkout{border-color:#e0bf6e;box-shadow:0 0 0 3px rgba(220,168,62,.14)}
+.lv-visitor.is-left{opacity:.62}
+.lv-visitor-main{width:100%;display:grid;grid-template-columns:14px minmax(120px,1.1fr) minmax(150px,1.6fr) minmax(96px,.8fr) minmax(92px,.7fr);align-items:center;gap:14px;padding:14px 16px 8px;border-radius:0;background:transparent;color:var(--ink);text-align:start;font-weight:400}
+.lv-visitor-main:focus-visible{outline:2px solid var(--green-2);outline-offset:-2px}
+.lv-dot{width:10px;height:10px;border-radius:50%;background:#b9c4be}
+.is-active .lv-dot{background:#32a260;box-shadow:0 0 0 4px rgba(50,162,96,.15)}
+.is-idle .lv-dot{background:#d39b2b;box-shadow:0 0 0 4px rgba(211,155,43,.14)}
+.lv-who,.lv-where,.lv-cart,.lv-time{display:grid;gap:2px;min-width:0}
+.lv-who strong{font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-who small,.lv-where-sub,.lv-time small,.lv-cart small{font-size:11.5px;color:var(--muted);font-weight:600}
+.lv-who small[dir="ltr"]{text-align:right}
+.lv-view{font-size:13px;font-weight:800;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-view-checkout{color:#9a6a12}
+.lv-view-none{color:var(--muted);font-weight:600}
+.lv-cart{font-size:12.5px;font-weight:700;color:var(--muted)}
+.lv-cart.has-items{color:var(--ink)}
+.lv-cart.has-items b{font-size:15px;font-weight:900;color:var(--green)}
+.lv-time{text-align:end}
+.lv-time b{font-size:12.5px;font-weight:800}
+.lv-tags{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px 16px;padding-inline-start:44px}
+.lv-tags span,.lv-tags a{padding:3px 9px;border-radius:999px;background:#f1f4f2;color:#55665d;font-size:11px;font-weight:700;text-decoration:none}
+.lv-tags .lv-tag-order{background:#e4f2e9;color:#256243}
+.lv-tags a{background:#e5f5ea;color:#1d7a43}
+
+/* التفاصيل عند الضغط */
+.lv-detail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:14px 16px 16px;border-top:1px dashed var(--line);background:#fbfcfa}
+.lv-detail h4{margin:0 0 8px;font-size:12.5px;font-weight:900;color:var(--green)}
+.lv-trail,.lv-events,.lv-cart-items{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.lv-trail li,.lv-events li{display:grid;grid-template-columns:58px minmax(0,1fr);gap:8px;font-size:12px;line-height:1.6}
+.lv-trail time,.lv-events time,.lv-feed time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;direction:ltr;text-align:right}
+.lv-trail li:last-child span{font-weight:900;color:var(--green)}
+.lv-cart-items li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:baseline;font-size:12px}
+.lv-cart-items small{color:var(--muted);font-size:11px}
+.lv-muted{margin:0;font-size:12px;color:var(--muted)}
+.is-cart span,.lv-feed .is-cart p{color:#7a5a12}
+.is-order span,.lv-feed .is-order p{color:#256243;font-weight:800}
+
+/* آخر الأحداث */
+.lv-feed{position:sticky;top:96px;display:grid;gap:10px;max-height:calc(100vh - 120px);padding:16px;border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden}
+.lv-feed h3{margin:0;font-size:14px;font-weight:900}
+.lv-feed ul{display:grid;gap:2px;margin:0;padding:0;list-style:none;overflow-y:auto;overscroll-behavior:contain}
+.lv-feed li{display:grid;grid-template-columns:58px minmax(0,1fr);gap:8px;padding:8px 0;border-bottom:1px solid #f0f2ef}
+.lv-feed li:last-child{border:0}
+.lv-feed p{margin:0;font-size:12.5px;line-height:1.7}
+.lv-feed p b{font-weight:900}
+
+.lv-empty{display:grid;gap:6px;padding:40px 20px;border:1px dashed var(--line);border-radius:18px;background:#fff;text-align:center}
+.lv-empty strong{font-size:15px}
+.lv-empty p{margin:0;font-size:13px;color:var(--muted)}
+
+@media(max-width:1100px){
+  .lv-layout{grid-template-columns:1fr}
+  .lv-feed{position:static;max-height:420px}
+}
+@media(max-width:760px){
+  .lv-pulse{grid-template-columns:1fr;padding:18px}
+  .lv-funnel{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lv-funnel li:nth-child(3){border-inline-start:0}
+  .lv-funnel li:nth-child(n+3){border-top:1px solid rgba(244,239,226,.14)}
+  .lv-visitor-main{grid-template-columns:12px minmax(0,1fr) auto;grid-template-areas:"dot who time" ". where where" ". cart cart";gap:6px 10px;padding:12px 14px 6px}
+  .lv-dot{grid-area:dot}.lv-who{grid-area:who}.lv-where{grid-area:where}.lv-cart{grid-area:cart;display:flex;gap:6px;align-items:baseline}.lv-time{grid-area:time}
+  .lv-tags{padding-inline-start:36px}
+  .lv-detail{grid-template-columns:1fr}
+}
