@@ -1767,7 +1767,12 @@ function renderFilterOptionStep() {
   $("#filterStepProgress").textContent = `الخطوة ${filterStepIndex + 1} من ${steps.length}`;
   $("#filterStepProductName").textContent = item.name;
   $("#filterStepTitle").textContent = step.titleAr || "اختر الخيارات التي تريد إظهارها";
-  $("#filterStepChoices").innerHTML = choices.length ? choices.map(option => `<label class="filter-step-choice"><input type="checkbox" data-filter-step-option value="${escapeHtml(option.id)}" ${selected.has(String(option.id)) ? "checked" : ""}><span><b>${escapeHtml(option.nameAr || option.name || option.id)}</b>${option.nameEn ? `<small>${escapeHtml(option.nameEn)}</small>` : ""}</span></label>`).join("") : `<div class="empty">لا توجد خيارات مرتبطة بالاختيارات السابقة في هذه الصفحة.</div>`;
+  // «اختيار الكل» أول خانة في كل صفحة خيارات (للفلاتر والأغلفة المفلترة).
+  const chosenCount = choices.filter(option => selected.has(String(option.id))).length;
+  const selectAll = choices.length > 1 ? `<label class="filter-step-choice filter-step-all"><input type="checkbox" data-filter-step-all ${chosenCount === choices.length ? "checked" : ""}><span><b>اختيار الكل</b><small>${chosenCount} من ${choices.length} محدد</small></span></label>` : "";
+  $("#filterStepChoices").innerHTML = choices.length ? selectAll + choices.map(option => `<label class="filter-step-choice"><input type="checkbox" data-filter-step-option value="${escapeHtml(option.id)}" ${selected.has(String(option.id)) ? "checked" : ""}><span><b>${escapeHtml(option.nameAr || option.name || option.id)}</b>${option.nameEn ? `<small>${escapeHtml(option.nameEn)}</small>` : ""}</span></label>`).join("") : `<div class="empty">لا توجد خيارات مرتبطة بالاختيارات السابقة في هذه الصفحة.</div>`;
+  const allBox = $("#filterStepChoices [data-filter-step-all]");
+  if (allBox) allBox.indeterminate = chosenCount > 0 && chosenCount < choices.length;
   $("#filterStepBack").classList.toggle("hidden", filterStepIndex === 0);
   $("#filterStepNext").textContent = filterStepIndex === steps.length - 1 ? "تم" : "التالي";
 }
@@ -2246,14 +2251,17 @@ $("#filterProductsGrid").addEventListener("click", event => {
   if (button) openFilterOptionSteps(button.dataset.editFilterProductOptions);
 });
 $("#filterStepChoices").addEventListener("change", event => {
-  const input = event.target.closest("[data-filter-step-option]");
+  const input = event.target.closest("[data-filter-step-option], [data-filter-step-all]");
   if (!input) return;
   const entry = pendingFilterSelections.get(filterStepProductId);
   const item = products.find(product => String(product.id) === filterStepProductId);
   const step = filterProductSteps(item)[filterStepIndex];
   if (!entry || !step) return;
   const current = new Set(filterStepSelection(entry, step.id));
-  input.checked ? current.add(input.value) : current.delete(input.value);
+  if (input.matches("[data-filter-step-all]")) {
+    const visibleIds = filterStepItems(item, step, entry).map(option => String(option.id));
+    visibleIds.forEach(id => input.checked ? current.add(id) : current.delete(id));
+  } else input.checked ? current.add(input.value) : current.delete(input.value);
   const saved = entry.steps.find(value => value.stepId === step.id);
   if (saved) saved.optionIds = [...current];
   if (step.id === "options") {
