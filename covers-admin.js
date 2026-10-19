@@ -800,3 +800,24 @@ renderCoversPanel = function () {
   if (!grid || activeAdminCoverId || covers.some(cover => cover.id === "cover-tayyibat") || !tayyibatFilter()) return;
   grid.insertAdjacentHTML("afterend", `<div class="covers-ready-row"><button type="button" class="secondary" id="addTayyibatCover">+ إضافة غلاف «نظام الطيبات» المفلتر الجاهز</button></div>`);
 };
+
+// نسخ قسم: النسخة تنحط تحت القسم الأصلي في نفس المكان، سواء كان داخل غلاف أو داخل عنوان.
+const baseDuplicateCategory = duplicateCategory;
+duplicateCategory = function (categoryId) {
+  const before = new Set(categories.map(category => category.id));
+  baseDuplicateCategory(categoryId);
+  const copy = categories.find(category => !before.has(category.id));
+  if (!copy) return;
+  let placed = false;
+  headings.forEach(heading => {
+    [heading.categoryIds, ...(heading.subheadings || []).map(group => group.categoryIds)].forEach(list => {
+      const index = Array.isArray(list) ? list.indexOf(categoryId) : -1;
+      if (index >= 0) { list.splice(index + 1, 0, copy.id); placed = true; }
+    });
+  });
+  covers.filter(cover => !cover.filtered).forEach(cover => {
+    const index = cover.items.findIndex(item => item.type === "category" && item.id === categoryId);
+    if (index >= 0) { cover.items.splice(index + 1, 0, { type: "category", id: copy.id }); placed = true; }
+  });
+  if (placed) { markDirty("تم نسخ القسم تحته بنفس المكان — جارٍ الحفظ في الخادم"); render(); }
+};
