@@ -505,12 +505,22 @@ function migrateMergedCatalogOrder() {
   markDirty("تم ترتيب أقسام المخبز أولاً ثم أقسام المطعم — جارٍ الحفظ");
 }
 
+// الحفظ يرسل الكتالوج كله، فما نسمح فيه إلا بعد ما ينزل الكتالوج الحقيقي من الخادم.
+let catalogLoaded = false;
+function isValidRemoteCatalog(catalog) {
+  return Boolean(catalog && typeof catalog === "object" && Array.isArray(catalog.products) && Array.isArray(catalog.categories) && Array.isArray(catalog.headings));
+}
+
 async function loadData() {
   if (!currentAdmin) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
+  catalogLoaded = false;
   const response = await adminRequest("/admin/catalog");
-  const remoteCatalog = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(remoteCatalog.error || "تعذر تحميل الكتالوج");
+  const remoteCatalog = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(remoteCatalog?.error || "تعذر تحميل الكتالوج");
+  // لو وصل الكتالوج ناقص (نت ضعيف) لا نعرض صفحة فاضية ولا نحفظها فوق المنتجات.
+  if (!isValidRemoteCatalog(remoteCatalog)) throw new Error("ما وصل الكتالوج كامل من الخادم؛ حدّث الصفحة");
   applyRemoteCatalog(remoteCatalog);
+  catalogLoaded = true;
   toastPreparationMigrationComplete = remoteCatalog.toastPreparationMigrationV1 === true;
   breadSizeOptionsMigrationComplete = remoteCatalog.breadSizeOptionsMigrationV1 === true;
   productOptionIdsIsolationMigrationComplete = remoteCatalog.productOptionIdsIsolationV1 === true;
@@ -720,6 +730,7 @@ function markDirty(message = "جارٍ حفظ التعديلات في الخاد
 
 async function saveToالخادم() {
   if (!currentAdmin || !adminToken) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
+  if (!catalogLoaded) throw new Error("الكتالوج ما تحمّل من الخادم؛ حدّث الصفحة قبل الحفظ");
   normalizeData();
   const payload = {
     categories: categories.map((category, index) => ({ ...category, order: index + 1 })), headings, restaurantEnabled,
@@ -834,9 +845,11 @@ async function resetDraft() {
   assetUrls.forEach((url) => URL.revokeObjectURL(url));
   assetUrls.clear();
   const response = await adminRequest("/admin/catalog");
-  const catalog = await response.json().catch(() => ({}));
-  if (!response.ok) return toast(catalog.error || "تعذر تحميل بيانات الخادم");
+  const catalog = await response.json().catch(() => null);
+  if (!response.ok) return toast(catalog?.error || "تعذر تحميل بيانات الخادم");
+  if (!isValidRemoteCatalog(catalog)) return toast("ما وصل الكتالوج كامل من الخادم؛ حدّث الصفحة");
   applyRemoteCatalog(catalog);
+  catalogLoaded = true;
   openCategories.clear();
   $("#saveState").textContent = "تم تحميل آخر نسخة من الخادم";
   toast("تمت إعادة التحميل");
