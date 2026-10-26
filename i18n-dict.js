@@ -225,6 +225,20 @@ window.ADMIN_I18N_EN = {
   "الأقسام والمنتجات هني نسخ خاصة بهالغلاف: ترتيبها ما يأثر على «الأقسام». تقدر تعدّل خيارات المنتج أو تحذفه بس. اسحب ⠿ للترتيب.": "Categories and products here are copies for this cover: their order doesn't affect «Categories». You can only edit product options or delete. Drag ⠿ to reorder.",
   "ما في أغلفة بعد. اضغط + لإضافة غلاف، أو أضف الأغلفة الست الجاهزة (المعجنات، الخبز، الإفطار، الغداء، المقبلات والسلطات، الحلويات).": "No covers yet. Click + to add a cover, or add the six ready covers (Pastries, Bread, Breakfast, Lunch, Appetizers & Salads, Desserts).",
 
+  // ===== نسخة التدريب =====
+  "وضع التدريب": "Training mode", "التعديلات هنا ما تظهر في المنصة الحقيقية إلا إذا اعتمدها المدير.": "Changes here don't reach the real platform unless the manager approves them.",
+  "تدريب على إدارة منصة البيع": "Sales Platform Admin — Training", "أدخل رمز المتدرب. كل اللي تسويه هنا ينحفظ في نسخة التدريب فقط.": "Enter the trainee code. Everything you do here is saved in the training copy only.",
+  "رمز المتدرب": "Trainee code", "تعديلات المتدرب": "Trainee changes", "نسخة التدريب": "Training copy", "نسخ رابط التدريب": "Copy training link", "تصفير نسخة التدريب": "Reset training copy",
+  "جارٍ مقارنة نسخة التدريب بالمنصة…": "Comparing the training copy with the platform…", "جديد": "New", "معدّل": "Changed", "محذوف": "Deleted", "منتجات معدّلة": "Products changed",
+  "تغيّر:": "Changed:", "الأقسام داخله:": "Categories inside:", "اعتماد": "Approve", "رفض": "Reject", "اعتماد الحذف": "Approve deletion", "اعتماد العنوان كامل": "Approve whole heading",
+  "اعتماد القسم كامل": "Approve whole category", "منتجات بدون قسم": "Products without a category", "» في نسخة التدريب": "» in the training copy", "داخل عنوان «": "Inside heading «",
+  "المتدرب ما عدّل شي بعد": "The trainee hasn't changed anything yet", "آخر تعديل من المتدرب:": "Trainee's last change:", "ما في تعديلات من المتدرب. نسخة التدريب نفس المنصة الحقيقية.": "No trainee changes. The training copy matches the real platform.",
+  "تم اعتماد المنتج في المنصة": "Product approved on the platform", "تم اعتماد القسم في المنصة": "Category approved on the platform", "تم اعتماد العنوان في المنصة": "Heading approved on the platform",
+  "تم رفض التعديل ورجع في نسخة التدريب مثل المنصة": "Change rejected; the training copy matches the platform again", "انسخ رابط التدريب": "Training link copied", "رابط التدريب": "Training link",
+  "رجعت نسخة التدريب مثل المنصة": "Training copy reset to match the platform", "تصفير نسخة التدريب؟ تنمسح كل تعديلات المتدرب اللي ما اعتمدتها وترجع النسخة مثل المنصة الحقيقية.": "Reset the training copy? All trainee changes you haven't approved will be erased.",
+  "الاسم": "Name", "الاسم الإنجليزي": "English name", "السعر": "Price", "السعر الأصلي": "Original price", "الوصف": "Description", "الصور": "Images", "الظهور": "Visibility", "حالة التوفر": "Availability",
+  "العبارة المميزة": "Highlight", "إعدادات أخرى": "Other settings", "الصورة التوضيحية": "Illustration", "يخص": "Belongs to", "العناوين الفرعية": "Subheadings", "تدريب —": "Training —",
+
   // ===== مقاطع داخل جمل ديناميكية =====
   "» بـ": "» with", "تم حفظ مظهر الواجهة في الخادم": "Hero look saved to server", "جارٍ تجهيز النسخة الاحتياطية…": "Preparing backup…", "»؟": "»?", "منتج)": "products)", "رجع «": "Returned «", "فتح «": "Opened «", "قسم «": "category «", "صار له": "for", "عدّل «": "Changed «",
   "قسم ·": "categories ·", "عنوان ·": "headings ·", "انحذف «": "Removed «", "فتح قسم «": "Opened category «", "منتج من «": "products from «",

@@ -157,3 +157,17 @@ body.is-sorting *{cursor:grabbing!important}
 /* زر اللغة وتعديلات الاتجاه في الوضع الإنجليزي */
 .lang-toggle{position:fixed;left:16px;bottom:16px;z-index:300;padding:9px 15px;border-radius:999px;background:#fff;box-shadow:0 6px 20px rgba(28,54,43,.18);border:1px solid var(--line);color:var(--green);font:inherit;font-size:12px;font-weight:800}.lang-toggle:hover{background:#edf5f0}
 .lang-en .more-action-item{text-align:left}.lang-en .category-copy small{text-align:left}.lang-en .category-card.open>.category-head>.chevron{transform:rotate(180deg)}
+
+/* نسخة التدريب ومراجعة تعديلات المتدرب */
+.training-banner{position:sticky;top:0;z-index:150;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 10px;padding:9px 16px;background:#e4b95b;color:#2e2717;font-size:12px;text-align:center}.training-banner strong{font-weight:900}
+.training-mode .admin-auth-gate .brand-mark,.training-mode .brand-mark{background:#b07d12}
+.training-review-action{border-top:1px solid var(--line);margin-top:5px;padding-top:13px}
+.training-review-dialog{width:min(860px,calc(100vw - 24px));max-height:calc(100vh - 32px);padding:0;border:0;border-radius:20px}.training-review-dialog .dialog-card{padding:20px}.training-review-dialog header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.training-review-dialog h2{margin:4px 0}.training-review-dialog header small{color:var(--muted);font-size:12px}
+.training-review-dialog.is-busy .training-review-body{opacity:.55;pointer-events:none}
+.training-review-tools{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.training-review-tools button{padding:8px 12px;font-size:12px}
+.training-review-body h3{font-size:14px;margin:18px 0 8px;color:var(--green)}
+.training-card{border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px;background:#fff}.training-card>header{display:flex;align-items:center;gap:10px}.training-card>header strong,.training-card>header small{display:block}.training-card>header small{color:var(--muted);font-size:11px;direction:ltr;text-align:start}
+.training-card>header,.training-card>footer{border:0!important;padding:0!important;margin-inline:0!important;background:none!important;position:static!important;box-shadow:none!important}.training-card footer{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.training-card footer button,.training-actions button{padding:7px 12px;font-size:12px}
+.training-status{flex:none;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#edf3ef;color:var(--green)}.training-status.is-added{background:#e4f2e9;color:#256243}.training-status.is-changed{background:#fff4dc;color:#8a5a00}.training-status.is-removed{background:#fff0f0;color:var(--danger)}
+.training-fields,.training-linked{display:block;margin:8px 0 0;color:var(--muted);font-size:12px}
+.training-products{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}.training-product{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 10px;border-radius:12px;background:#f7f8f6}.training-name{flex:1;min-width:140px;font-size:13px;font-weight:700}.training-name small{color:var(--muted);font-weight:600}.training-product .training-fields{flex-basis:100%;margin:0}.training-actions{display:flex;gap:6px}
