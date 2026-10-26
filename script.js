@@ -2137,6 +2137,8 @@ async function signInAdmin(event) {
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.sessionToken) throw new Error(result.error || "تعذر تسجيل الدخول");
     adminToken = result.sessionToken; sessionStorage.setItem("figsAdminSession", adminToken);
+    // رمز المتدرب يفتح نسخة التدريب دائماً، حتى لو دخل من رابط الإدارة العادي.
+    if (result.employee?.role === "trainee" && !window.TRAINING_MODE) { location.replace(`${location.pathname}?training`); return; }
     $("#adminCodeInput").value = "";
     currentAdmin = result.employee || { role: "manager" };
     $("#adminAuthGate").classList.add("hidden"); $("#adminSignOut").classList.remove("hidden");
