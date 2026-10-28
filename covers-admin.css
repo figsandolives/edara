@@ -202,3 +202,11 @@ dialog.store-picker-dialog{width:min(1280px,96vw);max-height:94vh;height:94vh}
 .cover-inner-tools{display:flex;gap:6px;justify-content:flex-end}
 .cover-inner-tools button{width:34px;height:34px;padding:0;border-radius:9px;font-size:15px}
 .cover-inner-tools button:disabled{opacity:.35;cursor:default;transform:none}
+.cover-name-scale{margin-top:4px}
+.cover-inner-card{grid-template-columns:auto 1fr auto}
+.cover-inner-card-thumbs{display:flex;gap:6px}
+.cover-inner-card-thumbs span{position:relative;display:grid;place-items:center;width:62px;height:62px;border-radius:10px;overflow:hidden;background:#f5f6f2;border:1px solid var(--line)}
+.cover-inner-card-thumbs img{width:100%;height:100%;object-fit:contain}
+.cover-inner-card-thumbs b{position:absolute;top:3px;inset-inline-start:3px;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;font-size:10px}
+.cover-inner-card-thumbs .more{font-weight:900;color:var(--muted)}
+@media (max-width:900px){.cover-inner-card{grid-template-columns:1fr}}

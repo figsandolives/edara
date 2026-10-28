@@ -264,3 +264,6 @@ html.picker-mode .product-card.picker-selected::after{top:8px;inset-inline-end:8
 @media(hover:hover) and (pointer:fine){
   .world-tile:hover .cover-mosaic{transform:rotate(-7deg) scale(1.08)}
 }
+
+/* حجم خط اسم الغلاف من الإدارة (cover.nameScale) */
+.world-tile-copy strong>span{font-size:calc(var(--name-scale,1) * 1em)}

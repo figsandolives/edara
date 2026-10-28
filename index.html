@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20261026-training-1">
   <link rel="stylesheet" href="strip.css?v=20261018-login-1">
-  <link rel="stylesheet" href="covers.css?v=20261019-hover-1">
-  <link rel="stylesheet" href="covers-admin.css?v=20261028-inner-images-1">
+  <link rel="stylesheet" href="covers.css?v=20261028-name-scale-1">
+  <link rel="stylesheet" href="covers-admin.css?v=20261028-name-scale-1">
   <link rel="stylesheet" href="imagemap.css?v=2">
   <link rel="stylesheet" href="imagemap-admin.css?v=3">
   <link rel="stylesheet" href="live-visitors.css?v=20261019-live-2">
@@ -257,6 +257,7 @@
           <label>وصف الغلاف بالعربي<input id="coverDescriptionAr" maxlength="90"></label>
           <label>وصف الغلاف بالإنجليزي<input id="coverDescriptionEn" maxlength="90" dir="ltr"></label>
         </div>
+        <label class="strip-speed cover-name-scale"><span>حجم خط اسم الغلاف <output id="coverNameScaleValue">100%</output></span><input id="coverNameScale" type="range" min="50" max="130" step="5" value="100"><small><span>أصغر</span><span>أكبر</span></small></label>
         <fieldset class="cover-size-choice"><legend>حجم الغلاف</legend>
           <label><input type="radio" name="coverSize" value="full"> <span><b>حجم كامل</b><small>بعرض الشاشة في الهاتف</small></span></label>
           <label><input type="radio" name="coverSize" value="half" checked> <span><b>نصف حجم</b><small>غلافين جنب بعض</small></span></label>
@@ -484,11 +485,11 @@
   <script src="training-mode.js?v=20261026-training-1"></script>
   <script src="script.js?v=20261026-trainee-redirect-1"></script>
   <script src="imagemap-admin.js?v=2"></script>
-  <script src="covers-admin.js?v=20261028-inner-images-1"></script>
+  <script src="covers-admin.js?v=20261028-name-scale-1"></script>
   <script src="strip-admin.js?v=20261018-login-1"></script>
   <script src="live-visitors.js?v=20261019-live-2"></script>
   <script src="training-review.js?v=20261026-training-1"></script>
-  <script src="i18n-dict.js?v=20261028-inner-images-1"></script>
+  <script src="i18n-dict.js?v=20261028-name-scale-1"></script>
   <script src="i18n.js?v=20261026-en-1"></script>
 </body>
 </html>

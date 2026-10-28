@@ -19,6 +19,7 @@ function normalizeAdminCovers(list) {
     id: clean(cover?.id) || `cover-${Date.now().toString(36)}-${index}`,
     nameAr: clean(cover?.nameAr), nameEn: clean(cover?.nameEn),
     descriptionAr: clean(cover?.descriptionAr), descriptionEn: clean(cover?.descriptionEn),
+    nameScale: Math.min(1.3, Math.max(0.5, Number(cover?.nameScale) || 1)),
     size: cover?.size === "full" ? "full" : "half",
     image: clean(cover?.image),
     innerImage: clean(cover?.innerImage),
@@ -120,11 +121,27 @@ function adminCoverTileMarkup(cover, { preview = false } = {}) {
   const count = coverProductCount(cover);
   return `<div class="world-tile size-${cover.size}${cover.imageMode === "animated" ? " is-animated" : ""}${preview ? " is-preview" : ""}" ${preview ? "" : `draggable="true" data-cover-id="${escapeHtml(cover.id)}" tabindex="0" title="اضغط مرتين للدخول"`}>
     ${cover.imageMode === "animated" ? (adminCoverMosaic(cover) || `<span class="cover-tile-empty">أضف منتجات عشان تتحرك صورها</span>`) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="" draggable="false">` : `<span class="cover-tile-empty">بدون صورة</span>`)}
-    <span class="world-tile-copy"><strong>${escapeHtml(cover.nameAr || "اسم الغلاف")}</strong>${cover.descriptionAr ? `<small>${escapeHtml(cover.descriptionAr)}</small>` : ""}</span>
+    <span class="world-tile-copy"><strong><span style="--name-scale:${cover.nameScale || 1}">${escapeHtml(cover.nameAr || "اسم الغلاف")}</span></strong>${cover.descriptionAr ? `<small>${escapeHtml(cover.descriptionAr)}</small>` : ""}</span>
     <span class="world-tile-count">${coverItemsLabel(count)}</span>
     ${preview ? "" : `<button type="button" class="cover-tile-edit" data-cover-edit="${escapeHtml(cover.id)}">تعديل</button>`}
   </div>`;
 }
+
+// الصور الداخلية في صفحة الغلاف بالإدارة: بطاقة مختصرة (مثل بطاقة صفحة الصورة) بدل الصور بحجمها الكامل.
+function coverInnerImagesCardMarkup(cover) {
+  const images = cover.innerImages || [];
+  if (!images.length) return "";
+  return `<div class="im-strip"><article class="im-strip-card cover-inner-card">
+    <div class="cover-inner-card-thumbs">${images.slice(0, 4).map((src, index) => `<span><img src="${escapeHtml(src)}" alt=""><b>${index + 1}</b></span>`).join("")}${images.length > 4 ? `<span class="more">+${images.length - 4}</span>` : ""}</div>
+    <div class="im-strip-info"><small>الصور الداخلية</small><strong>${images.length} ${images.length === 1 ? "صورة" : images.length === 2 ? "صورتين" : "صور"}</strong><small>تظهر آخر صفحة الغلاف بنفس هذا الترتيب</small></div>
+    <div class="im-strip-actions"><button type="button" class="primary" data-cover-inner-edit>تعديل</button></div>
+  </article></div>`;
+}
+document.addEventListener("click", event => {
+  if (!event.target.closest("[data-cover-inner-edit]")) return;
+  openCoverDialog(activeAdminCoverId);
+  setTimeout(() => $(".cover-inner-image-field")?.scrollIntoView({ block: "center", behavior: "smooth" }), 120);
+});
 
 function coverBannerPreviewMarkup(cover) {
   const helpers = cover.helperProductIds.map(productById).filter(Boolean).map(imageSource).filter(Boolean);
@@ -132,7 +149,7 @@ function coverBannerPreviewMarkup(cover) {
     <div class="world-cover-media">${cover.imageMode === "animated" ? adminCoverMosaic(cover) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="">` : "")}</div>
     <div class="world-cover-copy"><h1>${escapeHtml(cover.nameAr)}</h1>${cover.descriptionAr ? `<p>${escapeHtml(cover.descriptionAr)}</p>` : ""}<span class="world-cover-count">${coverItemsLabel(coverProductCount(cover))}</span></div>
     ${helpers.length ? `<div class="world-cover-stack">${helpers.map(src => `<img src="${escapeHtml(src)}" alt="">`).join("")}</div>` : ""}
-  </header>${(cover.innerImages || []).map(src => `<div class="cover-inner-image"><img src="${escapeHtml(src)}" alt=""></div>`).join("")}`;
+  </header>${coverInnerImagesCardMarkup(cover)}`;
 }
 
 function renderCoversPanel() {
@@ -239,7 +256,7 @@ function renderCoverDialogPreview() {
 
 function openCoverDialog(id = "") {
   const existing = covers.find(cover => cover.id === id);
-  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", innerImage: "", innerImages: [], imagePages: [], helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
+  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", innerImage: "", innerImages: [], nameScale: 1, imagePages: [], helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
   coverDraft.mosaic = normalizeCoverMosaic(coverDraft.mosaic);
   $("#coverMosaicSpeed").value = String(coverDraft.mosaic.speed);
   $("#coverMosaicSpeedValue").textContent = String(coverDraft.mosaic.speed);
@@ -249,6 +266,9 @@ function openCoverDialog(id = "") {
   $("#coverDelete").classList.toggle("hidden", !existing);
   $("#coverNameAr").value = coverDraft.nameAr; $("#coverNameEn").value = coverDraft.nameEn;
   $("#coverDescriptionAr").value = coverDraft.descriptionAr; $("#coverDescriptionEn").value = coverDraft.descriptionEn;
+  coverDraft.nameScale = coverDraft.nameScale || 1;
+  $("#coverNameScale").value = String(Math.round(coverDraft.nameScale * 100));
+  $("#coverNameScaleValue").textContent = `${Math.round(coverDraft.nameScale * 100)}%`;
   $$("input[name='coverSize']").forEach(input => { input.checked = input.value === coverDraft.size; });
   $$("input[name='coverImageMode']").forEach(input => { input.checked = input.value === coverDraft.imageMode; });
   $("#coverCopyFilter").innerHTML = `<option value="">بدون نسخ</option>` + productFilters.map(filter => `<option value="${escapeHtml(filter.id)}">${escapeHtml(filter.nameAr)} (${filter.products.length} منتج)</option>`).join("");
@@ -358,6 +378,11 @@ $("#coverInnerImageList").addEventListener("drop", event => {
 $("#addCover").addEventListener("click", () => openCoverDialog());
 $("#coverEditFromPage").addEventListener("click", () => openCoverDialog(activeAdminCoverId));
 ["coverNameAr", "coverDescriptionAr"].forEach(id => $(`#${id}`).addEventListener("input", renderCoverDialogPreview));
+$("#coverNameScale").addEventListener("input", event => {
+  coverDraft.nameScale = Number(event.target.value) / 100;
+  $("#coverNameScaleValue").textContent = `${event.target.value}%`;
+  renderCoverDialogPreview();
+});
 $$("input[name='coverSize']").forEach(input => input.addEventListener("change", () => {
   renderCoverDialogPreview();
   if (coverDraft?.image) $("#coverImageStatus").textContent = "غيّرت الحجم؟ يفضّل ترفع صورة بالقياس الجديد.";
