@@ -22,6 +22,7 @@ function normalizeAdminCovers(list) {
     size: cover?.size === "full" ? "full" : "half",
     image: clean(cover?.image),
     innerImage: clean(cover?.innerImage),
+    imagePages: typeof normalizeImagePages === "function" ? normalizeImagePages(cover?.imagePages) : [],
     helperProductIds: (Array.isArray(cover?.helperProductIds) ? cover.helperProductIds : []).map(String).filter(Boolean).slice(0, 3),
     items: (Array.isArray(cover?.items) ? cover.items : []).map(item => ({ type: item?.type === "heading" ? "heading" : "category", id: String(item?.id || "") })).filter(item => item.id),
     filtered: cover?.filtered === true,
@@ -141,7 +142,8 @@ function renderCoversPanel() {
   $("#catalogWorkspace")?.classList.toggle("in-cover", Boolean(cover));
   $("#sectionsHead")?.classList.toggle("hidden", Boolean(cover));
   $("#coverPageHead")?.classList.toggle("hidden", !cover);
-  $("#coverPageBanner").innerHTML = cover ? coverBannerPreviewMarkup(cover) : "";
+  $("#coverPageBanner").innerHTML = cover ? coverBannerPreviewMarkup(cover) + (typeof imagePagesStripMarkup === "function" ? imagePagesStripMarkup(cover) : "") : "";
+  $("#coverImagePageBtn")?.classList.toggle("hidden", !cover || Boolean(cover.filtered));
   grid.innerHTML = covers.length ? covers.map(item => adminCoverTileMarkup(item)).join("") : `<div class="covers-empty"><p>ما في أغلفة بعد. اضغط + لإضافة غلاف، أو أضف الأغلفة الست الجاهزة (المعجنات، الخبز، الإفطار، الغداء، المقبلات والسلطات، الحلويات).</p><button type="button" class="primary" id="addReadyCovers">إضافة الأغلفة الست الجاهزة</button></div>`;
   const toggle = $("#coverRemoveToggle");
   if (toggle) { toggle.textContent = coverRemoveMode ? "إلغاء" : "حذف أقسام"; toggle.classList.toggle("active", coverRemoveMode); toggle.classList.toggle("hidden", Boolean(cover?.filtered)); }
@@ -235,7 +237,7 @@ function renderCoverDialogPreview() {
 
 function openCoverDialog(id = "") {
   const existing = covers.find(cover => cover.id === id);
-  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", innerImage: "", helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
+  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", innerImage: "", imagePages: [], helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
   coverDraft.mosaic = normalizeCoverMosaic(coverDraft.mosaic);
   $("#coverMosaicSpeed").value = String(coverDraft.mosaic.speed);
   $("#coverMosaicSpeedValue").textContent = String(coverDraft.mosaic.speed);
