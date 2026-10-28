@@ -21,6 +21,7 @@ function normalizeAdminCovers(list) {
     descriptionAr: clean(cover?.descriptionAr), descriptionEn: clean(cover?.descriptionEn),
     size: cover?.size === "full" ? "full" : "half",
     image: clean(cover?.image),
+    innerImage: clean(cover?.innerImage),
     helperProductIds: (Array.isArray(cover?.helperProductIds) ? cover.helperProductIds : []).map(String).filter(Boolean).slice(0, 3),
     items: (Array.isArray(cover?.items) ? cover.items : []).map(item => ({ type: item?.type === "heading" ? "heading" : "category", id: String(item?.id || "") })).filter(item => item.id),
     filtered: cover?.filtered === true,
@@ -128,7 +129,7 @@ function coverBannerPreviewMarkup(cover) {
     <div class="world-cover-media">${cover.imageMode === "animated" ? adminCoverMosaic(cover) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="">` : "")}</div>
     <div class="world-cover-copy"><h1>${escapeHtml(cover.nameAr)}</h1>${cover.descriptionAr ? `<p>${escapeHtml(cover.descriptionAr)}</p>` : ""}<span class="world-cover-count">${coverItemsLabel(coverProductCount(cover))}</span></div>
     ${helpers.length ? `<div class="world-cover-stack">${helpers.map(src => `<img src="${escapeHtml(src)}" alt="">`).join("")}</div>` : ""}
-  </header>`;
+  </header>${cover.innerImage ? `<div class="cover-inner-image"><img src="${escapeHtml(cover.innerImage)}" alt=""></div>` : ""}`;
 }
 
 function renderCoversPanel() {
@@ -234,7 +235,7 @@ function renderCoverDialogPreview() {
 
 function openCoverDialog(id = "") {
   const existing = covers.find(cover => cover.id === id);
-  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
+  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", innerImage: "", helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
   coverDraft.mosaic = normalizeCoverMosaic(coverDraft.mosaic);
   $("#coverMosaicSpeed").value = String(coverDraft.mosaic.speed);
   $("#coverMosaicSpeedValue").textContent = String(coverDraft.mosaic.speed);
@@ -250,6 +251,9 @@ function openCoverDialog(id = "") {
   $("#coverCopyFilter").value = "";
   syncCoverFilteredField();
   $("#coverImageInput").value = ""; $("#coverImageStatus").textContent = coverDraft.image ? "الصورة الحالية محفوظة" : "";
+  coverDraft.innerImage = clean(coverDraft.innerImage);
+  $("#coverInnerImageInput").value = ""; $("#coverInnerImageStatus").textContent = "";
+  renderCoverInnerImagePreview();
   renderCoverDialogPreview();
   $("#coverDialog").showModal();
 }
@@ -271,6 +275,42 @@ async function uploadCoverImage(file, size) {
   const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .86));
   return uploadPlatformAsset(`orderingPlatform/catalog/appearance/covers/${coverDraft.id}-${Date.now()}.webp`, blob);
 }
+
+// الصورة الداخلية: تنرفع بمقاسها ونسبتها بدون قص، وتطلع فوق الأقسام داخل صفحة الغلاف.
+async function uploadCoverInnerImage(file) {
+  if (!file?.type?.startsWith("image/")) throw new Error("اختر ملف صورة صالحاً");
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1800 / bitmap.width, 2400 / bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", .86));
+  if (!blob) throw new Error("تعذر تجهيز الصورة");
+  return uploadPlatformAsset(`orderingPlatform/catalog/appearance/covers/${coverDraft.id}-inner-${Date.now()}.webp`, blob);
+}
+function renderCoverInnerImagePreview() {
+  const url = coverDraft?.innerImage || "";
+  $("#coverInnerImagePreview").src = url;
+  $("#coverInnerImagePreview").classList.toggle("hidden", !url);
+  $("#coverInnerImageRemove").classList.toggle("hidden", !url);
+}
+$("#coverInnerImageInput").addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  $("#coverInnerImageStatus").textContent = "جارٍ تجهيز الصورة…";
+  try {
+    coverDraft.innerImage = await uploadCoverInnerImage(file);
+    $("#coverInnerImageStatus").textContent = "تم رفع الصورة";
+    renderCoverInnerImagePreview();
+  } catch (error) { $("#coverInnerImageStatus").textContent = error.message || "تعذر رفع الصورة"; }
+  event.target.value = "";
+});
+$("#coverInnerImageRemove").addEventListener("click", () => {
+  coverDraft.innerImage = "";
+  $("#coverInnerImageStatus").textContent = "";
+  renderCoverInnerImagePreview();
+});
 
 $("#addCover").addEventListener("click", () => openCoverDialog());
 $("#coverEditFromPage").addEventListener("click", () => openCoverDialog(activeAdminCoverId));
