@@ -193,3 +193,12 @@ dialog.store-picker-dialog{width:min(1280px,96vw);max-height:94vh;height:94vh}
 .cover-inner-image-actions .delete{min-height:0;padding:11px 16px;border-radius:12px}
 .cover-inner-image{margin:12px 0 4px}
 .cover-inner-image img{display:block;width:100%;height:auto;border-radius:16px}
+.cover-inner-list{display:grid;gap:8px}
+.cover-inner-item{display:grid;grid-template-columns:28px 92px 1fr;gap:10px;align-items:center;padding:7px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:grab}
+.cover-inner-item.dragging{opacity:.45}
+.cover-inner-item.drop-target{border-color:#dca83e;box-shadow:0 0 0 2px #dca83e}
+.cover-inner-item img{width:92px;height:64px;object-fit:contain;border-radius:8px;background:#f5f6f2}
+.cover-inner-order{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;font-size:12px;font-weight:900}
+.cover-inner-tools{display:flex;gap:6px;justify-content:flex-end}
+.cover-inner-tools button{width:34px;height:34px;padding:0;border-radius:9px;font-size:15px}
+.cover-inner-tools button:disabled{opacity:.35;cursor:default;transform:none}

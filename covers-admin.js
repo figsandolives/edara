@@ -22,6 +22,8 @@ function normalizeAdminCovers(list) {
     size: cover?.size === "full" ? "full" : "half",
     image: clean(cover?.image),
     innerImage: clean(cover?.innerImage),
+    // أكثر من صورة داخلية بالترتيب؛ الغلاف القديم اللي فيه صورة وحدة يتحول لقائمة فيها هي.
+    innerImages: (Array.isArray(cover?.innerImages) ? cover.innerImages.map(clean).filter(Boolean) : []).concat(Array.isArray(cover?.innerImages) ? [] : [clean(cover?.innerImage)].filter(Boolean)),
     imagePages: typeof normalizeImagePages === "function" ? normalizeImagePages(cover?.imagePages) : [],
     helperProductIds: (Array.isArray(cover?.helperProductIds) ? cover.helperProductIds : []).map(String).filter(Boolean).slice(0, 3),
     items: (Array.isArray(cover?.items) ? cover.items : []).map(item => ({ type: item?.type === "heading" ? "heading" : "category", id: String(item?.id || "") })).filter(item => item.id),
@@ -130,7 +132,7 @@ function coverBannerPreviewMarkup(cover) {
     <div class="world-cover-media">${cover.imageMode === "animated" ? adminCoverMosaic(cover) : (cover.image ? `<img src="${escapeHtml(cover.image)}" alt="">` : "")}</div>
     <div class="world-cover-copy"><h1>${escapeHtml(cover.nameAr)}</h1>${cover.descriptionAr ? `<p>${escapeHtml(cover.descriptionAr)}</p>` : ""}<span class="world-cover-count">${coverItemsLabel(coverProductCount(cover))}</span></div>
     ${helpers.length ? `<div class="world-cover-stack">${helpers.map(src => `<img src="${escapeHtml(src)}" alt="">`).join("")}</div>` : ""}
-  </header>${cover.innerImage ? `<div class="cover-inner-image"><img src="${escapeHtml(cover.innerImage)}" alt=""></div>` : ""}`;
+  </header>${(cover.innerImages || []).map(src => `<div class="cover-inner-image"><img src="${escapeHtml(src)}" alt=""></div>`).join("")}`;
 }
 
 function renderCoversPanel() {
@@ -237,7 +239,7 @@ function renderCoverDialogPreview() {
 
 function openCoverDialog(id = "") {
   const existing = covers.find(cover => cover.id === id);
-  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", innerImage: "", imagePages: [], helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
+  coverDraft = existing ? clone(existing) : { id: `cover-${Date.now().toString(36)}`, nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", size: "half", image: "", innerImage: "", innerImages: [], imagePages: [], helperProductIds: [], items: [], filtered: false, imageMode: "photo", mosaic: normalizeCoverMosaic(), sourceFilterId: "", products: [], sectionOrder: [], productOrder: {} };
   coverDraft.mosaic = normalizeCoverMosaic(coverDraft.mosaic);
   $("#coverMosaicSpeed").value = String(coverDraft.mosaic.speed);
   $("#coverMosaicSpeedValue").textContent = String(coverDraft.mosaic.speed);
@@ -253,7 +255,7 @@ function openCoverDialog(id = "") {
   $("#coverCopyFilter").value = "";
   syncCoverFilteredField();
   $("#coverImageInput").value = ""; $("#coverImageStatus").textContent = coverDraft.image ? "الصورة الحالية محفوظة" : "";
-  coverDraft.innerImage = clean(coverDraft.innerImage);
+  coverDraft.innerImages = (coverDraft.innerImages || []).filter(Boolean);
   $("#coverInnerImageInput").value = ""; $("#coverInnerImageStatus").textContent = "";
   renderCoverInnerImagePreview();
   renderCoverDialogPreview();
@@ -291,27 +293,66 @@ async function uploadCoverInnerImage(file) {
   if (!blob) throw new Error("تعذر تجهيز الصورة");
   return uploadPlatformAsset(`orderingPlatform/catalog/appearance/covers/${coverDraft.id}-inner-${Date.now()}.webp`, blob);
 }
+function syncCoverInnerImages() {
+  coverDraft.innerImage = coverDraft.innerImages[0] || "";
+  renderCoverInnerImagePreview();
+}
 function renderCoverInnerImagePreview() {
-  const url = coverDraft?.innerImage || "";
-  $("#coverInnerImagePreview").src = url;
-  $("#coverInnerImagePreview").classList.toggle("hidden", !url);
-  $("#coverInnerImageRemove").classList.toggle("hidden", !url);
+  const list = coverDraft?.innerImages || [];
+  $("#coverInnerImageList").innerHTML = list.map((src, index) => `<div class="cover-inner-item" draggable="true" data-inner-index="${index}">
+    <span class="cover-inner-order">${index + 1}</span>
+    <img src="${escapeHtml(src)}" alt="" draggable="false">
+    <span class="cover-inner-tools">
+      <button type="button" data-inner-move="-1" data-inner-at="${index}" ${index === 0 ? "disabled" : ""} title="قبل">↑</button>
+      <button type="button" data-inner-move="1" data-inner-at="${index}" ${index === list.length - 1 ? "disabled" : ""} title="بعد">↓</button>
+      <button type="button" class="delete" data-inner-remove="${index}" title="حذف الصورة">×</button>
+    </span>
+  </div>`).join("");
+  $("#coverInnerImageList").classList.toggle("hidden", !list.length);
+  $("#coverInnerImageAddLabel").textContent = list.length ? "+ إضافة صور" : "اختيار صور";
 }
 $("#coverInnerImageInput").addEventListener("change", async event => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  $("#coverInnerImageStatus").textContent = "جارٍ تجهيز الصورة…";
-  try {
-    coverDraft.innerImage = await uploadCoverInnerImage(file);
-    $("#coverInnerImageStatus").textContent = "تم رفع الصورة";
-    renderCoverInnerImagePreview();
-  } catch (error) { $("#coverInnerImageStatus").textContent = error.message || "تعذر رفع الصورة"; }
+  const files = [...(event.target.files || [])];
   event.target.value = "";
+  if (!files.length) return;
+  const status = $("#coverInnerImageStatus");
+  let done = 0;
+  for (const file of files) {
+    status.textContent = files.length > 1 ? `جارٍ رفع الصور… ${done + 1} من ${files.length}` : "جارٍ تجهيز الصورة…";
+    try {
+      coverDraft.innerImages.push(await uploadCoverInnerImage(file));
+      done += 1;
+      syncCoverInnerImages();
+    } catch (error) { status.textContent = error.message || "تعذر رفع الصورة"; return; }
+  }
+  status.textContent = done > 1 ? `تم رفع ${done} صور` : "تم رفع الصورة";
 });
-$("#coverInnerImageRemove").addEventListener("click", () => {
-  coverDraft.innerImage = "";
-  $("#coverInnerImageStatus").textContent = "";
-  renderCoverInnerImagePreview();
+$("#coverInnerImageList").addEventListener("click", event => {
+  const move = event.target.closest("[data-inner-move]");
+  const remove = event.target.closest("[data-inner-remove]");
+  const list = coverDraft.innerImages;
+  if (move) {
+    const at = Number(move.dataset.innerAt), to = at + Number(move.dataset.innerMove);
+    if (to < 0 || to >= list.length) return;
+    [list[at], list[to]] = [list[to], list[at]];
+    syncCoverInnerImages();
+  }
+  if (remove) { list.splice(Number(remove.dataset.innerRemove), 1); $("#coverInnerImageStatus").textContent = ""; syncCoverInnerImages(); }
+});
+// ترتيب بالسحب: اسحب الصورة وحطها مكان صورة ثانية.
+let draggedInnerIndex = -1;
+$("#coverInnerImageList").addEventListener("dragstart", event => { const item = event.target.closest("[data-inner-index]"); draggedInnerIndex = item ? Number(item.dataset.innerIndex) : -1; item?.classList.add("dragging"); });
+$("#coverInnerImageList").addEventListener("dragend", () => { draggedInnerIndex = -1; $$("#coverInnerImageList .dragging, #coverInnerImageList .drop-target").forEach(item => item.classList.remove("dragging", "drop-target")); });
+$("#coverInnerImageList").addEventListener("dragover", event => { if (draggedInnerIndex < 0) return; event.preventDefault(); $$("#coverInnerImageList .drop-target").forEach(item => item.classList.remove("drop-target")); event.target.closest("[data-inner-index]")?.classList.add("drop-target"); });
+$("#coverInnerImageList").addEventListener("drop", event => {
+  const target = event.target.closest("[data-inner-index]");
+  if (draggedInnerIndex < 0 || !target) return;
+  event.preventDefault();
+  const list = coverDraft.innerImages;
+  const [item] = list.splice(draggedInnerIndex, 1);
+  list.splice(Number(target.dataset.innerIndex), 0, item);
+  draggedInnerIndex = -1;
+  syncCoverInnerImages();
 });
 
 $("#addCover").addEventListener("click", () => openCoverDialog());
