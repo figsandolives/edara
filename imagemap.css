@@ -41,13 +41,11 @@
 .im-el.im-add .product-qty button{height:2em!important;width:2em!important;padding:0!important;border:0!important;background:#eef4ef!important;color:#194433!important;font:inherit!important;font-size:1em!important;font-weight:900!important}
 .im-el.im-add .product-qty strong{font-size:1em!important;text-align:center;color:#18352a}
 
-/* المنصة: الصفحة بعرض الشاشة، والمناطق تلمع مرتين عشان العميل يعرف إنها تنضغط */
+/* المنصة: الصفحة بعرض الشاشة، وحدود المنتجات ما تبين (تنضغط بس) */
 .im-section{scroll-margin-top:96px}
 .im-section .im-page{width:min(100%,900px);margin:0 auto;border-radius:22px;box-shadow:0 22px 60px rgba(24,53,42,.12)}
-.im-section .im-regions polygon:hover,.im-section .im-regions polygon:focus-visible{fill:rgba(255,255,255,.14);stroke:rgba(220,168,62,.95)}
-.im-section .im-regions polygon{animation:im-hint 1.5s ease .6s 2}
-@keyframes im-hint{0%,100%{fill:transparent;stroke:transparent}45%{fill:rgba(255,255,255,.18);stroke:rgba(220,168,62,.9)}}
-@media (prefers-reduced-motion:reduce){.im-section .im-regions polygon{animation:none}}
+.im-section .im-regions polygon:focus-visible{stroke:rgba(220,168,62,.95)}
+.im-section .im-regions polygon{-webkit-tap-highlight-color:transparent}
 body.cover-image-page #categories,body.cover-image-page #headingNavigation,body.cover-image-page #categoryMenu{display:none!important}
 body.cover-image-page .product-sections{gap:28px;padding-top:4px}
 @media (max-width:760px){

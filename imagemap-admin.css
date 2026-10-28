@@ -84,7 +84,6 @@ body.im-open{overflow:hidden}
 .im-stage .im-regions polygon.im-region{fill:hsla(var(--h),62%,48%,.2);stroke:hsla(var(--h),62%,38%,.95);stroke-width:2;stroke-dasharray:7 5}
 .im-stage .im-regions polygon.im-region.is-selected{fill:rgba(220,168,62,.22);stroke:#dca83e;stroke-width:3;stroke-dasharray:none;filter:drop-shadow(0 0 8px rgba(220,168,62,.6))}
 .im-stage.is-preview .im-regions polygon.im-region{fill:transparent;stroke:transparent}
-.im-stage.is-preview .im-regions polygon.im-region:hover{fill:rgba(255,255,255,.14);stroke:rgba(220,168,62,.95);stroke-dasharray:none}
 .im-drawing{fill:rgba(220,168,62,.16);stroke:#dca83e;stroke-width:2.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .im-rubber{stroke:#dca83e;stroke-width:1.6;stroke-dasharray:5 5;vector-effect:non-scaling-stroke}
 .im-labels,.im-overlay{position:absolute;inset:0;pointer-events:none}
