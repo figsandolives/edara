@@ -184,3 +184,5 @@ body.im-open{overflow:hidden}
   .im-strip-card{grid-template-columns:70px 1fr}
   .im-strip-actions{grid-column:1/-1;grid-auto-flow:column}
 }
+.im-redraw{display:grid;gap:2px;justify-items:start;text-align:right;padding:11px 13px;border:1.5px dashed #dca83e!important;background:#fffaf0!important;color:#7a5410!important;font-weight:900}
+.im-redraw small{font-weight:600;font-size:11px;color:#8a7650}

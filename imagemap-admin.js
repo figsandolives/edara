@@ -170,7 +170,7 @@ function imOpen(coverId, pageId = "") {
   const owner = covers.find(cover => cover.id === coverId);
   if (!owner) return;
   owner.imagePages = owner.imagePages || [];
-  im = { coverId, pageId, categoryId: "", screen: "category", mode: "draw", drawing: [], freehand: false, selected: null, history: [], future: [], zoom: 100, file: null, preview: false, replace: false };
+  im = { coverId, pageId, categoryId: "", screen: "category", mode: "draw", drawing: [], redraw: "", freehand: false, selected: null, history: [], future: [], zoom: 100, file: null, preview: false, replace: false };
   const page = pageId ? imPage() : null;
   if (page) { im.categoryId = page.categoryId; im.screen = "editor"; }
   $("#imEditor").classList.remove("hidden");
@@ -342,13 +342,13 @@ function imRender() {
   stage.classList.toggle("is-preview", im.preview);
   const W = page.width, H = page.height;
   const selectedRegion = im.selected?.regionId;
-  const polygons = page.regions.map(region => {
+  const polygons = page.regions.filter(region => region.id !== im.redraw).map(region => {
     const hue = imRegionHue(page, region);
     const points = region.points.map(([x, y]) => `${(x * W).toFixed(1)},${(y * H).toFixed(1)}`).join(" ");
     return `<polygon class="im-region${region.id === selectedRegion ? " is-selected" : ""}" style="--h:${hue}" points="${points}" data-im-region="${escapeHtml(region.id)}"></polygon>`;
   }).join("");
   const drawing = im.drawing.length ? `<polyline class="im-drawing" points="${im.drawing.map(([x, y]) => `${(x * W).toFixed(1)},${(y * H).toFixed(1)}`).join(" ")}"></polyline><line class="im-rubber" id="imRubber" x1="${im.drawing.at(-1)[0] * W}" y1="${im.drawing.at(-1)[1] * H}" x2="${im.drawing.at(-1)[0] * W}" y2="${im.drawing.at(-1)[1] * H}"></line>` : "";
-  const labels = im.preview ? "" : page.regions.map(region => {
+  const labels = im.preview ? "" : page.regions.filter(region => region.id !== im.redraw).map(region => {
     const product = productById(region.productId);
     const box = imBBox(region.points);
     return `<span class="im-region-label${region.id === selectedRegion ? " is-selected" : ""}" style="left:${box.cx * 100}%;top:${box.y * 100}%;--h:${imRegionHue(page, region)}" data-im-region="${escapeHtml(region.id)}">${escapeHtml(product?.name || "منتج محذوف")}</span>`;
@@ -363,7 +363,7 @@ function imRender() {
       return `<div class="im-el im-${el.type} im-c-${el.color} im-a-${el.align}${el.plate ? " im-plate" : ""}${selected ? " is-selected" : ""}" style="${imElementStyle(el)}" dir="rtl" data-im-el="${escapeHtml(el.id)}" data-im-owner="${escapeHtml(region.id)}">${inner}${handles}</div>`;
     });
   }).join("");
-  const vertices = !im.preview && selectedRegion && !im.selected.elId ? (page.regions.find(region => region.id === selectedRegion)?.points || []).map(([x, y], index) => `<i class="im-vertex" style="left:${x * 100}%;top:${y * 100}%" data-im-vertex="${index}"></i>`).join("") : "";
+  const vertices = !im.preview && !im.redraw && selectedRegion && !im.selected.elId ? (page.regions.find(region => region.id === selectedRegion)?.points || []).map(([x, y], index) => `<i class="im-vertex" style="left:${x * 100}%;top:${y * 100}%" data-im-vertex="${index}"></i>`).join("") : "";
   const dots = im.drawing.map(([x, y], index) => `<i class="im-dot${index === 0 ? " is-first" : ""}${index === 0 && im.drawing.length >= 3 ? " can-close" : ""}" style="left:${x * 100}%;top:${y * 100}%"></i>`).join("");
   stage.innerHTML = `<img src="${escapeHtml(page.image)}" alt="" draggable="false">
     <svg class="im-regions" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${polygons}${drawing}</svg>
@@ -382,7 +382,9 @@ function imRender() {
 }
 
 function imRenderHint() {
+  const redrawName = im.redraw ? (productById(imPage()?.regions.find(region => region.id === im.redraw)?.productId)?.name || "") : "";
   const text = im.preview ? "معاينة: هذا شكل الصفحة عند العميل. اضغط 👁 للرجوع للتحرير."
+    : im.redraw && !im.drawing.length ? `ارسم الحدود الجديدة لـ «${redrawName}» · Esc يلغي ويرجّع التحديد القديم`
     : im.drawing.length >= 3 ? "اضغط على النقطة الأولى (أو Enter أو دبل كلك) عشان تسكّر الحدود · Backspace يمسح آخر نقطة · Esc يلغي"
     : im.drawing.length ? "كمّل النقاط حول المنتج… · Esc يلغي"
     : im.mode === "draw" ? "ارسم حدود المنتج: اضغط نقطة نقطة حوله، أو اسحب الماوس للرسم الحر. المرفقات تقدر تسحبها في أي وقت."
@@ -418,6 +420,7 @@ function imRenderPanel() {
       <header><small>منتج محدد</small><div class="im-product-head">${product && imageSource(product) ? thumbImg(imageSource(product)) : ""}<strong>${escapeHtml(product?.name || "منتج محذوف")}</strong></div></header>
       <div class="im-attach-list">${available.map(type => `<label class="im-attach"><input type="checkbox" data-im-attach="${type}" ${has.has(type) ? "checked" : ""}><span><b>${IM_LABELS[type]}</b><small>${imElementInner(type, product).replace(/<[^>]+>/g, "")}</small></span></label>`).join("")}</div>
       <p class="im-tip">علّم المرفقات اللي تبيها تظهر فوق الصورة. اضغط على أي مرفق في الصورة عشان تغيّر مكانه وحجمه.</p>
+      <button type="button" class="im-redraw" data-im-redraw>✎ تغيير التحديد <small>ترسم حدود جديدة للمنتج، والمرفقات تبقى</small></button>
       <footer><button type="button" class="im-ghost" data-im-change-product>تغيير المنتج</button><button type="button" class="im-danger" data-im-remove-region>حذف التحديد</button></footer>
     </section>`;
   }
@@ -534,6 +537,15 @@ function imPx(a, b) {
 function imCloseDrawing() {
   if (im.drawing.length < 3) return toast("الحدود تحتاج 3 نقاط على الأقل");
   const points = im.drawing.slice();
+  const redraw = im.redraw && imPage()?.regions.find(region => region.id === im.redraw);
+  if (redraw) {
+    imSnapshot();
+    redraw.points = points.map(([x, y]) => [imRound(x), imRound(y)]);
+    im.redraw = ""; im.drawing = [];
+    im.selected = { regionId: redraw.id };
+    imSave(); imRender();
+    return toast("تم تغيير التحديد · المرفقات باقية بأماكنها");
+  }
   imOpenPicker({ points });
 }
 function imSimplify(points) {
@@ -699,12 +711,12 @@ function imBindShell() {
   ["dragleave", "drop"].forEach(type => drop.addEventListener(type, () => drop.classList.remove("is-over")));
   drop.addEventListener("drop", event => { event.preventDefault(); const file = event.dataTransfer?.files?.[0]; if (file) imPickFile(file); });
   $("#imStart").addEventListener("click", imStartEditing);
-  $("#imDraw").addEventListener("click", () => { im.mode = "draw"; im.preview = false; im.selected = null; imRender(); });
-  $("#imSelectMode").addEventListener("click", () => { im.mode = "select"; im.drawing = []; im.preview = false; imRender(); });
+  $("#imDraw").addEventListener("click", () => { im.redraw = ""; im.mode = "draw"; im.preview = false; im.selected = null; imRender(); });
+  $("#imSelectMode").addEventListener("click", () => { im.redraw = ""; im.mode = "select"; im.drawing = []; im.preview = false; imRender(); });
   $("#imUndo").addEventListener("click", () => imRestore(im.history, im.future));
   $("#imRedo").addEventListener("click", () => imRestore(im.future, im.history));
   $("#imZoom").addEventListener("input", event => { im.zoom = Number(event.target.value); imApplyZoom(); $("#imZoomValue").textContent = `${im.zoom}%`; });
-  $("#imPreview").addEventListener("click", () => { im.preview = !im.preview; im.drawing = []; im.selected = null; imRender(); });
+  $("#imPreview").addEventListener("click", () => { im.redraw = ""; im.preview = !im.preview; im.drawing = []; im.selected = null; imRender(); });
   $("#imReplace").addEventListener("click", () => { im.replace = true; im.file = null; im.screen = "image"; imShow(); });
   $("#imActivate").addEventListener("click", () => {
     const page = imPage();
@@ -783,6 +795,11 @@ function imBindShell() {
     if (select) { im.selected = { regionId: select.dataset.imSelectRegion }; im.mode = "select"; imRender(); return imScrollToRegion(select.dataset.imSelectRegion); }
     if (target.closest("[data-im-draw-hint]")) { im.mode = "draw"; im.selected = null; imRender(); return toast("ارسم حدود المنتج على الصورة، وبعدها تختاره من القائمة"); }
     if (target.closest("[data-im-change-product]")) return imOpenPicker({ regionId: im.selected.regionId });
+    if (target.closest("[data-im-redraw]")) {
+      im.redraw = im.selected.regionId; im.mode = "draw"; im.drawing = []; im.preview = false;
+      imRender(); imScrollToRegion(im.redraw);
+      return toast("التحديد القديم انشال · ارسم الحدود الجديدة للمنتج");
+    }
     if (target.closest("[data-im-remove-region]")) {
       const page = imPage();
       if (!confirm("حذف تحديد المنتج ومرفقاته؟")) return;
@@ -831,6 +848,7 @@ function imBindShell() {
       if (key === "Enter") { event.preventDefault(); return imCloseDrawing(); }
       return;
     }
+    if (key === "Escape" && im.redraw) { im.redraw = ""; toast("رجع التحديد القديم"); return imRender(); }
     if (key === "Escape") { im.selected = null; return imRender(); }
     if ((key === "Delete" || key === "Backspace") && im.selected?.elId) { event.preventDefault(); return $("[data-im-remove-el]")?.click(); }
     const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[key];
