@@ -27,7 +27,7 @@
   document.title = `تدريب — ${document.title}`;
 
   // الروابط داخل الصفحة تبقى على نسخة التدريب.
-  const HIDDEN = ["#liveVisitorsPage", "#customersPage", "#availabilityNotificationsPage", "#productSalesPage", "#trainingReviewPage", ".more-actions-menu a[href='reports.html']"];
+  const HIDDEN = ["#liveVisitorsPage", "#customersPage", "#availabilityNotificationsPage", "#productSalesPage", "#trainingReviewPage", "#customSubsPage", ".more-actions-menu a[href='reports.html']"];
   function decorate() {
     document.documentElement.classList.add("training-mode");
     HIDDEN.forEach(selector => document.querySelectorAll(selector).forEach(element => { element.style.display = "none"; }));

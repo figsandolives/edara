@@ -1,5 +1,7 @@
 // قاموس ترجمة واجهة الإدارة إلى الإنجليزية (النص العربي كما يظهر ← الإنجليزي)
 window.ADMIN_I18N_EN = {
+  // ===== اشتراكات مخصصة =====
+  "اشتراكات مخصصة": "Custom subscriptions", "اشتراك جديد": "New subscription", "إعدادات الأقسام": "Section settings", "الإعدادات": "Settings", "عرض": "View", "نسخ الرابط": "Copy link", "فتح الرابط": "Open link", "توليد رابط": "Generate link", "تم النسخ ✓": "Copied ✓", "اسم العميل": "Customer name", "رقم الهاتف": "Phone number", "نوع الاشتراك": "Subscription type", "تم تحديد الأصناف": "Items selected", "لم يتم التحديد إلى الآن": "Not selected yet", "العميل لم يحدد الأصناف إلى الآن.": "The customer has not selected items yet.", "لا توجد اشتراكات إلى الآن. اضغط ＋ لإضافة أول عميل.": "No subscriptions yet. Press ＋ to add the first customer.", "لا توجد أقسام. اضغط ＋ لإضافة أول قسم.": "No sections. Press ＋ to add the first one.", "كل سطر منتج": "One product per line", "عنوان القسم بالعربي": "Section title in Arabic", "القسم الأول: لازم يختار منه العميل منتج (بدون خيار «بدون»).": "First section: the customer must pick a product (no \"None\" option).", "يظهر للعميل خيار «بدون» تلقائياً آخر القائمة.": "A \"None\" option is added automatically at the end.", "جاري الحفظ…": "Saving…", "تم الحفظ": "Saved",
   // ===== عام =====
   "من": "from", "تم": "Done", "صنف": "item", "طلب": "order", "ربط": "Link", "حذف": "Delete", "يوم": "day", "بحث": "Search", "نسخ": "Copy",
   "حبة": "pc", "كيس": "bag", "بطل": "bottle", "قبل": "ago", "إلى": "to", "د.ك": "KWD", "قسم": "category", "صفحة": "Page", "عميل": "customer",
