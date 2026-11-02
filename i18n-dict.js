@@ -124,7 +124,7 @@ window.ADMIN_I18N_EN = {
   "أضف صورة الإعلان أولاً": "Add the ad image first", "معاينة الصورة التوضيحية": "Illustration preview", "متابعة منتجات السلة رقم": "Continued: products of cart #",
   "تنزيل نسخة احتياطية ZIP": "Download ZIP backup", "تم ربط الأقسام بالعنوان": "Categories linked to heading", "إرسال واتساب للمتبقين (": "Send WhatsApp to the rest (",
   "يجيب العملاء من الخادم…": "Loading customers from server…", "تمت إضافة الصورة للمربع": "Image added to the square", "غلاف نظام الطيبات موجود": "Tayyibat cover already exists",
-  "تعذر تجهيز صورة الواجهة": "Could not prepare hero image", "قيمة السلة: الأقل أولاً": "Cart value: lowest first", "تفعيل أقل كمية لكل خيار": "Enable minimum quantity per option",
+  "تعذر تجهيز صورة الواجهة": "Could not prepare hero image", "قيمة السلة: الأقل أولاً": "Cart value: lowest first", "تفعيل أقل كمية لكل خيار": "Enable minimum quantity per option", "السعر قبل الخصم د.ك": "Price before discount KD", "بدون خصم": "No discount", "إظهار الخيار تحت اسم المنتج في السلة والفاتورة": "Show the option under the product name in cart and invoice",
   "اكتب اسم القسم باللغتين": "Enter the category name in both languages", "تعذر تحميل ملف البيانات": "Could not load the data file",
   "تعذر تحميل بيانات الخادم": "Could not load server data", "اكتب اسم الغلاف باللغتين": "Enter the cover name in both languages",
   "تم تفعيل حالة: غير متوفر": "Status set: Unavailable", "تقرير السلات غير المباعة": "Unsold carts report", "وقت التحضير حسب الاختيار": "Prep time depends on choice",

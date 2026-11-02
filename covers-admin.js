@@ -23,6 +23,7 @@ function normalizeAdminCovers(list) {
     size: cover?.size === "full" ? "full" : "half",
     image: clean(cover?.image),
     innerImage: clean(cover?.innerImage),
+    stripImage: clean(cover?.stripImage),
     // أكثر من صورة داخلية بالترتيب؛ الغلاف القديم اللي فيه صورة وحدة يتحول لقائمة فيها هي.
     innerImages: (Array.isArray(cover?.innerImages) ? cover.innerImages.map(clean).filter(Boolean) : []).concat(Array.isArray(cover?.innerImages) ? [] : [clean(cover?.innerImage)].filter(Boolean)),
     imagePages: typeof normalizeImagePages === "function" ? normalizeImagePages(cover?.imagePages) : [],

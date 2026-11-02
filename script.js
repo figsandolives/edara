@@ -182,6 +182,7 @@ function normalizeProductOptions(value) {
     nameAr: clean(item.nameAr || item.name),
     nameEn: clean(item.nameEn || item.nameAr || item.name),
     price: priceBased ? Math.max(0, Number(item.price) || 0) : 0,
+    originalPrice: priceBased ? Math.max(0, Number(item.originalPrice) || 0) : 0,
     preparation: item.preparation ? normalizePreparation(item.preparation) : null,
     image: clean(item.image),
     minimumOrder: value.minimumPerOptionEnabled === true ? normalizeMinimumOrder(item.minimumOrder) : null,
@@ -202,7 +203,7 @@ function normalizeProductOptions(value) {
   const stages = thirdLevelEnabled ? 3 : nestedEnabled ? 2 : 1;
   const multipleStep = Math.min(stages, Math.max(1, Number(value.multipleStep) || 1));
   const quantityStep = Math.min(stages, Math.max(1, Number(value.quantityStep) || 1));
-  return value.enabled !== false && items.length ? { enabled: true, required: nestedEnabled || value.required === true, multiple, multipleStep, maxSelections: multiple ? Math.max(1, Number(value.maxSelections) || items.length) : 1, titleAr: clean(value.titleAr), titleEn: clean(value.titleEn), priceBased, preparationEnabled: value.preparationEnabled === true, imagesEnabled: value.imagesEnabled === true, nestedEnabled, thirdLevelEnabled, minimumPerOptionEnabled: value.minimumPerOptionEnabled === true, optionQuantityEnabled: value.optionQuantityEnabled === true, quantityStep, items } : null;
+  return value.enabled !== false && items.length ? { enabled: true, required: nestedEnabled || value.required === true, multiple, multipleStep, maxSelections: multiple ? Math.max(1, Number(value.maxSelections) || items.length) : 1, titleAr: clean(value.titleAr), titleEn: clean(value.titleEn), priceBased, preparationEnabled: value.preparationEnabled === true, imagesEnabled: value.imagesEnabled === true, nestedEnabled, thirdLevelEnabled, minimumPerOptionEnabled: value.minimumPerOptionEnabled === true, optionQuantityEnabled: value.optionQuantityEnabled === true, detailsLine: value.detailsLine === true, quantityStep, items } : null;
 }
 
 const minimumOrderUnits = new Set(["dozen", "piece", "bowl", "bag", "kilo", "bottle"]);
@@ -1078,6 +1079,7 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productOptionsThirdLevelEnabled").checked = options?.thirdLevelEnabled === true;
   $("#productOptionsMinimumEnabled").checked = options?.minimumPerOptionEnabled === true;
   $("#productOptionsQuantityEnabled").checked = options?.optionQuantityEnabled === true;
+  $("#productOptionsDetailsLine").checked = options?.detailsLine === true;
   $("#productOptionsTitleAr").value = options?.titleAr || "";
   $("#productOptionsTitleEn").value = options?.titleEn || "";
   $("#productOptionsMaxSelections").value = options?.maxSelections || 2;
@@ -1163,6 +1165,8 @@ function syncEditingProductOptions() {
     if (nameAr) option.nameAr = nameAr.value;
     if (nameEn) option.nameEn = nameEn.value;
     if (price) option.price = Math.max(0, Number(price.value) || 0);
+    const originalPrice = $(`[data-option-original-price="${index}"]`);
+    if (originalPrice) option.originalPrice = Math.max(0, Number(originalPrice.value) || 0);
     if (preparation) option.preparation = normalizePreparation({ first: preparation.value, unit: preparationUnit?.value });
     const minimumQuantity = $(`[data-option-minimum-quantity="${index}"]`);
     const minimumUnit = $(`[data-option-minimum-unit="${index}"]`);
@@ -1225,7 +1229,7 @@ function renderProductOptions(syncFromForm = true) {
     <div class="option-item" data-option-index="${index}">
       <label>اسم الخيار بالعربي<input data-option-ar="${index}" value="${escapeHtml(option.nameAr || "")}" maxlength="80"></label>
       <label>اسم الخيار بالإنجليزي<input data-option-en="${index}" value="${escapeHtml(option.nameEn || "")}" maxlength="80" dir="ltr"></label>
-      ${priceBased ? `<label>السعر د.ك<input data-option-price="${index}" type="number" min="0" step="0.001" value="${Number(option.price || 0).toFixed(3)}" dir="ltr"></label>` : ""}
+      ${priceBased ? `<label>السعر د.ك<input data-option-price="${index}" type="number" min="0" step="0.001" value="${Number(option.price || 0).toFixed(3)}" dir="ltr"></label><label>السعر قبل الخصم د.ك<input data-option-original-price="${index}" type="number" min="0" step="0.001" value="${Number(option.originalPrice || 0) ? Number(option.originalPrice).toFixed(3) : ""}" placeholder="بدون خصم" dir="ltr"></label>` : ""}
       ${preparationEnabled ? `<label class="option-preparation">وقت التحضير<input data-option-prep="${index}" type="text" inputmode="numeric" maxlength="3" value="${option.preparation?.first || 2}" dir="ltr"><select data-option-prep-unit="${index}"><option value="hour" ${option.preparation?.unit !== "day" ? "selected" : ""}>ساعة</option><option value="day" ${option.preparation?.unit === "day" ? "selected" : ""}>يوم</option></select></label>` : ""}
       ${imagesEnabled ? `<label class="option-image">صورة الخيار${option.image ? `<img src="${escapeHtml(option.image)}" alt="صورة الخيار">` : ""}<span class="file-button">اختيار صورة من الجهاز<input data-option-image-file="${index}" type="file" accept="image/*"></span></label>` : ""}
       ${minimumPerOptionEnabled ? `<label class="option-minimum">أقل كمية للخيار<input data-option-minimum-quantity="${index}" type="number" min="1" max="99" step="1" value="${Number(option.minimumOrder?.quantity || 1)}" inputmode="numeric" dir="ltr"><select data-option-minimum-unit="${index}"><option value="dozen" ${option.minimumOrder?.unit === "dozen" ? "selected" : ""}>درزن</option><option value="piece" ${option.minimumOrder?.unit === "piece" ? "selected" : ""}>حبة</option><option value="bowl" ${option.minimumOrder?.unit === "bowl" ? "selected" : ""}>ماعون</option><option value="bag" ${option.minimumOrder?.unit === "bag" ? "selected" : ""}>كيس</option><option value="kilo" ${option.minimumOrder?.unit === "kilo" ? "selected" : ""}>كيلو</option><option value="bottle" ${option.minimumOrder?.unit === "bottle" ? "selected" : ""}>بطل</option></select></label>` : ""}
@@ -1244,6 +1248,7 @@ function readProductOptions() {
     nameAr: clean($(`[data-option-ar="${index}"]`)?.value),
     nameEn: clean($(`[data-option-en="${index}"]`)?.value),
     price: Math.max(0, Number($(`[data-option-price="${index}"]`)?.value) || 0),
+    originalPrice: Math.max(0, Number($(`[data-option-original-price="${index}"]`)?.value) || 0),
     preparation: $("#productOptionsPreparationEnabled").checked ? normalizePreparation({ first: $(`[data-option-prep="${index}"]`)?.value, unit: $(`[data-option-prep-unit="${index}"]`)?.value }) : null,
     image: clean(option.image),
     minimumOrder: minimumPerOptionEnabled ? normalizeMinimumOrder({ quantity: $(`[data-option-minimum-quantity="${index}"]`)?.value, unit: $(`[data-option-minimum-unit="${index}"]`)?.value }) : null,
@@ -1284,7 +1289,7 @@ function readProductOptions() {
     toast("اكتب عنوان الخيارات بالعربي والإنجليزي");
     return undefined;
   }
-  return { enabled: true, required: nestedEnabled || $("#productOptionsRequired").checked, multiple, multipleStep, maxSelections, titleAr: multiple ? clean($("#productOptionsTitleAr").value) : "", titleEn: multiple ? clean($("#productOptionsTitleEn").value) : "", priceBased: nestedEnabled || priceBased, preparationEnabled: $("#productOptionsPreparationEnabled").checked, imagesEnabled: $("#productOptionsImagesEnabled").checked, nestedEnabled, thirdLevelEnabled, minimumPerOptionEnabled, optionQuantityEnabled: $("#productOptionsQuantityEnabled").checked, quantityStep, items };
+  return { enabled: true, required: nestedEnabled || $("#productOptionsRequired").checked, multiple, multipleStep, maxSelections, titleAr: multiple ? clean($("#productOptionsTitleAr").value) : "", titleEn: multiple ? clean($("#productOptionsTitleEn").value) : "", priceBased: nestedEnabled || priceBased, preparationEnabled: $("#productOptionsPreparationEnabled").checked, imagesEnabled: $("#productOptionsImagesEnabled").checked, nestedEnabled, thirdLevelEnabled, minimumPerOptionEnabled, optionQuantityEnabled: $("#productOptionsQuantityEnabled").checked, detailsLine: $("#productOptionsDetailsLine").checked, quantityStep, items };
 }
 
 function renderMinimumOrderFields() {
@@ -2515,6 +2520,7 @@ $("#pasteProductOptions").addEventListener("click", () => {
   $("#productOptionsThirdLevelEnabled").checked = options.thirdLevelEnabled === true;
   $("#productOptionsMinimumEnabled").checked = options.minimumPerOptionEnabled === true;
   $("#productOptionsQuantityEnabled").checked = options.optionQuantityEnabled === true;
+  $("#productOptionsDetailsLine").checked = options.detailsLine === true;
   $("#productOptionsTitleAr").value = options.titleAr || "";
   $("#productOptionsTitleEn").value = options.titleEn || "";
   $("#productOptionsMaxSelections").value = options.maxSelections || 2;
