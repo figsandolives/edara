@@ -272,5 +272,7 @@ window.ADMIN_I18N_EN = {
   "بالقمح الكامل والخميرة الطبيعية": "Whole wheat with natural yeast", "بالشعير الكامل والخميرة الطبيعية": "Whole barley with natural yeast",
   "قمح كامل، خالي من الجلوتين، وكيتو": "Whole wheat, gluten-free, and keto", "مقبلات ساخنة من التنور وسلطات طازجة": "Hot tannour appetizers and fresh salads",
   "ريوق المطعم كما يُقدَّم على الطاولة": "Restaurant breakfast as served at the table", "جميع مخبوزاتنا من خبز وفطاير وبسكويت:": "All our baked goods — bread, pies and biscuits:",
-  "من القمح الكامل والنخالة بالخميرة الطبيعية": "Whole wheat and bran with natural yeast"
+  "من القمح الكامل والنخالة بالخميرة الطبيعية": "Whole wheat and bran with natural yeast",
+  // ===== الأسئلة الاحترازية =====
+  "الأسئلة الاحترازية": "Precaution questions", "إضافة سؤال": "Add question", "＋ إضافة سؤال": "＋ Add question", "السؤال": "Question", "حذف السؤال": "Delete question", "منتج مرتبط": "linked products", "موقوف": "Off", "لا توجد أسئلة إلى الآن.": "No questions yet.", "يظهر السؤال للعميل قبل مرحلة الدفع إذا أضاف لسلته أي منتج من منتجات السؤال.": "The question is shown to the customer before payment when the cart has any of its products.", "العبارة اللي تطلع للعميل إذا جاوب «نعم»": "Message shown when the customer answers \"Yes\"", "إقرار العميل في الفاتورة (يطبع إذا جاوب «نعم» وتابع الدفع)": "Customer statement on the invoice (printed if they answer \"Yes\" and still pay)", "السؤال مفعّل في المنصة": "Question active on the store", "→ رجوع": "→ Back", "المنتجات المتعلقة بالسؤال": "Products for this question", "ما في منتجات. اضغط «إضافة» واختر من المنصة.": "No products. Press \"Add\" and pick from the store.", "منتجات السؤال الاحترازي": "Precaution question products"
 };

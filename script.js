@@ -39,6 +39,7 @@ let headings = [];
 let covers = [];
 // الشريط المتحرك أعلى المنصة. منطقه في strip-admin.js
 let qualityStrip = null;
+let precautionQuestions = []; // الأسئلة الاحترازية (precautions-admin.js)
 let restaurantEnabled = true;
 let products = [];
 let deliveryAreas = [];
@@ -471,6 +472,7 @@ function applyRemoteCatalog(catalog) {
   headings = Array.isArray(catalog?.headings) ? catalog.headings : [];
   covers = typeof normalizeAdminCovers === "function" ? normalizeAdminCovers(catalog?.covers) : (Array.isArray(catalog?.covers) ? catalog.covers : []);
   qualityStrip = catalog?.qualityStrip && typeof catalog.qualityStrip === "object" ? catalog.qualityStrip : null;
+  precautionQuestions = typeof normalizePrecautionQuestions === "function" ? normalizePrecautionQuestions(catalog?.precautionQuestions) : (Array.isArray(catalog?.precautionQuestions) ? catalog.precautionQuestions : []);
   if (typeof renderStripSettings === "function") renderStripSettings();
   restaurantEnabled = catalog?.restaurantEnabled !== false;
   $("#restaurantEnabled").checked = restaurantEnabled;
@@ -736,7 +738,7 @@ async function saveToالخادم() {
   const payload = {
     categories: categories.map((category, index) => ({ ...category, order: index + 1 })), headings, restaurantEnabled,
     products: downloadableProducts(), deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
-    appearance: catalogAppearancePayload(), advertisement: normalizeAdvertisement(advertisement), productFilters, covers, ...(qualityStrip ? { qualityStrip } : {}),
+    appearance: catalogAppearancePayload(), advertisement: normalizeAdvertisement(advertisement), productFilters, covers, precautionQuestions, ...(qualityStrip ? { qualityStrip } : {}),
     ...(toastPreparationMigrationComplete ? { toastPreparationMigrationV1: true } : {}),
     ...(breadSizeOptionsMigrationComplete ? { breadSizeOptionsMigrationV1: true } : {}),
     ...(productOptionIdsIsolationMigrationComplete ? { productOptionIdsIsolationV1: true } : {}),
