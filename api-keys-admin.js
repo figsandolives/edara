@@ -132,6 +132,9 @@
       `  Returns ${has("orders.all:read") ? "all website orders since 2026-09-01" : "only orders that came through a tracked link (?ref= / ?cid=)"}.`,
       `  Fields: order_id, created_at, updated_at, status, stage, catalog, order_type, subtotal_kwd, delivery_kwd, total_kwd, payment_method${has("orders.area:read") ? ", branch, area" : ""}${has("orders.items:read") ? ", items[]" : ""}, attribution{first_ref, first_cid, first_seen_at, first_landing_path, first_referrer_host, last_*, session_referrer_host}${has("customers.key:read") ? ", customer_key" : ""}.`,
       "  An order exists only after a successful payment, so status is always \"active\" (the website has no cancel/refund).");
+    if (has("summary:read")) lines.push("",
+      "GET /summary?date=YYYY-MM-DD   (Kuwait day; today when omitted)",
+      "  All website orders of that day in numbers only: orders_count, total_kwd, tracked_orders_count, tracked_total_kwd, complete (false while the day is still running).");
     if (has("visits:read")) lines.push("",
       "GET /visits?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
       `  One row per visit${has("visits.all:read") ? "" : " that came through a tracked link"}: visit_id, ref, cid, started_at, last_seen_at, landing_path, referrer_host, pages[], added_to_cart, cart_value_kwd, order_completed, order_id.`,
