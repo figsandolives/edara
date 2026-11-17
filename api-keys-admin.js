@@ -8,7 +8,7 @@
   const esc = value => escapeHtml(value);
   const BASE = `${API_BASE}/partner/v1`;
   // الصلاحيات الفرعية ما لها معنى بدون الأساسية.
-  const PARENT = { "orders.items:read": "orders:read", "orders.area:read": "orders:read", "orders.all:read": "orders:read", "customers.key:read": "orders:read", "visits.all:read": "visits:read" };
+  const PARENT = { "orders.items:read": "orders:read", "orders.area:read": "orders:read", "orders.all:read": "orders:read", "customers.key:read": "orders:read", "visits.all:read": "visits:read", "carts.contact:read": "carts.abandoned:read", "carts.all:read": "carts.abandoned:read" };
   const EXPIRY = [["0", "بدون انتهاء"], ["30", "بعد 30 يوم"], ["90", "بعد 90 يوم"], ["365", "بعد سنة"]];
 
   const dialog = document.createElement("dialog");
@@ -50,7 +50,7 @@
     }).join("");
     view.innerHTML = `${header("مفاتيح API")}
       <button type="button" class="primary ak-add" data-ak="new" ${loaded ? "" : "disabled"}>＋ مفتاح جديد</button>
-      <p class="ak-hint">كل مفتاح لجهة وحدة. أنت تحدد شنو تشوف وشنو تعدل، وتقدر توقفه أو تحذفه بأي وقت. المفاتيح ما توصل أبداً لاسم الزبون أو رقمه أو عنوانه.</p>
+      <p class="ak-hint">كل مفتاح لجهة وحدة. أنت تحدد شنو تشوف وشنو تعدل، وتقدر توقفه أو تحذفه بأي وقت. المفاتيح ما توصل أبداً لعنوان الزبون، ولا لاسمه ورقمه إلا إذا حطيت علامة «اسم ورقم صاحب السلة».</p>
       <div class="ak-list">${loadError ? `<p class="ak-empty ak-error">${esc(loadError)}</p>` : !loaded ? `<p class="ak-empty">جاري التحميل…</p>` : cards || `<p class="ak-empty">لا توجد مفاتيح إلى الآن.</p>`}</div>`;
   }
 
@@ -123,7 +123,7 @@
     const lines = [
       "Figs & Olives API", `Base URL: ${BASE}`, `Header:   Authorization: Bearer ${token || "<YOUR_KEY>"}`,
       `Server-to-server only (no browser/CORS). Limit: ${ratePerMinute} requests per minute. Times are Kuwait time (+03:00). Amounts are KWD strings with 3 decimals.`,
-      "No names, phone numbers, addresses, notes or payment details are ever returned.", "",
+      has("carts.contact:read") ? "Customer name and phone are returned only on /carts/abandoned. Never addresses, notes or payment details." : "No names, phone numbers, addresses, notes or payment details are ever returned.", "",
       "GET /health  -> {\"ok\": true, \"time\": \"...\"}", "GET /me      -> the permissions of this key"
     ];
     if (has("orders:read")) lines.push("",
@@ -139,6 +139,9 @@
       "GET /visits?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
       `  One row per visit${has("visits.all:read") ? "" : " that came through a tracked link"}: visit_id, ref, cid, started_at, last_seen_at, landing_path, referrer_host, pages[], added_to_cart, cart_value_kwd, order_completed, order_id.`,
       "  A visit ends after 30 quiet minutes. Ask for a window that ended at least an hour ago to get finished visits.");
+    if (has("carts.abandoned:read")) lines.push("",
+      "GET /carts/abandoned?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
+      `  Carts${has("carts.all:read") ? "" : " from tracked links"} where products were added and the visit ended (30 quiet minutes) without an order: cart_id (= visit_id), ref, cid, started_at, cart_updated_at, last_seen_at${has("carts.contact:read") ? ", customer_name, customer_phone (null when the visitor was not signed in)" : ""}${has("customers.key:read") ? ", customer_key" : ""}, items[{product_id, name, qty, unit_price_kwd, line_total_kwd}], cart_total_kwd, ordered_later_order_id (the visitor paid an order later: do not contact).`);
     if (has("catalog:read")) lines.push("", "GET /catalog", "  products[]: product_id, name, name_en, catalog, category_id, category, category_en, price_kwd, available.");
     if (has("catalog.availability:write")) lines.push("", "POST /products/<product_id>/availability   body: {\"available\": true|false}", "  Marks a product available or sold out. Nothing else can be changed.");
     lines.push("", "Tracked links: add ?ref=<link id>&cid=<click id> to any figsolives.online page. ref: a-z 0-9 . _ - (max 80). cid: letters, digits, _ - (max 40). The site remembers them for 30 days.",
@@ -211,6 +214,7 @@
     errorBox.textContent = "";
     if (!chosen.length) { errorBox.textContent = "اختر صلاحية وحدة على الأقل"; return; }
     if (chosen.some(id => id.endsWith(":write")) && !window.confirm("هالمفتاح يقدر يعدل على الموقع، مو بس يقرأ. متأكد؟")) return;
+    if (chosen.includes("carts.contact:read") && !(key?.scopes || []).includes("carts.contact:read") && !window.confirm("هالمفتاح بيشوف أسماء الزباين وأرقام هواتفهم. متأكد إنك تبي تعطيها لهالجهة؟")) return;
     submitButton.disabled = true;
     try {
       if (key) { replaceKey((await request(`/admin/api-keys/${key.id}`, "PUT", body)).key); screen = "list"; toast("تم حفظ التعديل"); }
