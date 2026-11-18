@@ -1,0 +1,62 @@
+#newArrivalsDialog {
+  width: min(580px, calc(100% - 24px));
+}
+
+#newArrivalsDialog p {
+  margin: 0;
+}
+
+#newArrivalsList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 2px;
+  list-style: none;
+}
+
+#newArrivalsList li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #dbe6dc;
+  border-radius: 12px;
+}
+
+#newArrivalsList img {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.new-arrival-name {
+  display: grid;
+  flex: 1 1 110px;
+  gap: 2px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.new-arrival-actions {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.new-arrival-actions button {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
+.new-arrival-actions button:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+#newArrivalsStatus {
+  color: #345449;
+}

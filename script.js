@@ -58,6 +58,7 @@ let editingHeadingId = "";
 let editingSubheadings = [];
 let toastTimer;
 let syncTimer;
+let catalogSave = Promise.resolve();
 let currentAdmin = null;
 let catalogRef = null;
 let customersRef = null;
@@ -286,6 +287,8 @@ async function disableAdvertisementImmediately() {
   catch (error) { toast(error.message || "تعذر حفظ إيقاف الإعلان"); }
 }
 function setCloudStatus(message, type = "") {
+  const arrivalsStatus = $("#newArrivalsStatus");
+  if (arrivalsStatus) arrivalsStatus.textContent = message;
   const status = $("#cloudStatus");
   if (!status) return;
   status.classList.toggle("connected", type === "connected");
@@ -592,6 +595,85 @@ function availabilityButtons(product) {
   return `<span class="availability-actions">${enabled ? `<select data-availability-select="${escapeHtml(product.id)}" aria-label="حالة النفاد"><option value="sold_out" ${status === "sold_out" ? "selected" : ""}>نفذت الكمية</option><option value="unavailable" ${status === "unavailable" ? "selected" : ""}>غير متوفر</option></select>` : ""}<button type="button" class="status-toggle ${enabled ? "active" : ""}" data-toggle-availability="${escapeHtml(product.id)}" aria-pressed="${enabled}" title="تفعيل أو إيقاف حالة نفاد المنتج"><i></i><span>نفاد الكمية</span></button></span>`;
 }
 
+function newArrivalToggle(product) {
+  return `<button type="button" class="status-toggle ${product.isNew === true ? "active" : ""}" data-toggle-new-arrival="${escapeHtml(product.id)}" aria-pressed="${product.isNew === true}"><i></i><span>جديد</span></button>`;
+}
+
+function orderedNewArrivals() {
+  return products.filter(product => product.isNew === true)
+    .sort((a, b) => (Number(a.newOrder) || Infinity) - (Number(b.newOrder) || Infinity));
+}
+
+function renderNewArrivalsAdmin() {
+  const items = orderedNewArrivals();
+  const visibleSections = new Set(categories.filter(category => category.active
+    && (restaurantEnabled || catalogTypeOf(category) !== "restaurant")).map(category => category.id));
+  $("#newArrivalsEmpty").classList.toggle("hidden", Boolean(items.length));
+  $("#newArrivalsList").innerHTML = items.map((product, index) => {
+    const id = escapeHtml(product.id);
+    const image = imageSource(product);
+    const visible = product.active && visibleSections.has(product.category);
+    return `<li data-new-arrival-id="${id}">
+      ${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy">` : ""}
+      <div class="new-arrival-name"><strong>${escapeHtml(product.name || product.nameEn || product.id)}</strong>${visible ? "" : "<small>مخفي في المتجر</small>"}</div>
+      <div class="new-arrival-actions">
+        <button type="button" data-new-arrival-move="up" aria-label="تحريك للأعلى" ${index === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" data-new-arrival-move="down" aria-label="تحريك للأسفل" ${index === items.length - 1 ? "disabled" : ""}>↓</button>
+        <button type="button" class="delete" data-toggle-new-arrival="${id}">إلغاء «جديد»</button>
+      </div>
+    </li>`;
+  }).join("");
+  hydrateRenderedImages();
+}
+
+function changeNewArrivals(items) {
+  items.forEach((product, index) => { product.newOrder = index + 1; });
+  markDirty();
+  render();
+  if ($("#assignProductsDialog").open) renderUnassignedProducts();
+  if ($("#newArrivalsDialog").open) renderNewArrivalsAdmin();
+}
+
+$("#newArrivalsPage")?.addEventListener("click", () => {
+  if (!catalogLoaded || !adminToken) return;
+  renderNewArrivalsAdmin();
+  $("#newArrivalsDialog").showModal();
+});
+
+document.addEventListener("click", event => {
+  const toggle = event.target.closest("[data-toggle-new-arrival]");
+  const move = event.target.closest("[data-new-arrival-move]");
+  if ((!toggle && !move) || !catalogLoaded || !adminToken) return;
+  const items = orderedNewArrivals();
+  const id = toggle?.dataset.toggleNewArrival || move.closest("[data-new-arrival-id]").dataset.newArrivalId;
+  const product = products.find(item => item.id === id);
+  if (!product) return;
+  if (toggle) {
+    const enabling = product.isNew !== true;
+    product.isNew = enabling;
+    if (enabling) items.push(product);
+    else delete product.newOrder;
+    changeNewArrivals(items.filter(item => item.isNew === true));
+    const list = $("#newArrivalsList");
+    if ($("#newArrivalsDialog").open) {
+      const nextRow = list.children[Math.min(items.indexOf(product), list.children.length - 1)];
+      (nextRow?.querySelector("[data-toggle-new-arrival]") || $("#newArrivalsDialog .icon-btn")).focus();
+    } else {
+      const container = $("#assignProductsDialog").open ? $("#unassignedProductList") : $("#categoryList");
+      [...container.querySelectorAll("[data-toggle-new-arrival]")].find(button => button.dataset.toggleNewArrival === id)?.focus({ preventScroll: true });
+    }
+    return;
+  }
+  const index = items.indexOf(product);
+  const direction = move.dataset.newArrivalMove;
+  const next = index + (direction === "up" ? -1 : 1);
+  if (index < 0 || next < 0 || next >= items.length) return;
+  [items[index], items[next]] = [items[next], items[index]];
+  changeNewArrivals(items);
+  const row = $("#newArrivalsList").children[next];
+  (row.querySelector(`[data-new-arrival-move="${direction}"]:enabled`) || row.querySelector("[data-new-arrival-move]:enabled")).focus();
+});
+
 function imageSource(product) {
   const source = product.images?.[0] || product.image || "";
   return assetUrls.get(source) || source;
@@ -621,7 +703,7 @@ function render() {
     const treeData = treeContext ? ` data-tree-heading-id="${escapeHtml(treeContext.headingId)}" data-tree-group-index="${treeContext.groupIndex}"` : "";
     const order = treeContext ? "" : ` style="order:${category.active ? (Number(category.order) || 0) : 100000 + (Number(category.order) || 0)}"`;
     const restaurantCategory = catalogTypeOf(category) === "restaurant";
-    return `<article class="category-card ${treeContext ? "nested-category-card" : ""} ${restaurantCategory ? "restaurant-category" : ""} ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}"${treeData}${order}><div class="category-head"><span class="drag-handle" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(category.nameAr)}${restaurantCategory ? ` <span class="catalog-type-badge">مطعم</span>` : ""}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${list.length} منتج</span><div class="category-actions">${toggleButton("category", category.id, category.active)}<button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button><button data-duplicate-category="${escapeHtml(category.id)}">نسخ</button><button data-edit-category="${escapeHtml(category.id)}">تعديل</button><button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button></div><span class="chevron">⌄</span></div><div class="products">${list.length ? list.map(product => `<div class="product-row ${product.active ? "" : "inactive"}" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}"><span class="drag-handle" data-drag-kind="product" data-drag-id="${escapeHtml(product.id)}" data-drag-category="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="product-main"><img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy"><div class="product-copy"><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || "No English name")}</small></div></div><span class="price">${Number(product.price).toFixed(3)} د.ك</span>${product.inventory?.enabled ? `<span class="count-badge">المخزون: ${Number(product.inventory.quantity || 0)}</span>` : ""}<div class="product-actions">${toggleButton("product", product.id, product.active)}${availabilityButtons(product)}<button data-duplicate-product="${escapeHtml(product.id)}">تكرار</button><button data-edit-product="${escapeHtml(product.id)}">تعديل</button><button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button><button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button></div></div>`).join("") : `<div class="empty">لا توجد منتجات في هذا القسم</div>`}</div></article>`;
+    return `<article class="category-card ${treeContext ? "nested-category-card" : ""} ${restaurantCategory ? "restaurant-category" : ""} ${openCategories.has(category.id) ? "open" : ""} ${category.active ? "" : "inactive"}" data-category-id="${escapeHtml(category.id)}"${treeData}${order}><div class="category-head"><span class="drag-handle" data-drag-kind="category" data-drag-id="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="category-copy"><strong>${escapeHtml(category.nameAr)}${restaurantCategory ? ` <span class="catalog-type-badge">مطعم</span>` : ""}</strong><small>${escapeHtml(category.nameEn)}</small></div><span class="count-badge">${list.length} منتج</span><div class="category-actions">${toggleButton("category", category.id, category.active)}<button data-add-product="${escapeHtml(category.id)}">إضافة منتج</button><button data-duplicate-category="${escapeHtml(category.id)}">نسخ</button><button data-edit-category="${escapeHtml(category.id)}">تعديل</button><button class="delete" data-delete-category="${escapeHtml(category.id)}">حذف</button></div><span class="chevron">⌄</span></div><div class="products">${list.length ? list.map(product => `<div class="product-row ${product.active ? "" : "inactive"}" data-product-id="${escapeHtml(product.id)}" data-category-id="${escapeHtml(category.id)}"><span class="drag-handle" data-drag-kind="product" data-drag-id="${escapeHtml(product.id)}" data-drag-category="${escapeHtml(category.id)}" title="اسحب لتغيير الترتيب">⠿</span><div class="product-main"><img src="${escapeHtml(imageSource(product))}" alt="" loading="lazy"><div class="product-copy"><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || "No English name")}</small></div></div><span class="price">${Number(product.price).toFixed(3)} د.ك</span>${product.inventory?.enabled ? `<span class="count-badge">المخزون: ${Number(product.inventory.quantity || 0)}</span>` : ""}<div class="product-actions">${toggleButton("product", product.id, product.active)}${availabilityButtons(product)}${newArrivalToggle(product)}<button data-duplicate-product="${escapeHtml(product.id)}">تكرار</button><button data-edit-product="${escapeHtml(product.id)}">تعديل</button><button class="remove-from-category" data-remove-product-category="${escapeHtml(product.id)}" title="إزالة المنتج من القسم فقط">−</button><button class="delete" data-delete-product="${escapeHtml(product.id)}">حذف</button></div></div>`).join("") : `<div class="empty">لا توجد منتجات في هذا القسم</div>`}</div></article>`;
   };
   const headingMarkup = currentHeadings.map(item => {
     const subheadings = Array.isArray(item.subheadings) ? item.subheadings : [];
@@ -717,7 +799,7 @@ async function removeHeroImage() {
 }
 
 async function hydrateRenderedImages() {
-  for (const image of $$(".product-main img,.unassigned-product img")) {
+  for (const image of $$(".product-main img,.unassigned-product img,#newArrivalsList img")) {
     const source = image.getAttribute("src");
     if (!source?.startsWith("product-images/")) continue;
     image.src = await resolveAsset(source);
@@ -731,7 +813,14 @@ function markDirty(message = "جارٍ حفظ التعديلات في الخاد
   syncTimer = setTimeout(() => saveToالخادم().catch(reportSaveFailure), 650);
 }
 
-async function saveToالخادم() {
+function saveToالخادم() {
+  clearTimeout(syncTimer);
+  const save = catalogSave.then(writeCatalog);
+  catalogSave = save.catch(() => {});
+  return save;
+}
+
+async function writeCatalog() {
   if (!currentAdmin || !adminToken) throw new Error("سجّل الدخول بحساب الإدارة أولاً");
   if (!catalogLoaded) throw new Error("الكتالوج ما تحمّل من الخادم؛ حدّث الصفحة قبل الحفظ");
   normalizeData();
@@ -745,7 +834,7 @@ async function saveToالخادم() {
     ...(catalogMergeOrderMigrationComplete ? { catalogMergeOrderV1: true } : {})
   };
   localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...payload, savedAt: new Date().toISOString() }));
-  clearTimeout(syncTimer); $("#saveState").textContent = "جارٍ الحفظ في الخادم…";
+  $("#saveState").textContent = "جارٍ الحفظ في الخادم…";
   const response = await adminRequest("/admin/catalog", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.ok) { setCloudStatus("فشل الحفظ", "error"); throw new Error(result.error || "تعذر الحفظ"); }
@@ -993,6 +1082,7 @@ function renderUnassignedProducts() {
       <span><strong>${escapeHtml(product.name || "منتج بلا اسم")}</strong><small>${escapeHtml(product.nameEn || product.id)}</small></span>
       <b>${Number(product.price).toFixed(3)} د.ك</b>
       ${toggleButton("unassigned-product", product.id, product.active)}
+      ${newArrivalToggle(product)}
     </div>
   `).join("") : `<div class="empty">لا توجد منتجات غير مضافة إلى قسم${query ? " تطابق البحث" : ""}</div>`;
   hydrateRenderedImages();
@@ -1466,6 +1556,8 @@ function duplicateProduct(productId) {
   });
   const copy = clone(source);
   copy.id = `P${Date.now()}`;
+  delete copy.isNew;
+  delete copy.newOrder;
   copy.options = cloneOptionsForProduct(source.options, copy.id);
   copy.order = insertOrder;
   copy.name = `${source.name} (نسخة)`;
@@ -1492,6 +1584,8 @@ function duplicateCategory(categoryId) {
   sourceProducts.forEach((product, index) => {
     const copy = clone(product);
     copy.id = `P${Date.now().toString(36)}${index}`;
+    delete copy.isNew;
+    delete copy.newOrder;
     copy.options = cloneOptionsForProduct(product.options, copy.id);
     copy.category = copyId;
     copy.order = Number(product.order) || index + 1;
