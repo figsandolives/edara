@@ -139,7 +139,7 @@
       restore(document.body);
     }
     document.querySelectorAll("[data-lang-toggle]").forEach(button => {
-      button.textContent = lang === "en" ? "عربي" : "English";
+      button.textContent = lang === "en" ? "🌐 عربي" : "🌐 English";
       button.setAttribute("aria-label", lang === "en" ? "التبديل إلى العربية" : "Switch to English");
       button.setAttribute("data-no-i18n", "");
     });
