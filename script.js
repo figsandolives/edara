@@ -1136,6 +1136,7 @@ async function openProductDialog(product = null, categoryId = "") {
   $("#productId").value = product?.id || "";
   fillCategorySelect(product?.category || categoryId || categories[0]?.id || "");
   $("#productPrice").value = product ? Number(product.price).toFixed(3) : "0.000";
+  $("#productSalePrice").setCustomValidity("");
   $("#productSalePrice").value = product?.originalPrice > Number(product?.price || 0) ? Number(product.price).toFixed(3) : "";
   if (product?.originalPrice > Number(product?.price || 0)) $("#productPrice").value = Number(product.originalPrice).toFixed(3);
   $("#productNameAr").value = product?.name || "";
@@ -1497,14 +1498,23 @@ function saveProduct(event) {
   const name = clean($("#productNameAr").value);
   const nameEn = clean($("#productNameEn").value);
   const originalPrice = Number($("#productPrice").value);
-  const salePriceText = $("#productSalePrice").value.trim();
+  const salePriceField = $("#productSalePrice");
+  const salePriceText = salePriceField.value.trim();
   const salePrice = salePriceText === "" ? null : Number(salePriceText);
   const price = salePrice === null ? originalPrice : salePrice;
   const options = readProductOptions();
   if (options === undefined) return;
   const preparation = readPreparation();
   if (preparation === undefined) return;
-  if (!name || !nameEn || (!options?.priceBased && (!Number.isFinite(price) || price < 0 || !Number.isFinite(originalPrice) || originalPrice < 0 || (salePrice !== null && salePrice >= originalPrice)))) {
+  if (!options?.priceBased && salePrice !== null && salePrice >= originalPrice) {
+    const message = originalPrice === 0
+      ? "إذا كان هذا سعر البيع العادي، اكتبه في «السعر الأصلي» واترك «سعر العرض» فارغاً."
+      : "سعر العرض يجب أن يكون أقل من السعر الأصلي.";
+    salePriceField.setCustomValidity(window.adminT?.(message) || message);
+    salePriceField.reportValidity();
+    return;
+  }
+  if (!name || !nameEn || (!options?.priceBased && (!Number.isFinite(price) || price < 0 || !Number.isFinite(originalPrice) || originalPrice < 0))) {
     return toast("أكمل الاسم العربي والإنجليزي والسعر");
   }
   const payload = {
@@ -2511,6 +2521,9 @@ $("#removeCategorySectionImage").addEventListener("click", () => {
   renderCategorySectionImagePreview("");
 });
 $("#productForm").addEventListener("submit", saveProduct);
+for (const field of [$("#productPrice"), $("#productSalePrice")]) {
+  field.addEventListener("input", () => $("#productSalePrice").setCustomValidity(""));
+}
 $("#productInventoryEnabled").addEventListener("change", renderInventoryFields);
 $("#assignProductsForm").addEventListener("submit", assignProductsToCategory);
 $("#assignProductSearch").addEventListener("input", renderUnassignedProducts);

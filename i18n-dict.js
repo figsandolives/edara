@@ -1,5 +1,8 @@
 // قاموس ترجمة واجهة الإدارة إلى الإنجليزية (النص العربي كما يظهر ← الإنجليزي)
 window.ADMIN_I18N_EN = {
+  "بدون خصم؟ اكتب السعر الأصلي فقط.": "No discount? Enter the regular price only.",
+  "إذا كان هذا سعر البيع العادي، اكتبه في «السعر الأصلي» واترك «سعر العرض» فارغاً.": "If this is the regular price, enter it in Original price and leave Sale price blank.",
+  "سعر العرض يجب أن يكون أقل من السعر الأصلي.": "Sale price must be lower than the original price.",
   "قسم جديدنا": "What's new",
   "يظهر هذا الترتيب في شريط «جديدنا» في المتجر.": "This is the order shown in the store’s What's new strip.",
   "فعّل «جديد» بجانب أي منتج لإضافته هنا.": "Turn on New next to any product to add it here.",
