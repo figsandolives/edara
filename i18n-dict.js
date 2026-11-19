@@ -1,5 +1,6 @@
 // قاموس ترجمة واجهة الإدارة إلى الإنجليزية (النص العربي كما يظهر ← الإنجليزي)
 window.ADMIN_I18N_EN = {
+  "كوبونات الخصم": "Discount coupons",
   "إظهار الشريط المتحرك للزبائن": "Show the moving strip to customers",
   "الشريط مخفي عن الزبائن. فعّل المفتاح لإظهاره بنفس المحتوى.": "The strip is hidden from customers. Turn it on to restore the same content.",
   "تم إظهار الشريط للزبائن": "The strip is now visible to customers",
