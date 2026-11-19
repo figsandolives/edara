@@ -12,6 +12,7 @@ function stripSettings() {
   const value = qualityStrip || {};
   const points = (Array.isArray(value.points) ? value.points : []).map(point => clean(point)).filter(Boolean);
   return {
+    enabled: value.enabled !== false,
     title: clean(value.title) || STRIP_DEFAULTS.title,
     points: points.length ? points : [...STRIP_DEFAULTS.points],
     speed: Math.min(10, Math.max(1, Number(value.speed) || STRIP_DEFAULTS.speed)),
@@ -20,6 +21,7 @@ function stripSettings() {
 }
 function stripFormValue() {
   return {
+    enabled: $("#stripEnabled").checked,
     title: clean($("#stripTitle").value),
     points: $("#stripPoints").value.split("\n").map(line => clean(line)).filter(Boolean),
     speed: Number($("#stripSpeed").value) || 5,
@@ -30,6 +32,10 @@ function stripFormValue() {
 function renderStripPreview(settings) {
   const host = $("#stripPreview");
   if (!host) return;
+  if (settings.enabled === false) {
+    host.innerHTML = `<p class="empty">الشريط مخفي عن الزبائن. فعّل المفتاح لإظهاره بنفس المحتوى.</p>`;
+    return;
+  }
   const title = settings.title || STRIP_DEFAULTS.title;
   const points = settings.points.length ? settings.points : STRIP_DEFAULTS.points;
   // Same as the storefront: reversed so that, read from the title leftwards, the points keep the written order.
@@ -47,6 +53,7 @@ function renderStripPreview(settings) {
 
 function renderStripSettings() {
   const settings = stripSettings();
+  $("#stripEnabled").checked = settings.enabled;
   $("#stripTitle").value = settings.title;
   $("#stripPoints").value = settings.points.join("\n");
   $("#stripSpeed").value = String(settings.speed);
@@ -70,3 +77,15 @@ $("#saveStrip").addEventListener("click", () => {
   toast("تم حفظ الشريط");
 });
 renderStripSettings();
+
+$("#stripEnabled").addEventListener("change", async () => {
+  const control = $("#stripEnabled");
+  qualityStrip = { ...(qualityStrip || {}), enabled: control.checked };
+  renderStripPreview(stripFormValue());
+  control.disabled = true;
+  try {
+    await saveToالخادم();
+    toast(control.checked ? "تم إظهار الشريط للزبائن" : "تم إخفاء الشريط عن الزبائن");
+  } catch (error) { reportSaveFailure(error); }
+  finally { control.disabled = false; }
+});

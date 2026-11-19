@@ -1,5 +1,9 @@
 // قاموس ترجمة واجهة الإدارة إلى الإنجليزية (النص العربي كما يظهر ← الإنجليزي)
 window.ADMIN_I18N_EN = {
+  "إظهار الشريط المتحرك للزبائن": "Show the moving strip to customers",
+  "الشريط مخفي عن الزبائن. فعّل المفتاح لإظهاره بنفس المحتوى.": "The strip is hidden from customers. Turn it on to restore the same content.",
+  "تم إظهار الشريط للزبائن": "The strip is now visible to customers",
+  "تم إخفاء الشريط عن الزبائن": "The strip is now hidden from customers",
   "بدون خصم؟ اكتب السعر الأصلي فقط.": "No discount? Enter the regular price only.",
   "إذا كان هذا سعر البيع العادي، اكتبه في «السعر الأصلي» واترك «سعر العرض» فارغاً.": "If this is the regular price, enter it in Original price and leave Sale price blank.",
   "سعر العرض يجب أن يكون أقل من السعر الأصلي.": "Sale price must be lower than the original price.",
