@@ -469,7 +469,11 @@ async function loadFallbackData() {
   deliveryAreas = normalizeDeliveryAreas(areasData);
 }
 
+let catalogBaseVersion = null;
+let catalogConflict = false;
 function applyRemoteCatalog(catalog) {
+  catalogBaseVersion = catalog?.version ?? null;
+  catalogConflict = false;
   products = Array.isArray(catalog?.products) ? catalog.products : [];
   categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
   headings = Array.isArray(catalog?.headings) ? catalog.headings : [];
@@ -825,6 +829,7 @@ async function writeCatalog() {
   if (!catalogLoaded) throw new Error("الكتالوج ما تحمّل من الخادم؛ حدّث الصفحة قبل الحفظ");
   normalizeData();
   const payload = {
+    baseVersion: catalogBaseVersion,
     categories: categories.map((category, index) => ({ ...category, order: index + 1 })), headings, restaurantEnabled,
     products: downloadableProducts(), deliveryAreas: deliveryAreas.map((area, index) => ({ ...area, name: area.nameAr, order: index + 1 })),
     appearance: catalogAppearancePayload(), advertisement: normalizeAdvertisement(advertisement), productFilters, covers, precautionQuestions, ...(qualityStrip ? { qualityStrip } : {}),
@@ -834,10 +839,13 @@ async function writeCatalog() {
     ...(catalogMergeOrderMigrationComplete ? { catalogMergeOrderV1: true } : {})
   };
   localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...payload, savedAt: new Date().toISOString() }));
+  if (catalogConflict) throw new Error("بيانات المتجر تغيّرت؛ تعديلاتك محفوظة محليًا. أعد تحميل آخر نسخة قبل الحفظ");
   $("#saveState").textContent = "جارٍ الحفظ في الخادم…";
   const response = await adminRequest("/admin/catalog", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   const result = await response.json().catch(() => ({}));
+  if (response.status === 409) catalogConflict = true;
   if (!response.ok || !result.ok) { setCloudStatus("فشل الحفظ", "error"); throw new Error(result.error || "تعذر الحفظ"); }
+  catalogBaseVersion = result.version ?? catalogBaseVersion;
   siteCategories = clone(categories); siteProducts = clone(products);
   $("#saveState").textContent = "تم الحفظ في الخادم"; setCloudStatus("متصل ومحفوظ", "connected");
 }
