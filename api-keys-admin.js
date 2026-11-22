@@ -8,7 +8,7 @@
   const esc = value => escapeHtml(value);
   const BASE = `${API_BASE}/partner/v1`;
   // الصلاحيات الفرعية ما لها معنى بدون الأساسية.
-  const PARENT = { "orders.items:read": "orders:read", "orders.area:read": "orders:read", "orders.all:read": "orders:read", "customers.key:read": "orders:read", "visits.all:read": "visits:read", "visits.contact:read": "visits:read", "carts.contact:read": "carts.abandoned:read", "carts.all:read": "carts.abandoned:read" };
+  const PARENT = { "orders.items:read": "orders:read", "orders.area:read": "orders:read", "orders.all:read": "orders:read", "customers.key:read": "orders:read", "visits.all:read": "visits:read", "visits.contact:read": "visits:read", "carts.contact:read": "carts.abandoned:read", "carts.all:read": "carts.abandoned:read", "coupons.contact:read": "coupons:read" };
   const EXPIRY = [["0", "بدون انتهاء"], ["30", "بعد 30 يوم"], ["90", "بعد 90 يوم"], ["365", "بعد سنة"]];
 
   const dialog = document.createElement("dialog");
@@ -123,7 +123,7 @@
     const lines = [
       "Figs & Olives API", `Base URL: ${BASE}`, `Header:   Authorization: Bearer ${token || "<YOUR_KEY>"}`,
       `Server-to-server only (no browser/CORS). Limit: ${ratePerMinute} requests per minute. Times are Kuwait time (+03:00). Amounts are KWD strings with 3 decimals.`,
-      (has("carts.contact:read") || has("visits.contact:read")) ? `Customer name and phone are returned only on ${[has("visits.contact:read") && "/visits", has("carts.contact:read") && "/carts/abandoned"].filter(Boolean).join(" and ")}, for signed-in customers. Never addresses, notes or payment details.` : "No names, phone numbers, addresses, notes or payment details are ever returned.", "",
+      (has("carts.contact:read") || has("visits.contact:read") || has("coupons.contact:read")) ? `Customer name and phone are returned only on ${[has("visits.contact:read") && "/visits", has("carts.contact:read") && "/carts/abandoned", has("coupons.contact:read") && "/coupons"].filter(Boolean).join(", ")}. Never addresses, notes or payment details.` : "No names, phone numbers, addresses, notes or payment details are ever returned.", "",
       "GET /health  -> {\"ok\": true, \"time\": \"...\"}", "GET /me      -> the permissions of this key"
     ];
     if (has("orders:read")) lines.push("",
@@ -142,6 +142,10 @@
     if (has("carts.abandoned:read")) lines.push("",
       "GET /carts/abandoned?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
       `  Carts${has("carts.all:read") ? "" : " from tracked links"} where products were added and the visit ended (30 quiet minutes) without an order: cart_id (= visit_id), ref, cid, started_at, cart_updated_at, last_seen_at${has("carts.contact:read") ? ", customer_name, customer_phone (null when the visitor was not signed in)" : ""}${has("customers.key:read") ? ", customer_key" : ""}, items[{product_id, name, qty, unit_price_kwd, line_total_kwd}], cart_total_kwd, ordered_later_order_id (the visitor paid an order later: do not contact).`);
+    if (has("coupons:read")) lines.push("", "GET /coupons",
+      "  coupons[]: code, name, status (active | stopped | not_started | expired), type (percent | fixed), amount, max_discount_kwd, min_subtotal_kwd, starts_at, ends_at, max_uses, per_customer_limit, first_order_only, catalog, fulfillment, excluded_product_ids[],",
+      `    uses (paid orders), customers (different customers), pending_uses (payment still open), remaining_uses, total_discount_kwd, redemptions[{order_id, used_at, discount_kwd, order_total_kwd${has("coupons.contact:read") ? ", customer_name, customer_phone" : ""}${has("customers.key:read") ? ", customer_key" : ""}}].`,
+      "  order_id matches /orders.");
     if (has("catalog:read")) lines.push("", "GET /catalog", "  active_coupons[]: codes of coupons that work now.", "  products[]: product_id, name, name_en, catalog, category_id, category, category_en, price_kwd (current price), on_sale, original_price_kwd (price before discount, or null), coupons_blocked[] (coupons refused when this product is in the cart), available.", "  Coupons never discount a product with on_sale = true.");
     if (has("catalog.availability:write")) lines.push("", "POST /products/<product_id>/availability   body: {\"available\": true|false}", "  Marks a product available or sold out. Nothing else can be changed.");
     lines.push("", "Tracked links: add ?ref=<link id>&cid=<click id> to any figsolives.online page. ref: a-z 0-9 . _ - (max 80). cid: letters, digits, _ - (max 40). The site remembers them for 30 days.",
@@ -214,7 +218,7 @@
     errorBox.textContent = "";
     if (!chosen.length) { errorBox.textContent = "اختر صلاحية وحدة على الأقل"; return; }
     if (chosen.some(id => id.endsWith(":write")) && !window.confirm("هالمفتاح يقدر يعدل على الموقع، مو بس يقرأ. متأكد؟")) return;
-    const newContact = ["carts.contact:read", "visits.contact:read"].some(id => chosen.includes(id) && !(key?.scopes || []).includes(id));
+    const newContact = ["carts.contact:read", "visits.contact:read", "coupons.contact:read"].some(id => chosen.includes(id) && !(key?.scopes || []).includes(id));
     if (newContact && !window.confirm("هالمفتاح بيشوف أسماء الزباين وأرقام هواتفهم. متأكد إنك تبي تعطيها لهالجهة؟")) return;
     submitButton.disabled = true;
     try {
