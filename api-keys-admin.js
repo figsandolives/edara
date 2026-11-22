@@ -8,7 +8,7 @@
   const esc = value => escapeHtml(value);
   const BASE = `${API_BASE}/partner/v1`;
   // الصلاحيات الفرعية ما لها معنى بدون الأساسية.
-  const PARENT = { "orders.items:read": "orders:read", "orders.area:read": "orders:read", "orders.all:read": "orders:read", "customers.key:read": "orders:read", "visits.all:read": "visits:read", "carts.contact:read": "carts.abandoned:read", "carts.all:read": "carts.abandoned:read" };
+  const PARENT = { "orders.items:read": "orders:read", "orders.area:read": "orders:read", "orders.all:read": "orders:read", "customers.key:read": "orders:read", "visits.all:read": "visits:read", "visits.contact:read": "visits:read", "carts.contact:read": "carts.abandoned:read", "carts.all:read": "carts.abandoned:read" };
   const EXPIRY = [["0", "بدون انتهاء"], ["30", "بعد 30 يوم"], ["90", "بعد 90 يوم"], ["365", "بعد سنة"]];
 
   const dialog = document.createElement("dialog");
@@ -50,7 +50,7 @@
     }).join("");
     view.innerHTML = `${header("مفاتيح API")}
       <button type="button" class="primary ak-add" data-ak="new" ${loaded ? "" : "disabled"}>＋ مفتاح جديد</button>
-      <p class="ak-hint">كل مفتاح لجهة وحدة. أنت تحدد شنو تشوف وشنو تعدل، وتقدر توقفه أو تحذفه بأي وقت. المفاتيح ما توصل أبداً لعنوان الزبون، ولا لاسمه ورقمه إلا إذا حطيت علامة «اسم ورقم صاحب السلة».</p>
+      <p class="ak-hint">كل مفتاح لجهة وحدة. أنت تحدد شنو تشوف وشنو تعدل، وتقدر توقفه أو تحذفه بأي وقت. المفاتيح ما توصل أبداً لعنوان الزبون، ولا لاسمه ورقمه إلا إذا حطيت علامة «اسم ورقم الزائر» أو «اسم ورقم صاحب السلة».</p>
       <div class="ak-list">${loadError ? `<p class="ak-empty ak-error">${esc(loadError)}</p>` : !loaded ? `<p class="ak-empty">جاري التحميل…</p>` : cards || `<p class="ak-empty">لا توجد مفاتيح إلى الآن.</p>`}</div>`;
   }
 
@@ -123,21 +123,21 @@
     const lines = [
       "Figs & Olives API", `Base URL: ${BASE}`, `Header:   Authorization: Bearer ${token || "<YOUR_KEY>"}`,
       `Server-to-server only (no browser/CORS). Limit: ${ratePerMinute} requests per minute. Times are Kuwait time (+03:00). Amounts are KWD strings with 3 decimals.`,
-      has("carts.contact:read") ? "Customer name and phone are returned only on /carts/abandoned. Never addresses, notes or payment details." : "No names, phone numbers, addresses, notes or payment details are ever returned.", "",
+      (has("carts.contact:read") || has("visits.contact:read")) ? `Customer name and phone are returned only on ${[has("visits.contact:read") && "/visits", has("carts.contact:read") && "/carts/abandoned"].filter(Boolean).join(" and ")}, for signed-in customers. Never addresses, notes or payment details.` : "No names, phone numbers, addresses, notes or payment details are ever returned.", "",
       "GET /health  -> {\"ok\": true, \"time\": \"...\"}", "GET /me      -> the permissions of this key"
     ];
     if (has("orders:read")) lines.push("",
       "GET /orders?updated_since=<ISO8601>&limit=<1..200>&cursor=<next_cursor>",
       "  Orders created or changed since the time given, oldest first. Keep `next_cursor` and send it on the next call to continue after the last order you received.",
       `  Returns ${has("orders.all:read") ? "all website orders since 2026-09-01" : "only orders that came through a tracked link (?ref= / ?cid=)"}.`,
-      `  Fields: order_id, created_at, updated_at, status, stage, catalog, order_type, subtotal_kwd, delivery_kwd, total_kwd, payment_method${has("orders.area:read") ? ", branch, area" : ""}${has("orders.items:read") ? ", items[]" : ""}, attribution{first_ref, first_cid, first_seen_at, first_landing_path, first_referrer_host, last_*, session_referrer_host}${has("customers.key:read") ? ", customer_key" : ""}.`,
+      `  Fields: order_id, created_at, updated_at, status, stage, catalog, order_type, subtotal_kwd, delivery_kwd, discount_kwd, total_kwd, coupon (code used, or null), payment_method${has("orders.area:read") ? ", branch, area" : ""}${has("orders.items:read") ? ", items[]" : ""}, attribution{first_ref, first_cid, first_seen_at, first_landing_path, first_referrer_host, last_*, session_referrer_host}${has("customers.key:read") ? ", customer_key" : ""}.`,
       "  An order exists only after a successful payment, so status is always \"active\" (the website has no cancel/refund).");
     if (has("summary:read")) lines.push("",
       "GET /summary?date=YYYY-MM-DD   (Kuwait day; today when omitted)",
       "  All website orders of that day in numbers only: orders_count, total_kwd, tracked_orders_count, tracked_total_kwd, complete (false while the day is still running).");
     if (has("visits:read")) lines.push("",
       "GET /visits?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
-      `  One row per visit${has("visits.all:read") ? "" : " that came through a tracked link"}: visit_id, ref, cid, started_at, last_seen_at, landing_path, referrer_host, pages[], added_to_cart, cart_value_kwd, order_completed, order_id.`,
+      `  One row per visit${has("visits.all:read") ? "" : " that came through a tracked link"}: visit_id, ref, cid, started_at, last_seen_at, landing_path, referrer_host, pages[] (type "product" = a product page opened), added_to_cart, cart_value_kwd, order_completed, order_id${has("visits.contact:read") ? `, customer_name, customer_phone (null unless the visitor was signed in)${has("customers.key:read") ? ", customer_key" : ""}` : ""}.`,
       "  A visit ends after 30 quiet minutes. Ask for a window that ended at least an hour ago to get finished visits.");
     if (has("carts.abandoned:read")) lines.push("",
       "GET /carts/abandoned?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
@@ -214,7 +214,8 @@
     errorBox.textContent = "";
     if (!chosen.length) { errorBox.textContent = "اختر صلاحية وحدة على الأقل"; return; }
     if (chosen.some(id => id.endsWith(":write")) && !window.confirm("هالمفتاح يقدر يعدل على الموقع، مو بس يقرأ. متأكد؟")) return;
-    if (chosen.includes("carts.contact:read") && !(key?.scopes || []).includes("carts.contact:read") && !window.confirm("هالمفتاح بيشوف أسماء الزباين وأرقام هواتفهم. متأكد إنك تبي تعطيها لهالجهة؟")) return;
+    const newContact = ["carts.contact:read", "visits.contact:read"].some(id => chosen.includes(id) && !(key?.scopes || []).includes(id));
+    if (newContact && !window.confirm("هالمفتاح بيشوف أسماء الزباين وأرقام هواتفهم. متأكد إنك تبي تعطيها لهالجهة؟")) return;
     submitButton.disabled = true;
     try {
       if (key) { replaceKey((await request(`/admin/api-keys/${key.id}`, "PUT", body)).key); screen = "list"; toast("تم حفظ التعديل"); }
