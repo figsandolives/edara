@@ -6,7 +6,7 @@
   const menuButton = document.getElementById("apiKeysPage");
   if (!menuButton) return;
   const esc = value => escapeHtml(value);
-  const BASE = `${API_BASE}/partner/v1`;
+  const BASE = "https://api.figsolives.online/partner/v1"; // fixed partner address (old sslip.io link keeps working)
   // الصلاحيات الفرعية ما لها معنى بدون الأساسية.
   const PARENT = { "orders.items:read": "orders:read", "orders.area:read": "orders:read", "orders.all:read": "orders:read", "customers.key:read": "orders:read", "visits.all:read": "visits:read", "visits.contact:read": "visits:read", "carts.contact:read": "carts.abandoned:read", "carts.all:read": "carts.abandoned:read", "coupons.contact:read": "coupons:read" };
   const EXPIRY = [["0", "بدون انتهاء"], ["30", "بعد 30 يوم"], ["90", "بعد 90 يوم"], ["365", "بعد سنة"]];
