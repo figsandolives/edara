@@ -57,7 +57,7 @@
     const stats = data?.stats || {};
     const settings = data?.settings || {};
     const records = data?.records || [];
-    const state = !data ? "" : !settings.enabled ? `<span class="co-state off">النظام متوقف</span>` : settings.audience === "all" ? `<span class="co-state on">يعمل لكل العملاء</span>` : `<span class="co-state pilot">تجربة: ${esc((settings.pilotPhones || []).join("، ") || "بدون أرقام")}</span>`;
+    const state = !data ? "" : !settings.enabled ? `<span class="co-state off">النظام متوقف</span>` : settings.audience === "all" ? `<span class="co-state on">يعمل لكل العملاء${(settings.pilotPhones || []).length ? ` · أرقام التجربة: ${esc(settings.pilotPhones.join("، "))}` : ""}</span>` : `<span class="co-state pilot">تجربة: ${esc((settings.pilotPhones || []).join("، ") || "بدون أرقام")}</span>`;
     view.innerHTML = `${header("خصومات السلة المتروكة", "close", `<button type="button" class="co-settings-btn" data-co="settings">⚙︎ الإعدادات</button>`)}
       ${error ? `<p class="co-error" role="alert">${esc(error)} <button type="button" data-co="reload">إعادة المحاولة</button></p>` : ""}
       ${!data && !error ? `<p class="co-empty">جاري التحميل…</p>` : ""}
@@ -145,7 +145,7 @@
             <label><input type="radio" name="audience" value="pilot" ${s.audience !== "all" ? "checked" : ""}> تجربة على أرقام محددة فقط</label>
             <label><input type="radio" name="audience" value="all" ${s.audience === "all" ? "checked" : ""}> كل العملاء</label>
           </div>
-          <label>أرقام التجربة<input name="pilotPhones" value="${esc((s.pilotPhones || []).join(", "))}" placeholder="50203306, 9xxxxxxx" dir="ltr"></label>
+          <label>أرقام التجربة <small>ترسل لها الرسالة بعد ١٠ ثوانٍ من ترك السلة وبدون حد يومي، حتى مع «كل العملاء»</small><input name="pilotPhones" value="${esc((s.pilotPhones || []).join(", "))}" placeholder="50203306, 9xxxxxxx" dir="ltr"></label>
         </section>
         <section class="co-block"><h4>الخصم</h4>
           <div class="co-grid">
@@ -163,7 +163,7 @@
           <div class="co-grid">
             <label>ترسل بعد ترك السلة بـ<span class="co-inline"><input name="delayValue" type="number" min="1" step="1" value="${delayValue}" required><select name="delayUnit"><option value="s" ${delayUnit === "s" ? "selected" : ""}>ثانية</option><option value="m" ${delayUnit === "m" ? "selected" : ""}>دقيقة</option><option value="h" ${delayUnit === "h" ? "selected" : ""}>ساعة</option></select></span></label>
             <label>ساعات الإرسال (بتوقيت الكويت) <small>فارغ = أي وقت</small><span class="co-inline"><input name="hourFrom" type="number" min="0" max="23" placeholder="من" value="${esc(hourFrom || "")}"><input name="hourTo" type="number" min="1" max="24" placeholder="إلى" value="${esc(hourTo || "")}"></span></label>
-            <label>أقل مدة بين رسالتين لنفس العميل (أيام) <small>0 = بدون حد</small><input name="cooldownDays" type="number" min="0" max="90" step="0.5" value="${+((s.cooldownMs || 0) / (24 * HOUR)).toFixed(2)}"></label>
+            <label>أقل مدة بين رسالتين لنفس العميل (أيام) <small>يوم واحد على الأقل</small><input name="cooldownDays" type="number" min="1" max="90" step="0.5" value="${+(Math.max(24 * HOUR, s.cooldownMs || 0) / (24 * HOUR)).toFixed(2)}"></label>
             <label>لا ترسل لسلة أقدم من (ساعات)<input name="maxAgeHours" type="number" min="1" max="720" step="1" value="${+((s.maxAgeMs || 20 * HOUR) / HOUR).toFixed(2)}"></label>
           </div>
         </section>
@@ -187,7 +187,7 @@
       discountType: v.discountType, amount: Number(v.amount), validityMs: Math.round(Number(v.validityHours) * HOUR),
       maxDiscount: Number(v.maxDiscount || 0), minSubtotal: Number(v.minSubtotal || 0), fulfillment: v.fulfillment, catalogType: v.catalogType,
       excludeSaleItems: form.elements.excludeSaleItems.checked, delayMs: Math.round(Number(v.delayValue) * unit), hours,
-      cooldownMs: Math.round(Number(v.cooldownDays || 0) * 24 * HOUR), maxAgeMs: Math.round(Number(v.maxAgeHours) * HOUR), excludedProductIds: [...excluded]
+      cooldownMs: Math.round(Math.max(1, Number(v.cooldownDays || 1)) * 24 * HOUR), maxAgeMs: Math.round(Number(v.maxAgeHours) * HOUR), excludedProductIds: [...excluded]
     };
     if (body.enabled && body.audience === "all" && data?.settings?.audience !== "all" && !confirm("سيتم تفعيل رسائل السلة المتروكة لكل العملاء. متأكد؟")) return;
     busy = true;
