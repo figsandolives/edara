@@ -1,0 +1,75 @@
+/* «خصومات السلة المتروكة» */
+.co-page{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:0;border:0;background:var(--cream);color:var(--ink)}
+.co-page::backdrop{background:var(--cream)}
+.co-wrap{width:min(1100px,100%);margin:0 auto;padding:0 16px 60px}
+.co-head{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;margin:0 -16px 16px;padding:12px 16px;background:rgba(247,243,233,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(23,63,50,.1)}
+.co-head h2{flex:1;min-width:0;margin:0;font-size:19px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.co-back{flex:none;padding:9px 14px;background:#fff;border:1px solid var(--line)}
+.co-actions{display:flex;gap:6px}
+.co-settings-btn{padding:9px 14px;font-size:13px;background:var(--green);color:#fff}
+.co-page input,.co-page select{padding:10px 12px;border:1px solid #ccd4d0;border-radius:11px;background:#fff;font:inherit;font-size:16px;color:var(--ink);width:100%;box-sizing:border-box}
+.co-muted{margin:0;color:var(--muted);font-size:12px}
+.co-intro{margin-bottom:12px}
+.co-error{margin:0;color:var(--danger);font-size:13px;font-weight:700}
+.co-error:empty{display:none}
+.co-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px}
+.co-summary,.co-table-card,.co-form{display:grid;gap:14px;padding:16px;margin-bottom:16px;background:#fff;border:1px solid var(--line);border-radius:20px}
+.co-summary-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.co-state{padding:6px 12px;border-radius:99px;font-size:12px;font-weight:800}
+.co-state.on{background:#e3f4ea;color:#1c7a45}.co-state.off{background:#f3f3f3;color:#777}.co-state.pilot{background:#fff4dc;color:#9a6a06}
+.co-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.co-stats span{display:grid;gap:2px;padding:12px;border-radius:14px;background:#f5f8f6;font-size:12px;color:var(--muted)}
+.co-stats b{font-size:18px;color:var(--green)}
+.co-pending-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:15px;background:#fff0ee;border:1px solid #f1c9c5;color:#b3262d;font-size:15px;font-weight:900}
+.co-pending-btn b{min-width:30px;padding:2px 10px;border-radius:99px;background:#c0262d;color:#fff;font-size:14px}
+.co-pulse{width:10px;height:10px;border-radius:50%;background:#e0383f;animation:coPulse 1.6s ease-in-out infinite}
+@keyframes coPulse{0%,100%{box-shadow:0 0 0 0 #e0383f66}50%{box-shadow:0 0 0 7px #e0383f00}}
+.co-table-card h3{margin:0;font-size:16px;color:var(--green)}
+.co-table-scroll{overflow-x:auto;margin:0 -16px;padding:0 16px}
+.co-table{width:100%;min-width:980px;border-collapse:collapse;font-size:13px}
+.co-table th{position:sticky;top:0;padding:10px 8px;background:#f2f6f3;color:var(--green);font-size:12px;text-align:start;white-space:nowrap}
+.co-table td{padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+.co-table td small{display:block;color:var(--muted);font-size:11px}
+.co-minus{color:#b3262d}
+.co-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.co-card{display:grid;gap:10px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:18px}
+.co-card.is-expired{opacity:.5}
+.co-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.co-card-head>div:first-child{display:grid;gap:2px}
+.co-card-head span{color:var(--muted);font-size:13px}
+.co-timer{display:grid;justify-items:center;padding:6px 12px;border-radius:12px;background:#fff0ee;color:#c0262d}
+.co-timer small{font-size:10px;font-weight:700}
+.co-timer strong{font-family:Arial,sans-serif;font-size:18px;font-variant-numeric:tabular-nums}
+.co-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px;color:var(--muted)}
+.co-card-meta b{color:var(--ink)}
+.co-items{margin:0;padding:8px 12px;list-style:none;border-radius:12px;background:#f7f9f8;font-size:12px;display:grid;gap:3px}
+.co-card-actions{display:flex;flex-wrap:wrap;gap:6px}
+.co-card-actions button{padding:8px 12px;font-size:12px;background:#edf3ef;color:var(--green)}
+.co-card-actions .warn{background:#fff4dc;color:#9a6a06}
+.co-card-actions .danger{background:#fff0f0;color:var(--danger)}
+.co-card-actions .primary{background:var(--green);color:#fff}
+.co-edit{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.co-edit label,.co-form label{display:grid;gap:5px;font-size:12px;font-weight:700}
+.co-edit .wide{grid-column:1/-1}
+.co-block{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
+.co-block:first-child{padding-top:0;border-top:0}
+.co-block h4{margin:0;font-size:14px;color:var(--green)}
+.co-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.co-form small{color:var(--muted);font-weight:500}
+.co-inline{display:flex;gap:6px}
+.co-radios{display:flex;flex-wrap:wrap;gap:14px;font-size:13px}
+.co-radios label,.co-check{display:flex!important;align-items:center;gap:6px;font-weight:700}
+.co-radios input,.co-check input,.co-product input{width:auto}
+.co-switch{display:flex!important;align-items:center;gap:10px;cursor:pointer}
+.co-switch input{position:absolute;opacity:0;width:1px}
+.co-toggle{position:relative;width:44px;height:26px;border-radius:99px;background:#cfd6d2;transition:.2s;flex:none}
+.co-toggle::after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+.co-switch input:checked+.co-toggle{background:#2c6a50}
+.co-switch input:checked+.co-toggle::after{right:21px}
+.co-products{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px;max-height:320px;overflow:auto;padding:4px}
+.co-product{display:flex!important;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:11px;font-weight:500!important;cursor:pointer}
+.co-product small{display:block;color:var(--muted);font-size:11px}
+.co-submit{position:sticky;bottom:0;padding:10px 0;background:linear-gradient(transparent,#fff 30%)}
+.co-submit button{width:100%;padding:14px}
+@media(max-width:600px){.co-cards{grid-template-columns:1fr}.co-card-meta{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.co-pulse{animation:none}}
