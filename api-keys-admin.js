@@ -134,10 +134,13 @@
       "  An order exists only after a successful payment, so status is always \"active\" (the website has no cancel/refund).");
     if (has("summary:read")) lines.push("",
       "GET /summary?date=YYYY-MM-DD   (Kuwait day; today when omitted)",
-      "  All website orders of that day in numbers only: orders_count, total_kwd, tracked_orders_count, tracked_total_kwd, complete (false while the day is still running).");
+      "  The whole website that day, in numbers only: orders_count, total_kwd, tracked_orders_count, tracked_total_kwd, complete (false while the day is still running),",
+      "  visits_count, known_visits_count + known_visits_percent (visits by signed-in customers), whatsapp_clicks_count, whatsapp_clicks_by_branch{delivery, yarmouk, abu_hasaniya, other},",
+      "  by_ref[{ref, visits_count, whatsapp_clicks_count, orders_count, total_kwd}] (one row per link code; an order counts for its last link code).",
+      "  WhatsApp and phone orders are not placed on the website, so they are not in orders_count; whatsapp_clicks_count is the closest number.");
     if (has("visits:read")) lines.push("",
       "GET /visits?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
-      `  One row per visit${has("visits.all:read") ? "" : " that came through a tracked link"}: visit_id, ref, cid, started_at, last_seen_at, landing_path, referrer_host, pages[] (type "product" = a product page opened), added_to_cart, cart_value_kwd, order_completed, order_id${has("visits.contact:read") ? `, customer_name, customer_phone (null unless the visitor was signed in)${has("customers.key:read") ? ", customer_key" : ""}` : ""}.`,
+      `  One row per visit${has("visits.all:read") ? "" : " that came through a tracked link"}: visit_id, ref, cid, started_at, last_seen_at, landing_path, referrer_host, pages[] (type "product" = a product page opened), added_to_cart, cart_value_kwd, whatsapp_clicks[{branch, place (menu | footer | assistant | other), at}], order_completed, order_id${has("visits.contact:read") ? `, customer_name, customer_phone (null unless the visitor was signed in)${has("customers.key:read") ? ", customer_key" : ""}` : ""}.`,
       "  A visit ends after 30 quiet minutes. Ask for a window that ended at least an hour ago to get finished visits.");
     if (has("carts.abandoned:read")) lines.push("",
       "GET /carts/abandoned?from=<ISO8601>&to=<ISO8601>   (at most 7 days per call)",
