@@ -164,6 +164,7 @@
             <label>ترسل بعد ترك السلة بـ<span class="co-inline"><input name="delayValue" type="number" min="1" step="1" value="${delayValue}" required><select name="delayUnit"><option value="s" ${delayUnit === "s" ? "selected" : ""}>ثانية</option><option value="m" ${delayUnit === "m" ? "selected" : ""}>دقيقة</option><option value="h" ${delayUnit === "h" ? "selected" : ""}>ساعة</option></select></span></label>
             <label>ساعات الإرسال (بتوقيت الكويت) <small>فارغ = أي وقت</small><span class="co-inline"><input name="hourFrom" type="number" min="0" max="23" placeholder="من" value="${esc(hourFrom || "")}"><input name="hourTo" type="number" min="1" max="24" placeholder="إلى" value="${esc(hourTo || "")}"></span></label>
             <label>أقل مدة بين رسالتين لنفس العميل (أيام) <small>يوم واحد على الأقل</small><input name="cooldownDays" type="number" min="1" max="90" step="0.5" value="${+(Math.max(24 * HOUR, s.cooldownMs || 0) / (24 * HOUR)).toFixed(2)}"></label>
+            <label>ترسل فقط لسلة قيمتها أكثر من (د.ك)<input name="minCartValue" type="number" min="0" step="0.001" value="${s.minCartValue ?? 5}" required></label>
             <label>لا ترسل لسلة أقدم من (ساعات)<input name="maxAgeHours" type="number" min="1" max="720" step="1" value="${+((s.maxAgeMs || 20 * HOUR) / HOUR).toFixed(2)}"></label>
           </div>
         </section>
@@ -187,7 +188,7 @@
       discountType: v.discountType, amount: Number(v.amount), validityMs: Math.round(Number(v.validityHours) * HOUR),
       maxDiscount: Number(v.maxDiscount || 0), minSubtotal: Number(v.minSubtotal || 0), fulfillment: v.fulfillment, catalogType: v.catalogType,
       excludeSaleItems: form.elements.excludeSaleItems.checked, delayMs: Math.round(Number(v.delayValue) * unit), hours,
-      cooldownMs: Math.round(Math.max(1, Number(v.cooldownDays || 1)) * 24 * HOUR), maxAgeMs: Math.round(Number(v.maxAgeHours) * HOUR), excludedProductIds: [...excluded]
+      cooldownMs: Math.round(Math.max(1, Number(v.cooldownDays || 1)) * 24 * HOUR), maxAgeMs: Math.round(Number(v.maxAgeHours) * HOUR), minCartValue: Number(v.minCartValue || 0), excludedProductIds: [...excluded]
     };
     if (body.enabled && body.audience === "all" && data?.settings?.audience !== "all" && !confirm("سيتم تفعيل رسائل السلة المتروكة لكل العملاء. متأكد؟")) return;
     busy = true;
