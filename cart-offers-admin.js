@@ -1,9 +1,20 @@
-// «خصومات السلة المتروكة»: من دفع بخصم السلة، المنتظرين (بانتظار الإتمام)، وإعدادات النظام.
-// الخصم خاص لكل عميل وليس كوبوناً، فلا يظهر في «كوبونات الخصم». البيانات من /admin/cart-offers.
-(function () {
+// «خصومات السلة المتروكة» و«خصومات تصفح المنتجات»: من دفع بالخصم، المنتظرين (بانتظار الإتمام)، وإعدادات النظام.
+// الخصم خاص لكل عميل وليس كوبوناً، فلا يظهر في «كوبونات الخصم». البيانات من /admin/cart-offers و /admin/browse-offers.
+// العميل يشوف مدة قصيرة (العداد والرسالة، ٣ ساعات)، والخصم نفسه يبقى شغالاً مدة أطول بالخلفية (١٢ ساعة).
+function mountOfferAdminPage(kind) {
   if (window.TRAINING_MODE) return;
-  const menuButton = document.getElementById("cartOffersPage");
+  const product = kind === "product";
+  const menuButton = document.getElementById(product ? "browseOffersPage" : "cartOffersPage");
   if (!menuButton) return;
+  const T = product ? {
+    title: "خصومات تصفح المنتجات", api: "/admin/browse-offers", dialog: "browseOffersDialog", paidTitle: "من دفع بخصم المنتج", noPaid: "لم يدفع أحد بخصم المنتج بعد.",
+    pendingIntro: "عملاء وصلتهم رسالة خصم المنتج وخصمهم ما زال فعّالاً ولم يدفعوا بعد.", settingsTitle: "إعدادات خصم تصفح المنتجات", enable: "تشغيل رسائل تصفح المنتجات",
+    pilotHint: "ترسل لها الرسالة بعد ١٠ ثوانٍ من فتح المنتج، بدون حد ومهما كانت الساعة", confirmAll: "سيتم تفعيل رسائل تصفح المنتجات لكل العملاء. متأكد؟"
+  } : {
+    title: "خصومات السلة المتروكة", api: "/admin/cart-offers", dialog: "cartOffersDialog", paidTitle: "من دفع بخصم السلة", noPaid: "لم يدفع أحد بخصم السلة بعد.",
+    pendingIntro: "عملاء وصلتهم رسالة السلة وخصمهم ما زال فعّالاً ولم يدفعوا بعد.", settingsTitle: "إعدادات خصم السلة المتروكة", enable: "تشغيل رسائل السلة المتروكة",
+    pilotHint: "ترسل لها الرسالة بعد ١٠ ثوانٍ من ترك السلة وبدون حد يومي، حتى مع «كل العملاء»", confirmAll: "سيتم تفعيل رسائل السلة المتروكة لكل العملاء. متأكد؟"
+  };
 
   const esc = value => escapeHtml(value == null ? "" : String(value));
   const HOUR = 3600000;
@@ -14,7 +25,7 @@
   const timestamp = value => value ? new Date(`${value}+03:00`).getTime() : 0;
 
   const page = document.createElement("dialog");
-  page.id = "cartOffersDialog";
+  page.id = T.dialog;
   page.className = "co-page";
   page.innerHTML = `<div class="co-wrap" id="coView"></div>`;
   document.body.append(page);
@@ -25,7 +36,7 @@
   const serverNow = () => Date.now() + clockOffset;
 
   async function api(path, method = "GET", body) {
-    const response = await adminRequest(`/admin/cart-offers${path}`, method === "GET" ? {} : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+    const response = await adminRequest(`${T.api}${path}`, method === "GET" ? {} : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.error || "تعذر الاتصال بالخادم");
     return result;
@@ -58,11 +69,12 @@
     const settings = data?.settings || {};
     const records = data?.records || [];
     const state = !data ? "" : !settings.enabled ? `<span class="co-state off">النظام متوقف</span>` : settings.audience === "all" ? `<span class="co-state on">يعمل لكل العملاء${(settings.pilotPhones || []).length ? ` · أرقام التجربة: ${esc(settings.pilotPhones.join("، "))}` : ""}</span>` : `<span class="co-state pilot">تجربة: ${esc((settings.pilotPhones || []).join("، ") || "بدون أرقام")}</span>`;
-    view.innerHTML = `${header("خصومات السلة المتروكة", "close", `<button type="button" class="co-settings-btn" data-co="settings">⚙︎ الإعدادات</button>`)}
+    view.innerHTML = `${header(T.title, "close", `<button type="button" class="co-settings-btn" data-co="settings">⚙︎ الإعدادات</button>`)}
       ${error ? `<p class="co-error" role="alert">${esc(error)} <button type="button" data-co="reload">إعادة المحاولة</button></p>` : ""}
       ${!data && !error ? `<p class="co-empty">جاري التحميل…</p>` : ""}
       ${data ? `<section class="co-summary">
-        <div class="co-summary-top">${state}<span class="co-muted">الخصم الحالي: <b>${settings.discountType === "fixed" ? money(settings.amount) : `${settings.amount}%`}</b> لمدة <b>${hoursText(settings.validityMs)}</b></span></div>
+        <div class="co-summary-top">${state}<span class="co-muted">الخصم الحالي: <b>${settings.discountType === "fixed" ? money(settings.amount) : `${settings.amount}%`}</b> · يظهر للعميل <b>${hoursText(settings.shownMs || settings.validityMs)}</b> · شغال فعلياً <b>${hoursText(settings.validityMs)}</b></span></div>
+        ${product && data.viewStats ? `<p class="co-muted">عملاء مسجّلون تصفحوا منتجات آخر ٢٤ ساعة: <b>${data.viewStats.viewers24h}</b> · رسائل اليوم: <b>${data.sentToday || 0}</b>${settings.dailyLimit ? ` من ${settings.dailyLimit}` : ""}</p>` : ""}
         <div class="co-stats">
           <span><b>${stats.sent || 0}</b>رسالة أُرسلت</span>
           <span><b>${stats.opened || 0}</b>فتحوا الرابط</span>
@@ -72,13 +84,13 @@
         </div>
         <button type="button" class="co-pending-btn" data-co="pending"><span class="co-pulse" aria-hidden="true"></span>بانتظار الإتمام <b>${stats.pending || 0}</b></button>
       </section>
-      <section class="co-table-card"><h3>من دفع بخصم السلة</h3>
+      <section class="co-table-card"><h3>${T.paidTitle}</h3>
         ${records.length ? `<div class="co-table-scroll"><table class="co-table"><thead><tr>
           <th>رقم الفاتورة</th><th>اسم العميل</th><th>رقم الهاتف</th><th>إجمالي الفاتورة</th><th>كوبون الخصم</th><th>مبلغ الخصم</th><th>المجموع</th><th>التوصيل</th><th>الإجمالي</th><th>تاريخ ووقت الدفع</th>
         </tr></thead><tbody>${records.map(row => `<tr>
           <td><b>${esc(row.orderId)}</b></td><td>${esc(row.customerName)}</td><td dir="ltr">${esc(row.phone)}</td><td>${money(row.subtotal)}</td>
           <td><bdi>${esc(row.code)}</bdi><small>${esc(row.label)}</small></td><td class="co-minus">−${money(row.discount)}</td><td>${money(row.net)}</td><td>${money(row.deliveryFee)}</td><td><b>${money(row.total)}</b></td><td>${esc(date(row.paidAt))}</td>
-        </tr>`).join("")}</tbody></table></div>` : `<p class="co-empty">لم يدفع أحد بخصم السلة بعد.</p>`}
+        </tr>`).join("")}</tbody></table></div>` : `<p class="co-empty">${T.noPaid}</p>`}
       </section>` : ""}`;
   }
 
@@ -88,20 +100,21 @@
       <form class="co-edit" data-co-form="${esc(row.token)}">
         <label>نوع الخصم<select name="type"><option value="percent" ${row.type === "percent" ? "selected" : ""}>نسبة %</option><option value="fixed" ${row.type === "fixed" ? "selected" : ""}>مبلغ (د.ك)</option></select></label>
         <label>القيمة<input name="amount" type="number" min="0.001" step="0.001" value="${row.amount}" required></label>
-        <label class="wide">ينتهي الخصم في (بتوقيت الكويت)<input name="expiresAt" type="datetime-local" value="${localDate(row.expiresAt)}" required></label>
+        <label class="wide">ينتهي الخصم في (بتوقيت الكويت) <small>الوقت اللي يشوفه العميل؛ الخصم يبقى شغال بعده بنفس الفارق</small><input name="expiresAt" type="datetime-local" value="${localDate(row.shownExpiresAt || row.expiresAt)}" required></label>
         <p class="co-error wide" data-co-error></p>
         <div class="co-card-actions wide"><button type="submit" class="primary">حفظ</button><button type="button" data-co="cancel-edit">إلغاء</button></div>
       </form></article>`;
     return `<article class="co-card" data-token="${esc(row.token)}">
       <div class="co-card-head"><div><b>${esc(row.customerName)}</b><span dir="ltr">${esc(row.phone)}</span></div>
-        <div class="co-timer"><small>متبقي</small><strong dir="ltr" data-co-expires="${row.expiresAt}">${remaining(row.expiresAt)}</strong></div></div>
+        <div class="co-timer"><small>متبقي (يظهر للعميل)</small><strong dir="ltr" data-co-expires="${row.shownExpiresAt || row.expiresAt}">${remaining(row.shownExpiresAt || row.expiresAt)}</strong></div></div>
       <div class="co-card-meta">
         <span>الخصم: <b>${esc(row.label)}</b></span>
-        <span>قيمة السلة: <b>${money(row.cartValue)}</b></span>
+        ${product ? `<span>السعر: <b>${money(row.priceBefore)}</b> ← <b>${money(row.priceAfter)}</b></span>` : `<span>قيمة السلة: <b>${money(row.cartValue)}</b></span>`}
+        <span>شغال فعلياً حتى: ${esc(date(row.expiresAt))}</span>
         <span>أُرسلت: ${esc(date(row.sentAt))}</span>
         <span>${row.openedAt ? `فتح الرابط ✓ ${esc(date(row.openedAt))}` : "لم يفتح الرابط بعد"}</span>
       </div>
-      <ul class="co-items">${row.items.map(item => `<li>${esc(item.name)} <b>× ${item.quantity}</b></li>`).join("")}</ul>
+      <ul class="co-items">${row.items.map(item => `<li>${esc(item.name)}${product ? "" : ` <b>× ${item.quantity}</b>`}</li>`).join("")}</ul>
       <div class="co-card-actions">
         <button type="button" data-co="edit" data-token="${esc(row.token)}">تعديل</button>
         <button type="button" class="warn" data-co="stop" data-token="${esc(row.token)}">إيقاف الخصم</button>
@@ -112,14 +125,14 @@
   function renderPending() {
     const rows = data?.pending || [];
     view.innerHTML = `${header(`بانتظار الإتمام (${rows.length})`, "home")}
-      <p class="co-muted co-intro">عملاء وصلتهم رسالة السلة وخصمهم ما زال فعّالاً ولم يدفعوا بعد.</p>
+      <p class="co-muted co-intro">${T.pendingIntro}</p>
       ${error ? `<p class="co-error" role="alert">${esc(error)}</p>` : ""}
       <div class="co-cards">${rows.map(pendingCard).join("") || `<p class="co-empty">لا يوجد أحد بانتظار الإتمام حالياً.</p>`}</div>`;
     ticker = setInterval(() => {
       view.querySelectorAll("[data-co-expires]").forEach(node => {
         const expiresAt = Number(node.dataset.coExpires);
         node.textContent = remaining(expiresAt);
-        if (expiresAt <= serverNow()) node.closest(".co-card")?.classList.add("is-expired");
+        if (expiresAt <= serverNow()) node.closest(".co-card")?.classList.add("is-shown-over");
       });
     }, 1000);
   }
@@ -137,39 +150,41 @@
     const delayUnit = delay % HOUR === 0 ? "h" : delay % 60000 === 0 ? "m" : "s";
     const delayValue = delay / ({ h: HOUR, m: 60000, s: 1000 })[delayUnit];
     const [hourFrom, hourTo] = String(s.hours || "").split("-");
-    view.innerHTML = `${header("إعدادات خصم السلة المتروكة", "home")}
+    view.innerHTML = `${header(T.settingsTitle, "home")}
       <form class="co-form" id="coSettings">
         <section class="co-block">
-          <label class="co-switch"><input type="checkbox" name="enabled" ${s.enabled ? "checked" : ""}><span class="co-toggle"></span><b>تشغيل رسائل السلة المتروكة</b></label>
+          <label class="co-switch"><input type="checkbox" name="enabled" ${s.enabled ? "checked" : ""}><span class="co-toggle"></span><b>${T.enable}</b></label>
           <div class="co-radios">
             <label><input type="radio" name="audience" value="pilot" ${s.audience !== "all" ? "checked" : ""}> تجربة على أرقام محددة فقط</label>
             <label><input type="radio" name="audience" value="all" ${s.audience === "all" ? "checked" : ""}> كل العملاء</label>
           </div>
-          <label>أرقام التجربة <small>ترسل لها الرسالة بعد ١٠ ثوانٍ من ترك السلة وبدون حد يومي، حتى مع «كل العملاء»</small><input name="pilotPhones" value="${esc((s.pilotPhones || []).join(", "))}" placeholder="50203306, 9xxxxxxx" dir="ltr"></label>
+          <label>أرقام التجربة <small>${T.pilotHint}</small><input name="pilotPhones" value="${esc((s.pilotPhones || []).join(", "))}" placeholder="50203306, 9xxxxxxx" dir="ltr"></label>
         </section>
         <section class="co-block"><h4>الخصم</h4>
           <div class="co-grid">
             <label>نوع الخصم<select name="discountType"><option value="percent" ${s.discountType !== "fixed" ? "selected" : ""}>نسبة %</option><option value="fixed" ${s.discountType === "fixed" ? "selected" : ""}>مبلغ ثابت (د.ك)</option></select></label>
             <label>قيمة الخصم<input name="amount" type="number" min="0.001" step="0.001" value="${s.amount ?? 10}" required></label>
-            <label>مدة الخصم (ساعات)<input name="validityHours" type="number" min="0.25" max="168" step="0.25" value="${+((s.validityMs || 3 * HOUR) / HOUR).toFixed(2)}" required></label>
+            <label>المدة اللي يشوفها العميل (ساعات) <small>بالرسالة والعداد</small><input name="shownHours" type="number" min="0.25" max="168" step="0.25" value="${+((s.shownMs || s.validityMs || 3 * HOUR) / HOUR).toFixed(2)}" required></label>
+            <label>مدة الخصم الفعلية (ساعات) <small>الخصم يبقى شغال لين هالمدة</small><input name="validityHours" type="number" min="0.25" max="168" step="0.25" value="${+((s.validityMs || 12 * HOUR) / HOUR).toFixed(2)}" required></label>
+            ${product ? `<label>أقصى عدد رسائل باليوم <small>0 = بدون حد (أرقام التجربة غير محسوبة)</small><input name="dailyLimit" type="number" min="0" max="1000" step="1" value="${s.dailyLimit ?? 40}"></label>` : `
             <label>أقصى خصم (د.ك) <small>0 = بدون حد</small><input name="maxDiscount" type="number" min="0" step="0.001" value="${s.maxDiscount || 0}"></label>
             <label>أقل قيمة للمنتجات المشمولة (د.ك)<input name="minSubtotal" type="number" min="0" step="0.001" value="${s.minSubtotal || 0}"></label>
             <label>طريقة الاستلام<select name="fulfillment"><option value="all">الكل</option><option value="delivery" ${s.fulfillment === "delivery" ? "selected" : ""}>توصيل فقط</option><option value="pickup" ${s.fulfillment === "pickup" ? "selected" : ""}>استلام فقط</option></select></label>
-            <label>نوع الطلب<select name="catalogType"><option value="all">الكل</option><option value="bakery" ${s.catalogType === "bakery" ? "selected" : ""}>المخبز فقط</option><option value="restaurant" ${s.catalogType === "restaurant" ? "selected" : ""}>المطعم فقط</option></select></label>
+            <label>نوع الطلب<select name="catalogType"><option value="all">الكل</option><option value="bakery" ${s.catalogType === "bakery" ? "selected" : ""}>المخبز فقط</option><option value="restaurant" ${s.catalogType === "restaurant" ? "selected" : ""}>المطعم فقط</option></select></label>`}
           </div>
-          <label class="co-check"><input type="checkbox" name="excludeSaleItems" ${s.excludeSaleItems !== false ? "checked" : ""}> المنتجات التي عليها خصم مسبقاً غير مشمولة</label>
+          ${product ? `<p class="co-muted">الخصم على المنتج اللي تصفحه بس. المنتجات اللي عليها خصم مسبقاً أو سعرها بالخيارات ما تنرسل عنها رسالة.</p>` : `<label class="co-check"><input type="checkbox" name="excludeSaleItems" ${s.excludeSaleItems !== false ? "checked" : ""}> المنتجات التي عليها خصم مسبقاً غير مشمولة</label>`}
         </section>
         <section class="co-block"><h4>توقيت الرسالة</h4>
           <div class="co-grid">
-            <label>ترسل بعد ترك السلة بـ<span class="co-inline"><input name="delayValue" type="number" min="1" step="1" value="${delayValue}" required><select name="delayUnit"><option value="s" ${delayUnit === "s" ? "selected" : ""}>ثانية</option><option value="m" ${delayUnit === "m" ? "selected" : ""}>دقيقة</option><option value="h" ${delayUnit === "h" ? "selected" : ""}>ساعة</option></select></span></label>
+            <label>${product ? "ترسل بعد تصفح المنتج بـ" : "ترسل بعد ترك السلة بـ"}<span class="co-inline"><input name="delayValue" type="number" min="1" step="1" value="${delayValue}" required><select name="delayUnit"><option value="s" ${delayUnit === "s" ? "selected" : ""}>ثانية</option><option value="m" ${delayUnit === "m" ? "selected" : ""}>دقيقة</option><option value="h" ${delayUnit === "h" ? "selected" : ""}>ساعة</option></select></span></label>
             <label>ساعات الإرسال (بتوقيت الكويت) <small>فارغ = أي وقت</small><span class="co-inline"><input name="hourFrom" type="number" min="0" max="23" placeholder="من" value="${esc(hourFrom || "")}"><input name="hourTo" type="number" min="1" max="24" placeholder="إلى" value="${esc(hourTo || "")}"></span></label>
             <label>أقل مدة بين رسالتين لنفس العميل (أيام) <small>يوم واحد على الأقل</small><input name="cooldownDays" type="number" min="1" max="90" step="0.5" value="${+(Math.max(24 * HOUR, s.cooldownMs || 0) / (24 * HOUR)).toFixed(2)}"></label>
-            <label>ترسل فقط لسلة قيمتها أكثر من (د.ك)<input name="minCartValue" type="number" min="0" step="0.001" value="${s.minCartValue ?? 5}" required></label>
-            <label>لا ترسل لسلة أقدم من (ساعات)<input name="maxAgeHours" type="number" min="1" max="720" step="1" value="${+((s.maxAgeMs || 20 * HOUR) / HOUR).toFixed(2)}"></label>
+            ${product ? "" : `<label>ترسل فقط لسلة قيمتها أكثر من (د.ك)<input name="minCartValue" type="number" min="0" step="0.001" value="${s.minCartValue ?? 5}" required></label>`}
+            <label>${product ? "لا ترسل عن تصفح أقدم من (ساعات)" : "لا ترسل لسلة أقدم من (ساعات)"}<input name="maxAgeHours" type="number" min="1" max="720" step="1" value="${+((s.maxAgeMs || (product ? 48 : 20) * HOUR) / HOUR).toFixed(2)}"></label>
           </div>
         </section>
         <section class="co-block"><h4>منتجات غير مشمولة بالخصم <small id="coExcludedCount">${excluded.size}</small></h4>
-          <p class="co-muted">يُحسب الخصم على باقي منتجات السلة؛ المنتجات المحددة هنا لا يشملها الخصم.</p>
+          <p class="co-muted">${product ? "ما تنرسل رسالة خصم عن المنتجات المحددة هنا." : "يُحسب الخصم على باقي منتجات السلة؛ المنتجات المحددة هنا لا يشملها الخصم."}</p>
           <input type="search" id="coProductSearch" placeholder="ابحث عن منتج بالاسم أو الرقم" value="${esc(productQuery)}">
           <div class="co-products" id="coProducts">${productsList()}</div>
         </section>
@@ -183,14 +198,18 @@
     const v = Object.fromEntries(new FormData(form));
     const unit = { s: 1000, m: 60000, h: HOUR }[v.delayUnit] || HOUR;
     const hours = v.hourFrom !== "" || v.hourTo !== "" ? `${Number(v.hourFrom || 0)}-${Number(v.hourTo || 24)}` : "";
+    if (Number(v.shownHours) > Number(v.validityHours)) { form.querySelector("#coSettingsError").textContent = "المدة اللي يشوفها العميل لازم تكون أقل من أو تساوي المدة الفعلية"; return; }
     const body = {
       enabled: form.elements.enabled.checked, audience: v.audience, pilotPhones: v.pilotPhones,
-      discountType: v.discountType, amount: Number(v.amount), validityMs: Math.round(Number(v.validityHours) * HOUR),
-      maxDiscount: Number(v.maxDiscount || 0), minSubtotal: Number(v.minSubtotal || 0), fulfillment: v.fulfillment, catalogType: v.catalogType,
-      excludeSaleItems: form.elements.excludeSaleItems.checked, delayMs: Math.round(Number(v.delayValue) * unit), hours,
-      cooldownMs: Math.round(Math.max(1, Number(v.cooldownDays || 1)) * 24 * HOUR), maxAgeMs: Math.round(Number(v.maxAgeHours) * HOUR), minCartValue: Number(v.minCartValue || 0), excludedProductIds: [...excluded]
+      discountType: v.discountType, amount: Number(v.amount), validityMs: Math.round(Number(v.validityHours) * HOUR), shownMs: Math.round(Number(v.shownHours) * HOUR),
+      delayMs: Math.round(Number(v.delayValue) * unit), hours,
+      cooldownMs: Math.round(Math.max(1, Number(v.cooldownDays || 1)) * 24 * HOUR), maxAgeMs: Math.round(Number(v.maxAgeHours) * HOUR), excludedProductIds: [...excluded],
+      ...(product ? { dailyLimit: Number(v.dailyLimit || 0) } : {
+        maxDiscount: Number(v.maxDiscount || 0), minSubtotal: Number(v.minSubtotal || 0), fulfillment: v.fulfillment, catalogType: v.catalogType,
+        excludeSaleItems: form.elements.excludeSaleItems.checked, minCartValue: Number(v.minCartValue || 0)
+      })
     };
-    if (body.enabled && body.audience === "all" && data?.settings?.audience !== "all" && !confirm("سيتم تفعيل رسائل السلة المتروكة لكل العملاء. متأكد؟")) return;
+    if (body.enabled && body.audience === "all" && data?.settings?.audience !== "all" && !confirm(T.confirmAll)) return;
     busy = true;
     const button = form.querySelector("[type=submit]"); button.disabled = true;
     try {
@@ -224,7 +243,7 @@
     if (action === "edit") { editing = token; return render(); }
     if (action === "cancel-edit") { editing = ""; return render(); }
     if (action === "stop" && confirm("إيقاف خصم هذا العميل؟ لن يقدر يستخدمه بعد الآن.")) return act(token, "stop");
-    if (action === "delete" && confirm("حذف خصم هذا العميل نهائياً؟ رابط سلته سيتوقف.")) return act(token, "delete");
+    if (action === "delete" && confirm(product ? "حذف خصم هذا العميل نهائياً؟ رابط الخصم سيتوقف." : "حذف خصم هذا العميل نهائياً؟ رابط سلته سيتوقف.")) return act(token, "delete");
   });
   page.addEventListener("submit", event => {
     event.preventDefault();
@@ -252,4 +271,6 @@
     screen = "home"; editing = ""; data = null; error = "";
     page.showModal(); render(); load();
   });
-})();
+}
+mountOfferAdminPage("cart");
+mountOfferAdminPage("product");

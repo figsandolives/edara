@@ -73,3 +73,4 @@
 .co-submit button{width:100%;padding:14px}
 @media(max-width:600px){.co-cards{grid-template-columns:1fr}.co-card-meta{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.co-pulse{animation:none}}
+.co-card.is-shown-over .co-timer{opacity:.45}
